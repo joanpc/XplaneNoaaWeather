@@ -1,0 +1,215 @@
+Introduction
+------------
+
+Wgrib2 is a swiss army knife for grib2 files. You can use it inventory
+or extract data. You can do basic database operations and other nifty
+things.
+
+GRIB-2 has arrived and has begun replacing the the older standard GRIB
+(GRIB-1). Since GRIB-2 can reduce the file size by upto 80% (NAM,
+JPEG2000 compression), converting to the new standard may be faster
+than some expected.
+
+Wgrib2 has been out in the wild since 9/16/2005 (alpha release). The
+original version was rough around the edges but the new design helped
+and now wgrib2 has much more functionality than the older wgrib.
+
+*Important*: This is not the *official* Wgrib2 distribution. This is
+             a derived version that has been converted to use
+             the GNU autotools. Besides the build details it is 
+             expect to be equivalent to NCEP's version.
+
+Some Good Stuff
+---------------
+
+    * Almost trivial to add custom features!
+    * Customized inventories
+    * Table driven
+    * Code is reorganized
+    * Super easy integration of new and local options
+    * wgrib2 knows the lat-lon of the individual grid points for several grids
+    * Designed for multiple developers (hint, hint, hint)
+    * Works with the partial-http downloading aka 
+      "Fast Downloading of GRIB Files" 
+
+Bad Stuff
+---------
+    * Uses external libraries (png,jpeg,netcdf,compression,grib2 decode) 
+      which can make compiling and linking a real pain. At least all 
+      the external libraries are in C.
+    * interpolation to lat-lon values is done by nearest neighbor.
+    * wind rotation is not handled 
+
+Usage
+-----
+    * similar to wgrib but different
+    * type wgrib2 to see primary options
+    * inventory format is specified on command line by options
+    * if no "inv" options are specified, -s is used 
+
+Joining the development effort
+------------------------------
+    * Source code: knowledge of C and grib-2
+    * Donated source code / non-trivial bug fixes must either be 
+      GNU or public domain.
+    * Prefer PD bug fixes for PD code and GNU bug fixes for GNU code.
+    * Bug reports are important
+    * Contact wesley.ebisuzaki@noaa.gov 
+
+Contributions by
+----------------
+    * Wesley Ebisuzaki: many modules
+    * Jaakko Hyvätti: gribtab
+    * Kristian Nilssen: netcdf module
+    * Karl Pfeiffer: georeference
+    * Manfred Schwarb: many modules
+    * Arlindo da Silva: openGrADS build, ijbox
+    * Niklas Sondell: mysql module
+    * Sergey Varlamov: netcdf module improvements
+    * thanks to the people who report the bugs and more who provide the fixes! 
+
+An incomplete list of the options
+---------------------------------
+   -AAIG        export arcinfo ascii grid
+   -append      set append mode flag
+   -big_endian  set mode to big-endian ieee
+   -bin         write out file in binary format
+   -bitmap      prints details of bitmap
+   -center      prints details of center that wrote the file
+   -code_table  prints code table I.J
+   -count       prints the number of fields
+   -d dump      specific record
+   -disc        prints the discpline
+   -end         end/stop/bye/quit after 1 line of inventory
+   -ens         print ensemble information
+   -fix_ncep    convert cnvgrib time codes to standard codes
+   -for         select a range of records to process
+   -ftime       prints the forecast time
+   -g2clib      select internal vs g2clib decoding routines
+   -GRIB        write current grib message (potentially many fields)
+   -grib        write current grib submessage (one field)
+   -grib_out    writes the current field in grib format
+   -grid        prints out the grid information
+   -grid_changes 
+                prints the number times the grid changed
+   -header      write f77 or text header
+   -help
+   -i reads     inventory from stdin for record selection
+   -ieee        write data in IEEE format
+   -if          if this then that
+   -ij          print value at grid point X, Y
+   -ijbox       print values at grid point (ix1:ix2, iy1:iy2)
+   -ijlat       print lat, lon, value at grid point X Y
+   -ijsmall_grib 
+                write grib file for subdomain
+   -ilat        print lat, lon, value of Nth grid point
+   -ilat        redirects inventory to a file
+   -lev         prints the level
+   -little_endian 
+                sets mode for little   -endian ieee
+   -lola
+   -lon         prints the lat, and value of the grid point nearest 
+                the specified lat-lon
+
+   macros: -s -verf -V
+
+   -match      process records that match a regular expression
+   -match_inv  the inventory used by -match
+   -max        prints the maximum value
+   -min        prints the minimum value
+   -MM         prints the month as two digits
+   -no_header  do not write f77/text header
+   -not        process records not matching a regular expression
+   -not_if     if not this then that
+   -npts       prints number of points of grid
+   -nxny       prints nx ny of grid
+   -one_line   puts inventory record on one line
+   -order      prints the scan order of the data
+   -s          print a simple inventory
+   -small_grib 
+               write regional subset
+   -stats      prints some statistics about the fields
+   -tigge      use tigge-style names
+   -v0, -v, -v2 
+               verbosity level
+   -undefine   undefine/maskout grid points
+   -verf       simple inventory using forecast verification time
+   -version    version of code
+   -V prints   a verbose inventory
+
+Exporting data to other programs
+--------------------------------
+   -netcdf     write data in netcdf format
+   -mysql      export data to a mysql datdabase
+   -mysql_speed 
+               export data to a mysql datdabase
+   -spread     write data for spreadsheets
+   -csv        write in column separated values, another one for spreadsheets
+   -text       data in text format
+   -bin        data native binary floating point
+   -ieee       data in big endian IEEE format
+   -ijbox      write a rectangular grid of data
+   -AAIG       arcinfo ascii grid, GIS
+
+Specialized options used by other programs
+------------------------------------------
+   -ctl_inv    print parameters needed by g2ctl
+   -ctl_ens    print parameters needed by g2ctl
+   -domain     print out the lat-lon domain
+   -cyclic     needed by g2ctl
+   -lev0       print level information needed by g2ctl
+   -limit      web programs that need controls of cpu usage
+               
+Seeing the details of the grib file
+-----------------------------------
+   -code_table_I.J 
+               to see contents of code table I.J
+   -flag_table_I.J 
+               to see contents of flag table I.J
+   -SecI       see descriptions about section I, I = 0..6,
+   -Sec_len    see length of each section
+   -0xSec I    see hex dump of a section I
+
+For a short list of options, type "wgrib -h"
+
+For a complete list, type "wgrib -help all"
+
+To search for an option, type "wgrib -help keyword"
+Encoding data into grib (preliminary)
+
+Some people need industrial strength encoders. The rest have lesser
+needs. If you can find a grib2 file with the desired grid, then
+encoding could be easier than you expected with the -grib_ieee option.
+
+Code: 32 and 64 bits
+--------------------
+
+The code is designed to run on 32-bit and 64-bit computers. The
+advantages of compiling it for 64-bit (integers/pointers) is that that
+the code supports files that are larger than 2 GB. Note: NCEP runs the
+64-bit version in operations. The trick for compiling with 64 bits is
+to make sure all the libraries are 64 bits.
+
+The code is being developed on a linux x86_32 platform in standard
+C. Code is run on the AIX (64-bits) in NCEP operations.
+
+Bugs
+----
+
+Please report then to wesley.ebisuzaki@noaa.gov. When you report bugs,
+try to make them reproduceable on a linux machine. Sample data file
+also help.
+
+Distribution
+------------
+
+The source code modules for wgrib2 are in the public domain or under
+the GNU licence depending on the authors of the various
+modules. Wgrib2 uses libraries that are in the public domain, under
+various GNU licences, the Image Power JPEG-2000 Public Licence, libpng
+licence, the zlib licence, the netcdf licence and perhaps others. How
+about one licence to rule them all?
+
+Addiitonal Information
+----------------------
+  http://www.cpc.ncep.noaa.gov/products/wesley/wgrib2/

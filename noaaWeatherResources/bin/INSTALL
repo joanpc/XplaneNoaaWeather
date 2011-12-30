@@ -1,0 +1,49 @@
+                         Binary Installation
+                         ===================
+
+There is a single binary file called "wgrib2" under sub-directory
+bin/; place this binary anywhere in your path, typically
+"/usr/local/bin" or even "$HOME/bin".
+
+
+                    Building Wgrib2 from Sources
+                    ============================
+
+Quick Instructions
+------------------
+
+Here is the quickest way to build Wgrib2 from sources:
+
+1) Choose a working directory and make sure you have GNU make.
+2) Download the Supplemental Libraries (Supplibs)
+   preferably pre-compiled, and untar them in this working directory
+3) If you download the /supplibs/ sources instead, untar them in the
+   same location and build: 
+
+ % ln -s supplibs-2.x.y supplibs
+ % cd supplibs/src
+ % gmake install     (do not configure or issue a simple make)
+
+ 4) Download the Wgrib2 sources, untar them in this same working
+      directory (supplibs/ and Wgrib2-x.y.z/ should be parallel)
+
+ % cd Wgrib2-x.y.z/src
+ % ./configure --help
+ % ./configure --prefix=/some/path
+ % make
+ % make install
+
+For Mantainers
+--------------
+
+When merging NCEP sources run bootstrap.sh to regenerate configure and the Makefiles.
+
+
+Additional information
+----------------------
+
+Consult
+
+  http://www.cpc.ncep.noaa.gov/products/wesley/wgrib2/
+  http://opengrads.org/wiki/index.php?title=Building_Wgrib2_from_Sources  
+  http://opengrads.org/wiki/index.php?title=Supplemental_Libraries_%28Supplibs%29
