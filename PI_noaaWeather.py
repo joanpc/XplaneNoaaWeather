@@ -11,8 +11,9 @@ Win32 wgrib2 requires cgywin
 This plugin is under developement and INCOMPLETE
 
 TODO:
+- Turbulences, rain, snow
+- msl pressure, temperature
 - Detect downloaded empty grib files
-- Parse and set cloud layers
 - Simple GUI (configuration, status display, clear cache)
 - Store only last grib file?
 
@@ -110,7 +111,11 @@ class conf:
         
         self.syspath    = XPLMGetSystemPath(self.syspath)[:-1]
         self.respath    = self.dirsep.join([self.syspath, 'Resources', 'plugins', 'PythonScripts', 'noaaWeatherResources'])
-        self.cachepath  = self.dirsep.join([self.respath, 'cache']) 
+        
+        self.cachepath  = self.dirsep.join([self.respath, 'cache'])
+        if not os.path.exists(self.cachepath):
+            os.makedirs(self.cachepath)
+        
         self.wgrib2bin  = self.dirsep.join([self.respath, 'bin', wgbin])
         pass
     
@@ -216,6 +221,7 @@ class GFS(threading.Thread):
     
     winds  = False
     clouds = False
+    newGrib = False
     
     die = threading.Event()
     
@@ -224,10 +230,11 @@ class GFS(threading.Thread):
         while not self.die.isSet():
             # working thread
             lat, lon = int(self.lat*10/5*5), int(self.lon*10/5*5)
-            if self.lastgrib and lat != self.lastlat and lon != self.lastlon:
+            if self.newGrib or (self.lastgrib and lat != self.lastlat and lon != self.lastlon):
                 print "xpNooaW: parsing"
                 self.parseGribData(self.lastgrib, self.lat, self.lon)
                 self.lastlat, self.lastlon = lat, lon
+                self.newGrib = False
             
             datecycle, cycle, forecast = self.getCycleDate()
             gribfile = self.getLastCycle(datecycle, cycle, forecast)
@@ -249,6 +256,7 @@ class GFS(threading.Thread):
             urlretrieve(self.url, conf.cachepath + conf.dirsep + self.cachefile)
             self.parent.downloading = False
             self.parent.lastgrib = self.cachefile
+            self.parent.newGrib = True
     
     def getCycleDate(self):
         '''
@@ -349,19 +357,14 @@ class GFS(threading.Thread):
             level = clouds[level]
             if 'top' in level and 'bottom' in level and 'TCDC' in level:
                 top, bottom, cover = float(level['top']), float(level['bottom']), float(level['TCDC'])
-                #if top < lastbottom:
-                #    top = lastbottom + 100
                 top = bottom +1
                 #print "top: %.0fmbar %.0fm, bottom: %.0fmbar %.0fm" % (top * 0.01, c.mb2alt(top * 0.01), bottom * 0.01, c.mb2alt(bottom * 0.01))
                 cloudlevels.append((c.mb2alt(bottom * 0.01) * 0.3048, c.mb2alt(top * 0.01) * 0.3048, int(weather.cc2xp(cover))))
                 lastbottom = bottom
     
-        
-        windlevels.sort()
-        
+        windlevels.sort()        
         cloudlevels.sort()
-        print cloudlevels
-        
+
         self.winds  = windlevels
         self.clouds = cloudlevels
 
@@ -374,7 +377,6 @@ class PythonInterface:
         self.Sig = "noaWeather.joanpc.PI"
         self.Desc = "NOA Weather in your x-plane"
          
-    
         self.latdr  = EasyDref('sim/flightmodel/position/latitude', 'double')
         self.londr  = EasyDref('sim/flightmodel/position/longitude', 'double')
         
