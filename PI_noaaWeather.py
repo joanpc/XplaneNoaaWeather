@@ -180,7 +180,7 @@ class weather:
     def cc2xp(self, cover):
         #Cloud cover to X-plane
         xp = cover/100.0*4
-        if xp < 0 and cover > 0:
+        if xp < 1 and cover > 0:
             xp = 1
         return xp
 
@@ -205,12 +205,18 @@ class GFS(threading.Thread):
               'lev_middle_cloud_bottom_level=on',
               'lev_middle_cloud_layer=on',
               'lev_middle_cloud_top_level=on',
-              'all_var=on',
+              #'all_var=on',
               'leftlon=0',
               'rightlon=360',
               'toplat=90',
               'bottomlat=-90',
               ]
+    variables = ['PRES',
+                 'TCDC',
+                 'UGRD',
+                 'VGRD',
+                 'TMP'
+                 ]
     downloading = False
     lastgrib    = False
     
@@ -226,12 +232,12 @@ class GFS(threading.Thread):
     die = threading.Event()
     
     def run(self):
-        
+        # Worker thread
         while not self.die.isSet():
             # working thread
             lat, lon = int(self.lat*10/5*5), int(self.lon*10/5*5)
             if self.newGrib or (self.lastgrib and lat != self.lastlat and lon != self.lastlon):
-                print "xpNooaW: parsing"
+                print "xpNooaW: parsing - %s - %i,%i" % (self.lastgrib, lat, lon)
                 self.parseGribData(self.lastgrib, self.lat, self.lon)
                 self.lastlat, self.lastlon = lat, lon
                 self.newGrib = False
@@ -241,6 +247,8 @@ class GFS(threading.Thread):
             if gribfile:
                 self.lastgrib = gribfile
         #wait
+        if self.die.isSet():
+            return
         sleep(10)
     
     class asyncDownload(threading.Thread):
@@ -284,7 +292,10 @@ class GFS(threading.Thread):
         params.append(dir)
         filename = 'gfs.t%02dz.mastergrb2f%02d' % (cycle, forecast)
         params.append('file=' + filename)
-    
+        # add variables
+        for var in self.variables:
+            params.append('var_' + var + '=on')
+            
         url = self.baseurl + '&'.join(params)
         
         path = conf.dirsep.join([conf.cachepath, datecycle]) 
@@ -330,8 +341,10 @@ class GFS(threading.Thread):
                 #cloud layer
                 clouds.setdefault(level[0], {})
                 
-                if len(level) > 3:
+                if len(level) > 3 and variable == 'PRES':
                     #level margins
+                    #print line
+                    #print level, value
                     clouds[level[0]][level[2]] = value
                 else:
                     #level coverage/temperature
@@ -341,6 +354,7 @@ class GFS(threading.Thread):
 
         windlevels = []
         cloudlevels = []
+        print clouds
         
         # Let data ready to push on datarefs
         
@@ -352,15 +366,13 @@ class GFS(threading.Thread):
                 windlevels.append((c.mb2alt(float(level)), hdg, c.ms2knots(vel)))
         
         # Convert cloud level
-        lastbottom = 40000
         for level in clouds:
             level = clouds[level]
             if 'top' in level and 'bottom' in level and 'TCDC' in level:
                 top, bottom, cover = float(level['top']), float(level['bottom']), float(level['TCDC'])
-                top = bottom +1
-                #print "top: %.0fmbar %.0fm, bottom: %.0fmbar %.0fm" % (top * 0.01, c.mb2alt(top * 0.01), bottom * 0.01, c.mb2alt(bottom * 0.01))
+                #top = bottom +1
+                print "top: %.0fmbar %.0fm, bottom: %.0fmbar %.0fm %d%%" % (top * 0.01, c.mb2alt(top * 0.01), bottom * 0.01, c.mb2alt(bottom * 0.01), cover)
                 cloudlevels.append((c.mb2alt(bottom * 0.01) * 0.3048, c.mb2alt(top * 0.01) * 0.3048, int(weather.cc2xp(cover))))
-                lastbottom = bottom
     
         windlevels.sort()        
         cloudlevels.sort()
@@ -375,7 +387,7 @@ class PythonInterface:
     def XPluginStart(self):
         self.Name = "noaWeather - "
         self.Sig = "noaWeather.joanpc.PI"
-        self.Desc = "NOA Weather in your x-plane"
+        self.Desc = "NOA GFS in x-plane"
          
         self.latdr  = EasyDref('sim/flightmodel/position/latitude', 'double')
         self.londr  = EasyDref('sim/flightmodel/position/longitude', 'double')
@@ -386,7 +398,6 @@ class PythonInterface:
         # Worker thread
         self.gfs = GFS()
         self.gfs.start()
-        self.gfs
          
         # floop
         self.floop = self.floopCallback
