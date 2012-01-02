@@ -53,7 +53,7 @@ import os
 import sys
 from time import sleep
 
-__VERSION__ = 'beta 1'
+__VERSION__ = 'beta 2'
 
 class c:
     '''
@@ -152,7 +152,6 @@ class weather:
             for i in range(2,-1,-1):
                 wlayer  = winds.pop()
                 wl = self.winds
-                #print 'winds', wl[i]['alt'].value, wl[i]['hdg'].value, wl[i]['speed'].value 
                 wl[i]['alt'].value, wl[i]['hdg'].value, wl[i]['speed'].value  = wlayer
     
     def setClouds(self, clouds):
@@ -340,11 +339,7 @@ class GFS(threading.Thread):
             level, variable, value = [r[4].split(' '),  r[3],  r[7].split(',')[2].split('=')[1]]
             
             if len(level) > 2:
-                if level[1] == 'mb':
-                    #wind level
-                    data.setdefault(level[0], {})
-                    data[level[0]][variable] = value
-                elif level[1] == 'cloud':
+                if level[1] == 'cloud':
                     #cloud layer
                     clouds.setdefault(level[0], {})
                     
@@ -353,6 +348,10 @@ class GFS(threading.Thread):
                     else:
                         #level coverage/temperature
                         clouds[level[0]][variable] = value
+            elif level[1] == 'mb':
+                # wind levels
+                data.setdefault(level[0], {})
+                data[level[0]][variable] = value
             elif level[0] == 'surface':
                 #surface layer
                 pass

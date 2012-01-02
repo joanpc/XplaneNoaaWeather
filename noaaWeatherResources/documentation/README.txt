@@ -1,6 +1,6 @@
-============================
-Xplane NOAA forecast weather
-============================
+================================
+Xplane NOAA GFS forecast weather
+================================
 
 Downloads Forecast data from NOAA servers and sets x-plane wind and cloud layers using forecasted data for the current time and 
 world corrdinates.
