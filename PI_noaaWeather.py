@@ -53,7 +53,7 @@ import os
 import sys
 from time import sleep
 
-__VERSION__ = 'beta 2'
+__VERSION__ = 'beta 3'
 
 class c:
     '''
@@ -123,6 +123,7 @@ class weather:
     '''
     Sets x-plane weather
     '''
+    alt = 0.0
     def __init__(self):
         '''
         Bind datarefs
@@ -147,17 +148,39 @@ class weather:
 
         self.xpWeatherOn = EasyDref('sim/weather/use_real_weather_bool', 'int')
         
-    def setWinds(self, winds):
+    def setWinds1(self, winds):
+        wl = self.winds
         if len(winds) > 2:
-            for i in range(2,-1,-1):
-                wlayer  = winds.pop()
-                wl = self.winds
-                wl[i]['alt'].value, wl[i]['hdg'].value, wl[i]['speed'].value  = wlayer
+            i = 1
+            for wind in range(len(winds)):
+                if i > 3:
+                    return
+                wlayer  = winds[wind]
+                if wlayer[0] > self.alt:
+                    wl[i]['alt'].value, wl[i]['hdg'].value, wl[i]['speed'].value  = wlayer
+                i += 1
+    
+    def setWinds(self, winds):
+        prevlayer = False
+        wl = self.winds
+        if len(winds) > 1:
+            for wind in range(len(winds)):
+                wlayer = winds[wind]
+                if wlayer[0] > self.alt:
+                    #last layer
+                    break
+                else:
+                    prevlayer = wlayer
+            if prevlayer:
+                wl[1]['alt'].value, wl[1]['hdg'].value, wl[1]['speed'].value  = prevlayer
+                wl[2]['alt'].value, wl[2]['hdg'].value, wl[2]['speed'].value  = wlayer
+            else:
+                wl[1]['alt'].value, wl[1]['hdg'].value, wl[1]['speed'].value  = wlayer
+            wl[0]['alt'].value, wl[0]['hdg'].value, wl[0]['speed'].value  = winds[0]
     
     def setClouds(self, clouds):
         if len(clouds) > 2:
-            for i in range(2,-1,-1):
-                none = 0;
+            for i in range(3):
                 clayer  = clouds.pop()
                 cl = self.clouds
                 if clayer[2] == '0':
@@ -192,16 +215,18 @@ class GFS(threading.Thread):
               'bottomlat=-90',
               ]
     levels  = [
-              '700_mb',
-              '450_mb',
-              '200_mb',
+              '700_mb', # FL100
+              '500_mb', # FL180
+              '400_mb', # FL235
+              '300_mb', # FL300
+              '200_mb', # FL380
               'high_cloud_bottom_level',
               'high_cloud_layer',
               'high_cloud_top_level',
               'low_cloud_bottom_level',
               'low_cloud_layer',
               'low_cloud_top_level',
-              'mean_sea_level',
+              #'mean_sea_level',
               'middle_cloud_bottom_level',
               'middle_cloud_layer',
               'middle_cloud_top_level',
@@ -211,9 +236,11 @@ class GFS(threading.Thread):
                  'TCDC',
                  'UGRD',
                  'VGRD',
-                 'TMP'
+                 #'TMP'
                  ]
     downloading = False
+    downloadWait = 0
+    # wait n seconds to start download
     lastgrib    = False
     
     lat, lon, lastlat, lastlon = False, False, False, False
@@ -239,7 +266,10 @@ class GFS(threading.Thread):
                 self.newGrib = False
             
             datecycle, cycle, forecast = self.getCycleDate()
-            gribfile = self.getLastCycle(datecycle, cycle, forecast)
+            if self.downloadWait < 1:
+                gribfile = self.getLastCycle(datecycle, cycle, forecast)
+            else:
+                self.downloadWait -= 10
             if gribfile:
                 self.lastgrib = gribfile
         #wait
@@ -257,18 +287,27 @@ class GFS(threading.Thread):
             self.cachefile = cachefile
             self.parent = parent
         def run(self):
-            urlretrieve(self.url, conf.cachepath + conf.dirsep + self.cachefile)
+            filepath = conf.cachepath + conf.dirsep + self.cachefile
+            urlretrieve(self.url, filepath)
+            
+            if os.path.getsize(filepath) > 512:
+                self.parent.lastgrib = self.cachefile
+                self.parent.newGrib = True
+            else:
+                # File unavaliable, empty file; wait 10 minutes
+                while not self.parent.die.isSet():
+                    self.downloadWait = 5 * 60
+                    os.remove(filepath)
+
             self.parent.downloading = False
-            self.parent.lastgrib = self.cachefile
-            self.parent.newGrib = True
     
     def getCycleDate(self):
         '''
         Returns last cycle date avaliable
         '''
         now = datetime.utcnow() 
-        #cycle is generated with 2:30 hours delay
-        cnow = now - timedelta(hours=3, minutes=30)
+        #cycle is generated with 3 hours delay
+        cnow = now - timedelta(hours=3, minutes=0)
         #get last cycle
         for cycle in self.cycles:
             if cnow.hour >= cycle:
@@ -377,7 +416,7 @@ class GFS(threading.Thread):
                 cloudlevels.append((c.mb2alt(bottom * 0.01) * 0.3048, c.mb2alt(top * 0.01) * 0.3048, int(weather.cc2xp(cover))))
     
         windlevels.sort()        
-        cloudlevels.sort()
+        cloudlevels.sort(reverse=True)
 
         self.winds  = windlevels
         self.clouds = cloudlevels
@@ -398,6 +437,7 @@ class PythonInterface:
          
         self.latdr  = EasyDref('sim/flightmodel/position/latitude', 'double')
         self.londr  = EasyDref('sim/flightmodel/position/longitude', 'double')
+        self.altdr  = EasyDref('sim/flightmodel/position/elevation', 'double')
         
         conf.init()
         self.weather = weather()
@@ -409,7 +449,7 @@ class PythonInterface:
          
         # floop
         self.floop = self.floopCallback
-        XPLMRegisterFlightLoopCallback(self, self.floop, 20, 0)
+        XPLMRegisterFlightLoopCallback(self, self.floop, -1, 0)
         
         # Menu / About
         self.Mmenu = self.mainMenuCB
@@ -516,6 +556,7 @@ class PythonInterface:
         # get acf position
         self.gfs.lat = self.latdr.value
         self.gfs.lon = self.londr.value
+        self.weather.alt = self.altdr.value
         
         # Set winds and clouds
         if self.gfs.winds:
