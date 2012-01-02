@@ -2,7 +2,7 @@
 Xplane NOAA forecast weather
 ============================
 
-Downloads Forecast data from NOAA servers and sets x-plane wind layers using forecasted data for the current time and 
+Downloads Forecast data from NOAA servers and sets x-plane wind and cloud layers using forecasted data for the current time and 
 world corrdinates.
 
 ============
@@ -10,11 +10,24 @@ Requirements
 ============
 
 Sandy Barbour Python Interface: http://www.xpluginsdk.org/python_interface_downloads.htm
-Python: http://www.python.org/getit/
-
-Wgrib2: the script comes with wgrib2 for common os osx, win32 and linux i686 glib2.5
+Python: http://www.python.org/getit/th
+Wgrib2: the plugin comes with wgrib2 for common os osx, win32 and linux i686 glib2.5
 
 Windows users must install cygwin: http://www.cygwin.com/
+
+============
+Installation
+============
+
+Install the X-Plane Python interface
+Copy the zip file contents to your X-Plane/Resources/plugins/PythonScripts folder.
+The resulting installation should look like:
+
+    X-Plane/Resources/plugins/PythonScripts/noaaWeatherResources/
+    X-Plane/Resources/plugins/PythonScripts/PI_noaaWeather.py
+    X-Plane/Resources/plugins/PythonScripts/EasyDref.py
+
+Windows users must install cygwin (base install should work)
 
 =========
 RESOURCES
