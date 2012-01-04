@@ -11,9 +11,8 @@ Win32 wgrib2 requires cgywin
 This plugin is under developement and INCOMPLETE
 
 TODO:
-- Turbulences, rain, snow
-- msl pressure, temperature
-- Detect downloaded empty grib files
+- Turbulences, rain, snow, wind shears, visibility
+- msl pressure
 - Simple GUI (configuration, clear cache)
 - Store only last grib file?
 
@@ -53,7 +52,7 @@ import os
 import sys
 from time import sleep
 
-__VERSION__ = 'beta 3'
+__VERSION__ = 'beta 4'
 
 class c:
     '''
@@ -78,9 +77,15 @@ class c:
     
     @classmethod
     def mb2alt(self, mb):
-        pstd = 1013.25
-        altpress =  (1 - (mb/pstd)**0.190284) * 145366.45 * 0.3048 #feet2meter
+        altpress = 44330.8 - (4946.54 * (mb*100)**0.1902632)
         return altpress
+    @classmethod
+    def oat2msltemp(self, oat, alt):
+        # Convert layer temperature to mean sea level
+        return oat + 0.0065 * alt - 273.15
+    @classmethod
+    def interpolate(self, t1, t2, alt1, alt2, alt):
+        return t1 + (alt - alt1)*(t2 -t1)/(alt2 -alt1)
 
 class conf:
     '''
@@ -147,6 +152,7 @@ class weather:
         self.windata = []
 
         self.xpWeatherOn = EasyDref('sim/weather/use_real_weather_bool', 'int')
+        self.msltemp = EasyDref('sim/weather/temperature_sealevel_c', 'float')
         
     def setWinds1(self, winds):
         wl = self.winds
@@ -161,6 +167,7 @@ class weather:
                 i += 1
     
     def setWinds(self, winds):
+        # Sets wind layers and temperature
         prevlayer = False
         wl = self.winds
         if len(winds) > 1:
@@ -172,11 +179,17 @@ class weather:
                 else:
                     prevlayer = wlayer
             if prevlayer:
-                wl[1]['alt'].value, wl[1]['hdg'].value, wl[1]['speed'].value  = prevlayer
-                wl[2]['alt'].value, wl[2]['hdg'].value, wl[2]['speed'].value  = wlayer
+                wl[1]['alt'].value, wl[1]['hdg'].value, wl[1]['speed'].value  = prevlayer[0], prevlayer[1], prevlayer[2]
+                wl[2]['alt'].value, wl[2]['hdg'].value, wl[2]['speed'].value  = wlayer[0], wlayer[1], wlayer[2]
             else:
-                wl[1]['alt'].value, wl[1]['hdg'].value, wl[1]['speed'].value  = wlayer
-            wl[0]['alt'].value, wl[0]['hdg'].value, wl[0]['speed'].value  = winds[0]
+                wl[1]['alt'].value, wl[1]['hdg'].value, wl[1]['speed'].value  = wlayer[0], wlayer[1], wlayer[2]
+            # Set temperature
+            if wlayer[3]:
+                if prevlayer and prevlayer[0] != wlayer[0] and prevlayer[3]:
+                    self.msltemp.value = c.interpolate(prevlayer[3], wlayer[3], prevlayer[0], wlayer[0], self.alt)
+                else:
+                    self.msltemp.value = wlayer[3]
+            wl[0]['alt'].value, wl[0]['hdg'].value, wl[0]['speed'].value  = winds[0][0], winds[0][1], winds[0][2]
     
     def setClouds(self, clouds):
         if len(clouds) > 2:
@@ -189,7 +202,9 @@ class weather:
                     if int(cl[i]['bottom'].value) != int(clayer[0]) and cl[i]['coverage'].value != clayer[2]:
                         cl[i]['bottom'].value, cl[i]['top'].value, cl[i]['coverage'].value  = clayer
     def disableXPWeather(self):
-        self.xpWeatherOn.value = 0
+        #self.xpWeatherOn.value = 0
+        # TODO: X-Plane 10 compatibility
+        pass
     
     @classmethod
     def cc2xp(self, cover):
@@ -236,7 +251,7 @@ class GFS(threading.Thread):
                  'TCDC',
                  'UGRD',
                  'VGRD',
-                 #'TMP'
+                 'TMP'
                  ]
     downloading = False
     downloadWait = 0
@@ -306,7 +321,7 @@ class GFS(threading.Thread):
         Returns last cycle date avaliable
         '''
         now = datetime.utcnow() 
-        #cycle is generated with 3 hours delay
+        #cycle is published with 3 hours delay
         cnow = now - timedelta(hours=3, minutes=0)
         #get last cycle
         for cycle in self.cycles:
@@ -405,7 +420,12 @@ class GFS(threading.Thread):
             wind = data[level]
             if 'UGRD' in wind and 'VGRD' in wind:
                 hdg, vel = c.c2p(float(wind['UGRD']), float(wind['VGRD']))
-                windlevels.append((c.mb2alt(float(level)), hdg, c.ms2knots(vel)))
+                alt = c.mb2alt(float(level))
+                if 'TMP' in wind:
+                    temp = c.oat2msltemp(float(wind['TMP']), alt)
+                else:
+                    temp = False
+                windlevels.append((alt, hdg, c.ms2knots(vel), temp))
         
         # Convert cloud level
         for level in clouds:

@@ -19,7 +19,8 @@ Windows users must install cygwin: http://www.cygwin.com/
 Installation
 ============
 
-Install the X-Plane Python interface
+Install the X-Plane Python interface:
+http://www.xpluginsdk.org/python_interface_sdk100_downloads.htm
 Copy the zip file contents to your X-Plane/Resources/plugins/PythonScripts folder.
 The resulting installation should look like:
 
@@ -28,6 +29,7 @@ The resulting installation should look like:
     X-Plane/Resources/plugins/PythonScripts/EasyDref.py
 
 Windows users must install cygwin (base install should work)
+http://www.cygwin.com/install.html
 
 =========
 RESOURCES
