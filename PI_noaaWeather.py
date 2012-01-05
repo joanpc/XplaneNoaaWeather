@@ -13,7 +13,7 @@ This plugin is under developement and INCOMPLETE
 TODO:
 - Turbulences, rain, snow, wind shears, visibility
 - msl pressure
-- Simple GUI (configuration, clear cache)
+- clear cache
 - Store only last grib file?
 
 Copyright (C) 2012  Joan Perez i Cauhe
@@ -51,8 +51,9 @@ from EasyDref import EasyDref
 import os
 import sys
 from time import sleep
+import cPickle
 
-__VERSION__ = 'beta 4'
+__VERSION__ = 'beta 5'
 
 class c:
     '''
@@ -86,17 +87,48 @@ class c:
     @classmethod
     def interpolate(self, t1, t2, alt1, alt2, alt):
         return t1 + (alt - alt1)*(t2 -t1)/(alt2 -alt1)
+    @classmethod
+    def fog2(self, rh):
+        return (80 - rh)/20*24634
+    @classmethod
+    def toFloat(self, string):
+        # try to convert to float or return 100
+        try: 
+            val = float(string)
+        except ValueError:
+            val = 100
+        return val
 
-class conf:
+class Conf:
     '''
     Configuration variables
     '''
     syspath, dirsep = '','/'
-    lastgrib = False
     
-    @classmethod
-    def init(self):
+    def __init__(self):
         # Inits conf
+        self.syspath    = XPLMGetSystemPath(self.syspath)[:-1]
+        self.respath    = self.dirsep.join([self.syspath, 'Resources', 'plugins', 'PythonScripts', 'noaaWeatherResources'])
+        self.settingsfile = self.respath + self.dirsep + 'settings.pkl'
+        
+        self.cachepath  = self.dirsep.join([self.respath, 'cache'])
+        if not os.path.exists(self.cachepath):
+            os.makedirs(self.cachepath)
+        
+        
+        # Storable settings, Defaults
+        self.enabled    = True
+        self.set_wind   = True
+        self.set_clouds = True
+        self.set_temp   = True
+        self.transalt   = 32808.399000000005
+        self.use_metar  = False
+        self.lastgrib   = False
+        
+        self.load()
+        
+        if self.lastgrib and not os.path.exists(self.cachepath + self.dirsep + self.lastgrib):
+            self.lastgrib = False
         
         #self.dirsep = XPLMGetDirectorySeparator(self.dirsep)
         
@@ -115,21 +147,45 @@ class conf:
             # Linux?
             wgbin = 'linux-glib2.5-i686-wgrib2'
         
-        self.syspath    = XPLMGetSystemPath(self.syspath)[:-1]
-        self.respath    = self.dirsep.join([self.syspath, 'Resources', 'plugins', 'PythonScripts', 'noaaWeatherResources'])
-        
-        self.cachepath  = self.dirsep.join([self.respath, 'cache'])
-        if not os.path.exists(self.cachepath):
-            os.makedirs(self.cachepath)
-        
         self.wgrib2bin  = self.dirsep.join([self.respath, 'bin', wgbin])
 
+    def save(self):
+        conf = {
+                'version'   : __VERSION__,
+                'lastgrib'  : self.lastgrib,
+                'set_temp'  : self.set_temp,
+                'set_clouds': self.set_clouds,
+                'set_wind'  : self.set_wind,
+                'transalt'  : self.transalt,
+                'use_metar' : self.use_metar,
+                'enabled'   : self.enabled,
+                }
+        
+        f = open(self.settingsfile, 'w')
+        cPickle.dump(conf, f)
+        f.close()
+    
+    def load(self):
+        if os.path.exists(self.settingsfile):
+            f = open(self.settingsfile, 'r')
+            conf = cPickle.load(f)
+            f.close()
+            
+            # may be "dangerous"
+            for var in conf:
+                if var in self.__dict__:
+                    self.__dict__[var] = conf[var]
+        
+        
 class weather:
     '''
     Sets x-plane weather
     '''
     alt = 0.0
-    def __init__(self):
+    def __init__(self, conf):
+        
+        self.conf = conf
+        
         '''
         Bind datarefs
         '''
@@ -152,7 +208,9 @@ class weather:
         self.windata = []
 
         self.xpWeatherOn = EasyDref('sim/weather/use_real_weather_bool', 'int')
-        self.msltemp = EasyDref('sim/weather/temperature_sealevel_c', 'float')
+        self.msltemp     = EasyDref('sim/weather/temperature_sealevel_c', 'float')
+        self.dewpoint    = EasyDref('sim/weather/dewpoi_sealevel_c', 'float')
+        self.thermalAlt  = EasyDref('sim/weather/thermal_altitude_msl_m', 'float')
         
     def setWinds1(self, winds):
         wl = self.winds
@@ -189,7 +247,9 @@ class weather:
                     self.msltemp.value = c.interpolate(prevlayer[3], wlayer[3], prevlayer[0], wlayer[0], self.alt)
                 else:
                     self.msltemp.value = wlayer[3]
-            wl[0]['alt'].value, wl[0]['hdg'].value, wl[0]['speed'].value  = winds[0][0], winds[0][1], winds[0][2]
+            
+            if not self.conf.use_metar:
+                wl[0]['alt'].value, wl[0]['hdg'].value, wl[0]['speed'].value  = winds[0][0], winds[0][1], winds[0][2]
     
     def setClouds(self, clouds):
         if len(clouds) > 2:
@@ -201,10 +261,6 @@ class weather:
                 else:
                     if int(cl[i]['bottom'].value) != int(clayer[0]) and cl[i]['coverage'].value != clayer[2]:
                         cl[i]['bottom'].value, cl[i]['top'].value, cl[i]['coverage'].value  = clayer
-    def disableXPWeather(self):
-        #self.xpWeatherOn.value = 0
-        # TODO: X-Plane 10 compatibility
-        pass
     
     @classmethod
     def cc2xp(self, cover):
@@ -234,7 +290,7 @@ class GFS(threading.Thread):
               '500_mb', # FL180
               '400_mb', # FL235
               '300_mb', # FL300
-              '200_mb', # FL380
+              #'200_mb', # FL380
               'high_cloud_bottom_level',
               'high_cloud_layer',
               'high_cloud_top_level',
@@ -253,6 +309,8 @@ class GFS(threading.Thread):
                  'VGRD',
                  'TMP'
                  ]
+    nwinds, nclouds = 0, 0
+    
     downloading = False
     downloadWait = 0
     # wait n seconds to start download
@@ -268,11 +326,20 @@ class GFS(threading.Thread):
     newGrib = False
     
     die = threading.Event()
+    def __init__(self, conf):
+        self.conf = conf
+        self.lastgrib = self.conf.lastgrib
+        threading.Thread.__init__(self)
     
     def run(self):
         # Worker thread
         while not self.die.isSet():
-            # working thread
+            if not self.conf.enabled:
+                #Sleep if disabled
+                sleep(10)
+                continue
+            
+            # Parse grib if required
             lat, lon = int(self.lat*10/5*5), int(self.lon*10/5*5)
             if self.newGrib or (self.lastgrib and lat != self.lastlat and lon != self.lastlon):
                 print "xpNooaW: parsing - %s - %i,%i" % (self.lastgrib, lat, lon)
@@ -282,15 +349,14 @@ class GFS(threading.Thread):
             
             datecycle, cycle, forecast = self.getCycleDate()
             if self.downloadWait < 1:
-                gribfile = self.getLastCycle(datecycle, cycle, forecast)
+                self.downloadCycle(datecycle, cycle, forecast)
             else:
-                self.downloadWait -= 10
-            if gribfile:
-                self.lastgrib = gribfile
+                self.downloadWait -= 4
+    
         #wait
         if self.die.isSet():
             return
-        sleep(10)
+        sleep(4)
     
     class asyncDownload(threading.Thread):
         '''
@@ -301,17 +367,20 @@ class GFS(threading.Thread):
             self.url = url
             self.cachefile = cachefile
             self.parent = parent
+            self.conf = parent.conf
         def run(self):
-            filepath = conf.cachepath + conf.dirsep + self.cachefile
+            filepath = self.conf.cachepath + self.conf.dirsep + self.cachefile
             urlretrieve(self.url, filepath)
             
-            if os.path.getsize(filepath) > 512:
+            if os.path.getsize(filepath) > 1:
                 self.parent.lastgrib = self.cachefile
+                self.conf.lastgrib = self.cachefile
                 self.parent.newGrib = True
             else:
                 # File unavaliable, empty file; wait 10 minutes
-                while not self.parent.die.isSet():
-                    self.downloadWait = 5 * 60
+                print "Error downloading: %s" % (self.cachefile)
+                self.parent.downloadWait = 5 * 60
+                if os.path.exists(filepath):
                     os.remove(filepath)
 
             self.parent.downloading = False
@@ -322,7 +391,7 @@ class GFS(threading.Thread):
         '''
         now = datetime.utcnow() 
         #cycle is published with 3 hours delay
-        cnow = now - timedelta(hours=3, minutes=0)
+        cnow = now - timedelta(hours=3, minutes=30)
         #get last cycle
         for cycle in self.cycles:
             if cnow.hour >= cycle:
@@ -335,7 +404,7 @@ class GFS(threading.Thread):
 
         return ( '%d%02d%02d%02d' % (cnow.year, cnow.month, cnow.day, lcycle), lcycle, forecast)
 
-    def getLastCycle(self, datecycle, cycle, forecast):
+    def downloadCycle(self, datecycle, cycle, forecast):
         '''
         Downloads the requested grib file
         '''
@@ -354,19 +423,19 @@ class GFS(threading.Thread):
             
         url = self.baseurl + '&'.join(params)
         
-        path = conf.dirsep.join([conf.cachepath, datecycle]) 
-        cachefile = datecycle + conf.dirsep + filename  + '.grib'
+        path = self.conf.dirsep.join([self.conf.cachepath, datecycle]) 
+        cachefile = datecycle + self.conf.dirsep + filename  + '.grib'
         
         if not os.path.exists(path):
             os.makedirs(path)
-            
-        if os.path.exists(conf.cachepath + conf.dirsep + cachefile):
-            #print 'using cache file %s' % (cachefile)
-            self.lastgrib = cachefile
-            return cachefile
+        
+        if cachefile == self.lastgrib:
+            # No need to download
+            return
         
         elif self.downloading == False:
-            print 'xpNooaW: downloading %s' % (filename)
+            # Download new grib
+            print 'XPGFS: downloading %s' % (filename)
             self.downloading = True
             self.download = self.asyncDownload(self, url, cachefile)
             self.download.start()
@@ -380,10 +449,10 @@ class GFS(threading.Thread):
                 '-lon',
                 '%f' % (lon),
                 '%f' % (lat),
-                conf.cachepath + conf.dirsep + filepath
+                self.conf.cachepath + self.conf.dirsep + filepath
                 ]
         
-        p = subprocess.Popen([conf.wgrib2bin] + args, stdout=subprocess.PIPE)
+        p = subprocess.Popen([self.conf.wgrib2bin] + args, stdout=subprocess.PIPE)
         it = iter(p.stdout)
         data = {}
         clouds = {}
@@ -392,24 +461,23 @@ class GFS(threading.Thread):
             # Level, variable, value
             level, variable, value = [r[4].split(' '),  r[3],  r[7].split(',')[2].split('=')[1]]
             
-            if len(level) > 2:
+            if len(level) > 1:
                 if level[1] == 'cloud':
                     #cloud layer
                     clouds.setdefault(level[0], {})
-                    
                     if len(level) > 3 and variable == 'PRES':
                         clouds[level[0]][level[2]] = value
                     else:
                         #level coverage/temperature
                         clouds[level[0]][variable] = value
-            elif level[1] == 'mb':
-                # wind levels
-                data.setdefault(level[0], {})
-                data[level[0]][variable] = value
+                elif level[1] == 'mb':
+                    # wind levels
+                    data.setdefault(level[0], {})
+                    data[level[0]][variable] = value
             elif level[0] == 'surface':
                 #surface layer
                 pass
-            
+
         windlevels = []
         cloudlevels = []
         
@@ -440,6 +508,8 @@ class GFS(threading.Thread):
 
         self.winds  = windlevels
         self.clouds = cloudlevels
+        self.nwinds = len(windlevels)
+        self.nclouds = len(cloudlevels)
     
     def reparse(self):
         self.lastlat = False
@@ -459,13 +529,10 @@ class PythonInterface:
         self.londr  = EasyDref('sim/flightmodel/position/longitude', 'double')
         self.altdr  = EasyDref('sim/flightmodel/position/elevation', 'double')
         
-        conf.init()
-        self.weather = weather()
+        self.conf = Conf()
+        self.weather = weather(self.conf)
         
         self.gfs = False
-        
-        # Disable X-Plane weather
-        self.weather.disableXPWeather()
          
         # floop
         self.floop = self.floopCallback
@@ -478,8 +545,8 @@ class PythonInterface:
         self.mMain       = XPLMCreateMenu(self, 'XP NOAA Weather', XPLMFindPluginsMenu(), self.mPluginItem, self.Mmenu, 0)
         
         # Menu Items
-        self.mReFuel    =  XPLMAppendMenuItem(self.mMain, 'About', 1, 1)
-         
+        self.mReFuel    =  XPLMAppendMenuItem(self.mMain, 'Configuration', 1, 1)
+        
         return self.Name, self.Sig, self.Desc
     
     def mainMenuCB(self, menuRef, menuItem):
@@ -488,59 +555,125 @@ class PythonInterface:
         '''
         if menuItem == 1:
             if (not self.aboutWindow):
-                self.CreateAboutWindow(221, 640, 260, 165)
+                self.CreateAboutWindow(221, 640)
                 self.aboutWindow = True
             elif (not XPIsWidgetVisible(self.aboutWindowWidget)):
                 XPShowWidget(self.aboutWindowWidget)
 
-    def CreateAboutWindow(self, x, y, w, h):
-        x2 = x + w
-        y2 = y - 40 - 20 * 9
+    def CreateAboutWindow(self, x, y):
+        x2 = x + 420
+        y2 = y - 50 - 20 * 9
         Buffer = "X-Plane NOAA GFS Weather"
-        
+        top = y
+            
         # Create the Main Widget window
         self.aboutWindowWidget = XPCreateWidget(x, y, x2, y2, 1, Buffer, 1,0 , xpWidgetClass_MainWindow)
         window = self.aboutWindowWidget
         
-        # Create the Sub window
+        ## MAIN CONFIGURATION ##
+        
+        # Config Sub Window, style
+        subw = XPCreateWidget(x+10, y-30, x+180 + 10, y2+40 -25, 1, "" ,  0,window, xpWidgetClass_SubWindow)
+        XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
+        x += 25
+        
+        # Main enalbe
+        XPCreateWidget(x, y-40, x+20, y-60, 1, 'Enable GFS', 0, window, xpWidgetClass_Caption)
+        self.enableCheck = XPCreateWidget(x+80, y-40, x+90, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        XPSetWidgetProperty(self.enableCheck, xpProperty_ButtonType, xpRadioButton)
+        XPSetWidgetProperty(self.enableCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
+        XPSetWidgetProperty(self.enableCheck, xpProperty_ButtonState, self.conf.enabled)
+        y -= 20
+
+        # Winds enalbe
+        XPCreateWidget(x, y-40, x+20, y-60, 1, 'Set winds', 0, window, xpWidgetClass_Caption)
+        self.windsCheck = XPCreateWidget(x+80, y-40, x+90, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        XPSetWidgetProperty(self.windsCheck, xpProperty_ButtonType, xpRadioButton)
+        XPSetWidgetProperty(self.windsCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
+        XPSetWidgetProperty(self.windsCheck, xpProperty_ButtonState, self.conf.set_wind)
+        y -= 20
+        
+        # Clouds enalbe
+        XPCreateWidget(x, y-40, x+20, y-60, 1, 'Set clouds', 0, window, xpWidgetClass_Caption)
+        self.cloudsCheck = XPCreateWidget(x+80, y-40, x+90, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        XPSetWidgetProperty(self.cloudsCheck, xpProperty_ButtonType, xpRadioButton)
+        XPSetWidgetProperty(self.cloudsCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
+        XPSetWidgetProperty(self.cloudsCheck, xpProperty_ButtonState, self.conf.set_clouds)
+        y -= 20
+
+        # Temperature enalbe
+        XPCreateWidget(x, y-40, x+20, y-60, 1, 'Set Temp', 0, window, xpWidgetClass_Caption)
+        self.tempCheck = XPCreateWidget(x+80, y-40, x+90, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        XPSetWidgetProperty(self.tempCheck, xpProperty_ButtonType, xpRadioButton)
+        XPSetWidgetProperty(self.tempCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
+        XPSetWidgetProperty(self.tempCheck, xpProperty_ButtonState, self.conf.set_temp)
+        y -= 30     
+        
+        # trans altitude
+        XPCreateWidget(x, y-40, x+80, y-60, 1, 'Use METAR below FL', 0, window, xpWidgetClass_Caption)
+        self.metarCheck = XPCreateWidget(x+115, y-44, x+145, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        XPSetWidgetProperty(self.metarCheck, xpProperty_ButtonType, xpRadioButton)
+        XPSetWidgetProperty(self.metarCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
+        XPSetWidgetProperty(self.metarCheck, xpProperty_ButtonState, self.conf.use_metar)
+        
+        y -= 20
+        self.transAltInput = XPCreateWidget(x, y-40, x+140, y-62, 1, '%i' % (self.conf.transalt*3.2808399/1000), 0, window, xpWidgetClass_TextField)
+        XPSetWidgetProperty(self.transAltInput, xpProperty_TextFieldType, xpTextEntryField)
+        XPSetWidgetProperty(self.transAltInput, xpProperty_Enabled, 1)
+        
+        y -= 40
+        # Save
+        self.saveButton = XPCreateWidget(x+20, y-20, x+120, y-60, 1, "Apply & Save", 0, window, xpWidgetClass_Button)
+        XPSetWidgetProperty(self.saveButton, xpProperty_ButtonType, xpPushButton)
+        
+        x += 170
+        y = top
+        
+        
+        # ABOUT/ STATUS Sub Window
         subw = XPCreateWidget(x+10, y-30, x2-20 + 10, y2+40 -25, 1, "" ,  0,window, xpWidgetClass_SubWindow)
         # Set the style to sub window
         XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
         x += 20
-        y -= 30
+        y -= 20
         
         # Add Close Box decorations to the Main Widget
         XPSetWidgetProperty(window, xpProperty_MainWindowHasCloseBoxes, 1)
-               
+        
+        
+        if self.gfs and self.gfs.lastgrib:
+            
+            lastgrib = self.gfs.lastgrib.split('/');
+            sysinfo = [
+            'XPGFS Status:',
+            'lat: %f, lon: %f' % (self.gfs.lat, self.gfs.lat),
+            'GFS Cycle: %s' % (lastgrib[0]),
+            'GRIB File: %s' % (lastgrib[1]),
+            'wind levels: %i' % (self.gfs.nwinds),
+            'cloud levels: %i' % (self.gfs.nclouds),
+            ]
+        else:
+            sysinfo = ['XPGFS Status:',
+                       'Data not ready'
+                       ]
+        
+        for label in sysinfo:
+            y -= 15
+            XPCreateWidget(x, y, x+40, y-20, 1, label, 0, window, xpWidgetClass_Caption)
+        
+        y = top - 15 * 9   
         sysinfo = [
         'X-Plane NOAA Weather: %s' % __VERSION__,
         '(c) joan perez cauhe 2012',
         ]
         for label in sysinfo:
-            y -= 15
+            y -= 10
             XPCreateWidget(x, y, x+40, y-20, 1, label, 0, window, xpWidgetClass_Caption)
         
         # Visit site 
         self.aboutVisit = XPCreateWidget(x+20, y-20, x+120, y-60, 1, "Visit site", 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.aboutVisit, xpProperty_ButtonType, xpPushButton)
-        
-        y -= 40
-        if self.gfs and self.gfs.lastgrib:
-            lastgrib = self.gfs.lastgrib.split('/');
-            sysinfo = [
-            'Weather information:',
-            'lat: %f' % (self.gfs.lat),
-            'lon: %f' % (self.gfs.lon),
-            'GFS Cycle: %s' % (lastgrib[0]),
-            'GRIB File: %s' % (lastgrib[1]),
-            ]
-        else:
-            sysinfo = ['Data not ready']
-        
-        for label in sysinfo:
-            y -= 15
-            XPCreateWidget(x, y, x+40, y-20, 1, label, 0, window, xpWidgetClass_Caption)
-        
+            
         # Register our widget handler
         self.aboutWindowHandlerCB = self.aboutWindowHandler
         XPAddWidgetCallback(self, window, self.aboutWindowHandlerCB)
@@ -560,6 +693,23 @@ class PythonInterface:
                 from webbrowser import open_new
                 open_new('https://github.com/joanpc/XplaneNoaaWeather');
                 return 1
+            elif inParam1 == self.saveButton:
+                self.conf.enabled       = XPGetWidgetProperty(self.enableCheck, xpProperty_ButtonState, None)
+                self.conf.set_wind      = XPGetWidgetProperty(self.windsCheck, xpProperty_ButtonState, None)
+                self.conf.set_clouds    = XPGetWidgetProperty(self.cloudsCheck, xpProperty_ButtonState, None)
+                self.conf.set_temp      = XPGetWidgetProperty(self.tempCheck, xpProperty_ButtonState, None)
+                self.conf.use_metar     = XPGetWidgetProperty(self.metarCheck, xpProperty_ButtonState, None)
+                
+                buff = []
+                XPGetWidgetDescriptor(self.transAltInput, buff, 256)
+                self.conf.transalt = c.toFloat(buff[0]) * 0.3048 * 1000
+                
+                if not self.conf.use_metar:
+                    self.weather.disableXPWeather()
+                else:
+                    self.weather.winds[0]['alt'].value = self.conf.transalt   
+                  
+                self.conf.save()
         return 0
 
     def floopCallback(self, elapsedMe, elapsedSim, counter, refcon):
@@ -567,21 +717,31 @@ class PythonInterface:
         Floop Callback
         '''
         
-        if not self.gfs:
-            # Start Worker thread
-            self.gfs = GFS()
-            self.gfs.start()
-            return 10
+        if not self.conf.enabled or not self.gfs:
+            # Worker stoped wait 4s
+            return 4
         
         # get acf position
         self.gfs.lat = self.latdr.value
         self.gfs.lon = self.londr.value
         self.weather.alt = self.altdr.value
         
+        if self.conf.use_metar:
+            if self.weather.xpWeatherOn.value:
+                if self.weather.alt > self.conf.transalt:
+                    self.weather.xpWeatherOn.value = 0
+                else:
+                    return -1
+            else:
+                if self.weather.alt < self.conf.transalt:
+                    self.weather.winds[0]['alt'].value = self.conf.transalt
+                    self.weather.xpWeatherOn.value = 1
+            
+        
         # Set winds and clouds
-        if self.gfs.winds:
+        if self.conf.set_wind and self.gfs.winds:
             self.weather.setWinds(self.gfs.winds)
-        if self.gfs.clouds:
+        if self.conf.set_clouds and self.gfs.clouds:
             self.weather.setClouds(self.gfs.clouds)
         
         return -1
@@ -597,12 +757,19 @@ class PythonInterface:
             self.gfs.die.set()
         # Destroy menus
         XPLMDestroyMenu(self, self.mMain)
-        pass
+        self.conf.save()
         
     def XPluginEnable(self):
         return 1
     
     def XPluginDisable(self):
         pass
+    
     def XPluginReceiveMessage(self, inFromWho, inMessage, inParam):
-        pass
+        if (inParam == XPLM_PLUGIN_XPLANE and inMessage == XPLM_MSG_AIRPORT_LOADED):
+            # X-Plane loaded, start worker
+            # Disable X-Plane weather
+            if not self.gfs:
+                self.gfs = GFS(self.conf)
+                self.gfs.start()
+                
