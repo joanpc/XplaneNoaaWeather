@@ -28,9 +28,6 @@ The resulting installation should look like:
     X-Plane/Resources/plugins/PythonScripts/PI_noaaWeather.py
     X-Plane/Resources/plugins/PythonScripts/EasyDref.py
 
-Windows users must install cygwin (base install should work)
-http://www.cygwin.com/install.html
-
 =========
 RESOURCES
 =========
