@@ -54,7 +54,7 @@ import sys
 from time import sleep
 import cPickle
 
-__VERSION__ = 'beta 5.1'
+__VERSION__ = 'beta 5.2'
 
 class c:
     '''
@@ -371,9 +371,15 @@ class GFS(threading.Thread):
             self.conf = parent.conf
         def run(self):
             filepath = self.conf.cachepath + self.conf.dirsep + self.cachefile
-            urlretrieve(self.url, filepath)
+            tempfile = filepath + '.tmp'
+            urlretrieve(self.url, tempfile)
             
-            if os.path.getsize(filepath) > 1:
+            if os.path.getsize(tempfile) > 1:
+                # Suscess download
+                                
+                # unpack grib file
+                subprocess.call([self.conf.wgrib2bin, tempfile, '-set_grib_type', 'simple', '-grib_out', filepath])
+                os.remove(tempfile)
                 self.parent.lastgrib = self.cachefile
                 self.conf.lastgrib = self.cachefile
                 self.parent.newGrib = True
@@ -381,8 +387,8 @@ class GFS(threading.Thread):
                 # File unavaliable, empty file; wait 10 minutes
                 print "XPGFS: Error downloading: %s" % (self.cachefile)
                 self.parent.downloadWait = 10 * 60
-                if os.path.exists(filepath):
-                    os.remove(filepath)
+                if os.path.exists(tempfile):
+                    os.remove(tempfile)
 
             self.parent.downloading = False
     
