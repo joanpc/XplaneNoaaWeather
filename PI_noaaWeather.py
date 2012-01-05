@@ -11,6 +11,7 @@ Win32 wgrib2 requires cgywin
 This plugin is under developement and INCOMPLETE
 
 TODO:
+- Remove shear and turbulence on transition
 - Turbulences, rain, snow, wind shears, visibility
 - msl pressure
 - clear cache
@@ -53,7 +54,7 @@ import sys
 from time import sleep
 import cPickle
 
-__VERSION__ = 'beta 5'
+__VERSION__ = 'beta 5.1'
 
 class c:
     '''
@@ -130,7 +131,7 @@ class Conf:
         if self.lastgrib and not os.path.exists(self.cachepath + self.dirsep + self.lastgrib):
             self.lastgrib = False
         
-        #self.dirsep = XPLMGetDirectorySeparator(self.dirsep)
+        self.dirsep = os.sep
         
         # Selects the apropiate wgrib binari
         platform = sys.platform
@@ -378,8 +379,8 @@ class GFS(threading.Thread):
                 self.parent.newGrib = True
             else:
                 # File unavaliable, empty file; wait 10 minutes
-                print "Error downloading: %s" % (self.cachefile)
-                self.parent.downloadWait = 5 * 60
+                print "XPGFS: Error downloading: %s" % (self.cachefile)
+                self.parent.downloadWait = 10 * 60
                 if os.path.exists(filepath):
                     os.remove(filepath)
 
@@ -408,20 +409,8 @@ class GFS(threading.Thread):
         '''
         Downloads the requested grib file
         '''
-        params = self.params;
         
-        dir =  'dir=%%2Fgfs.%s%%2Fmaster' % (datecycle)
-        params.append(dir)
         filename = 'gfs.t%02dz.mastergrb2f%02d' % (cycle, forecast)
-        params.append('file=' + filename)
-        
-        # add variables
-        for level in self.levels:
-            params.append('lev_' + level + '=on')
-        for var in self.variables:
-            params.append('var_' + var + '=on')
-            
-        url = self.baseurl + '&'.join(params)
         
         path = self.conf.dirsep.join([self.conf.cachepath, datecycle]) 
         cachefile = datecycle + self.conf.dirsep + filename  + '.grib'
@@ -435,10 +424,26 @@ class GFS(threading.Thread):
         
         elif self.downloading == False:
             # Download new grib
+            
+            ## Build download url
+            params = self.params;
+            dir =  'dir=%%2Fgfs.%s%%2Fmaster' % (datecycle)
+            params.append(dir)
+            params.append('file=' + filename)  
+            
+            # add variables
+            for level in self.levels:
+                params.append('lev_' + level + '=on')
+            for var in self.variables:
+                params.append('var_' + var + '=on')
+            
+            url = self.baseurl + '&'.join(params) 
+            
             print 'XPGFS: downloading %s' % (filename)
             self.downloading = True
             self.download = self.asyncDownload(self, url, cachefile)
             self.download.start()
+            
         return False
     
     def parseGribData(self, filepath, lat, lon):
@@ -500,12 +505,15 @@ class GFS(threading.Thread):
             level = clouds[level]
             if 'top' in level and 'bottom' in level and 'TCDC' in level:
                 top, bottom, cover = float(level['top']), float(level['bottom']), float(level['TCDC'])
-                print "top: %.0fmbar %.0fm, bottom: %.0fmbar %.0fm %d%%" % (top * 0.01, c.mb2alt(top * 0.01), bottom * 0.01, c.mb2alt(bottom * 0.01), cover)
+                print "XPGFS: top: %.0fmbar %.0fm, bottom: %.0fmbar %.0fm %d%%" % (top * 0.01, c.mb2alt(top * 0.01), bottom * 0.01, c.mb2alt(bottom * 0.01), cover)
                 cloudlevels.append((c.mb2alt(bottom * 0.01) * 0.3048, c.mb2alt(top * 0.01) * 0.3048, int(weather.cc2xp(cover))))
     
         windlevels.sort()        
         cloudlevels.sort(reverse=True)
-
+        
+        del data
+        del clouds
+        
         self.winds  = windlevels
         self.clouds = cloudlevels
         self.nwinds = len(windlevels)
@@ -561,7 +569,7 @@ class PythonInterface:
                 XPShowWidget(self.aboutWindowWidget)
 
     def CreateAboutWindow(self, x, y):
-        x2 = x + 420
+        x2 = x + 430
         y2 = y - 50 - 20 * 9
         Buffer = "X-Plane NOAA GFS Weather"
         top = y
@@ -705,7 +713,7 @@ class PythonInterface:
                 self.conf.transalt = c.toFloat(buff[0]) * 0.3048 * 1000
                 
                 if not self.conf.use_metar:
-                    self.weather.disableXPWeather()
+                    self.weather.xpWeatherOn.value = 0
                 else:
                     self.weather.winds[0]['alt'].value = self.conf.transalt   
                   
@@ -736,7 +744,6 @@ class PythonInterface:
                 if self.weather.alt < self.conf.transalt:
                     self.weather.winds[0]['alt'].value = self.conf.transalt
                     self.weather.xpWeatherOn.value = 1
-            
         
         # Set winds and clouds
         if self.conf.set_wind and self.gfs.winds:
@@ -768,7 +775,6 @@ class PythonInterface:
     def XPluginReceiveMessage(self, inFromWho, inMessage, inParam):
         if (inParam == XPLM_PLUGIN_XPLANE and inMessage == XPLM_MSG_AIRPORT_LOADED):
             # X-Plane loaded, start worker
-            # Disable X-Plane weather
             if not self.gfs:
                 self.gfs = GFS(self.conf)
                 self.gfs.start()
