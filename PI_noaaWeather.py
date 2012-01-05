@@ -341,7 +341,7 @@ class GFS(threading.Thread):
                 continue
             
             # Parse grib if required
-            lat, lon = int(self.lat*10/5*5), int(self.lon*10/5*5)
+            lat, lon = int(self.lat)*10/5*5, int(self.lon)*10/5*5
             if self.newGrib or (self.lastgrib and lat != self.lastlat and lon != self.lastlon):
                 print "xpNooaW: parsing - %s - %i,%i" % (self.lastgrib, lat, lon)
                 self.parseGribData(self.lastgrib, self.lat, self.lon)
@@ -421,12 +421,12 @@ class GFS(threading.Thread):
         path = self.conf.dirsep.join([self.conf.cachepath, datecycle]) 
         cachefile = datecycle + self.conf.dirsep + filename  + '.grib'
         
-        if not os.path.exists(path):
-            os.makedirs(path)
-        
         if cachefile == self.lastgrib:
             # No need to download
             return
+        
+        if not os.path.exists(path):
+            os.makedirs(path)
         
         elif self.downloading == False:
             # Download new grib
