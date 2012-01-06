@@ -243,7 +243,7 @@ class weather:
             else:
                 wl[1]['alt'].value, wl[1]['hdg'].value, wl[1]['speed'].value  = wlayer[0], wlayer[1], wlayer[2]
             # Set temperature
-            if wlayer[3]:
+            if self.conf.set_temp and wlayer[3]:
                 if prevlayer and prevlayer[0] != wlayer[0] and prevlayer[3]:
                     self.msltemp.value = c.interpolate(prevlayer[3], wlayer[3], prevlayer[0], wlayer[0], self.alt)
                 else:
@@ -341,7 +341,7 @@ class GFS(threading.Thread):
                 continue
             
             # Parse grib if required
-            lat, lon = int(self.lat)*10/5*5, int(self.lon)*10/5*5
+            lat, lon = int(self.lat*10/5)*5, int(self.lon*10/5)*5
             if self.newGrib or (self.lastgrib and lat != self.lastlat and lon != self.lastlon):
                 print "xpNooaW: parsing - %s - %i,%i" % (self.lastgrib, lat, lon)
                 self.parseGribData(self.lastgrib, self.lat, self.lon)
@@ -660,7 +660,7 @@ class PythonInterface:
             lastgrib = self.gfs.lastgrib.split('/');
             sysinfo = [
             'XPGFS Status:',
-            'lat: %f, lon: %f' % (self.gfs.lat, self.gfs.lat),
+            'lat: %f, lon: %f' % (self.gfs.lat, self.gfs.lon),
             'GFS Cycle: %s' % (lastgrib[0]),
             'GRIB File: %s' % (lastgrib[1]),
             'wind levels: %i' % (self.gfs.nwinds),
