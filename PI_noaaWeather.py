@@ -54,7 +54,7 @@ import sys
 from time import sleep
 import cPickle
 
-__VERSION__ = 'beta 5.2'
+__VERSION__ = 'beta 5.3'
 
 class c:
     '''
@@ -238,19 +238,25 @@ class weather:
                 else:
                     prevlayer = wlayer
             if prevlayer:
-                wl[1]['alt'].value, wl[1]['hdg'].value, wl[1]['speed'].value  = prevlayer[0], prevlayer[1], prevlayer[2]
-                wl[2]['alt'].value, wl[2]['hdg'].value, wl[2]['speed'].value  = wlayer[0], wlayer[1], wlayer[2]
+                if  (wl[1]['alt'].value, wl[1]['hdg'].value, wl[1]['speed'].value)  != (prevlayer[0], prevlayer[1], prevlayer[2]):
+                    wl[1]['alt'].value, wl[1]['hdg'].value, wl[1]['speed'].value  = prevlayer[0], prevlayer[1], prevlayer[2]
+                if (wl[2]['alt'].value, wl[2]['hdg'].value, wl[2]['speed'].value)  != (wlayer[0], wlayer[1], wlayer[2]):
+                    wl[2]['alt'].value, wl[2]['hdg'].value, wl[2]['speed'].value  = wlayer[0], wlayer[1], wlayer[2]
             else:
                 wl[1]['alt'].value, wl[1]['hdg'].value, wl[1]['speed'].value  = wlayer[0], wlayer[1], wlayer[2]
             # Set temperature
             if self.conf.set_temp and wlayer[3]:
                 if prevlayer and prevlayer[0] != wlayer[0] and prevlayer[3]:
-                    self.msltemp.value = c.interpolate(prevlayer[3], wlayer[3], prevlayer[0], wlayer[0], self.alt)
+                    temp = c.interpolate(prevlayer[3], wlayer[3], prevlayer[0], wlayer[0], self.alt)
+                    if self.msltemp.value != temp:
+                        self.msltemp.value = temp
                 else:
-                    self.msltemp.value = wlayer[3]
+                    if self.msltemp.value != wlayer[3]:
+                        self.msltemp.value = wlayer[3]
             
             if not self.conf.use_metar:
-                wl[0]['alt'].value, wl[0]['hdg'].value, wl[0]['speed'].value  = winds[0][0], winds[0][1], winds[0][2]
+                if (wl[0]['alt'].value, wl[0]['hdg'].value, wl[0]['speed'].value)  != (winds[0][0], winds[0][1], winds[0][2]):
+                    wl[0]['alt'].value, wl[0]['hdg'].value, wl[0]['speed'].value  = winds[0][0], winds[0][1], winds[0][2]
     
     def setClouds(self, clouds):
         if len(clouds) > 2:
@@ -376,7 +382,7 @@ class GFS(threading.Thread):
             
             if os.path.getsize(tempfile) > 1:
                 # Suscess download
-                                
+                print "download size %i" % (os.path.getsize(tempfile))
                 # unpack grib file
                 subprocess.call([self.conf.wgrib2bin, tempfile, '-set_grib_type', 'simple', '-grib_out', filepath])
                 os.remove(tempfile)
@@ -398,7 +404,7 @@ class GFS(threading.Thread):
         '''
         now = datetime.utcnow() 
         #cycle is published with 3 hours delay
-        cnow = now - timedelta(hours=3, minutes=30)
+        cnow = now - timedelta(hours=3, minutes=0)
         #get last cycle
         for cycle in self.cycles:
             if cnow.hour >= cycle:
