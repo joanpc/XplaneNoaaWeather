@@ -92,12 +92,12 @@ class c:
     def fog2(self, rh):
         return (80 - rh)/20*24634
     @classmethod
-    def toFloat(self, string):
+    def toFloat(self, string, default = 0):
         # try to convert to float or return 100
         try: 
             val = float(string)
         except ValueError:
-            val = 100
+            val = default
         return val
 
 class Conf:
@@ -125,6 +125,7 @@ class Conf:
         self.transalt   = 32808.399000000005
         self.use_metar  = False
         self.lastgrib   = False
+        self.updaterate = -1
         
         self.load()
         
@@ -256,7 +257,12 @@ class weather:
                         self.msltemp.value = wlayer[3]
             
             if not self.conf.use_metar:
-                if (wl[0]['alt'].value, wl[0]['hdg'].value, wl[0]['speed'].value)  != (winds[0][0], winds[0][1], winds[0][2]):
+                # Set first wind level if we don't use metar
+                if (int(wl[0]['alt'].value), int(wl[0]['hdg'].value), int(wl[0]['speed'].value))  != (int(winds[0][0]), int(winds[0][1]), int(winds[0][2])):
+                    wl[0]['alt'].value, wl[0]['hdg'].value, wl[0]['speed'].value  = winds[0][0], winds[0][1], winds[0][2]
+            elif self.conf.alt > winds[0][0]:
+                # Set first wind level on "descent"
+                if (int(wl[0]['alt'].value), int(wl[0]['hdg'].value), int(wl[0]['speed'].value))  != (int(winds[0][0]), int(winds[0][1]), int(winds[0][2])):
                     wl[0]['alt'].value, wl[0]['hdg'].value, wl[0]['speed'].value  = winds[0][0], winds[0][1], winds[0][2]
     
     def setClouds(self, clouds):
@@ -381,7 +387,7 @@ class GFS(threading.Thread):
             tempfile = filepath + '.tmp'
             urlretrieve(self.url, tempfile)
             
-            if os.path.getsize(tempfile) > 1:
+            if os.path.getsize(tempfile) > 500:
                 # Suscess download
                 print "download size %i" % (os.path.getsize(tempfile))
                 # unpack grib file
@@ -582,8 +588,8 @@ class PythonInterface:
                 XPShowWidget(self.aboutWindowWidget)
 
     def CreateAboutWindow(self, x, y):
-        x2 = x + 430
-        y2 = y - 50 - 20 * 9
+        x2 = x + 450
+        y2 = y - 60 - 20 * 10
         Buffer = "X-Plane NOAA GFS Weather"
         top = y
             
@@ -631,14 +637,21 @@ class PythonInterface:
         y -= 30     
         
         # trans altitude
-        XPCreateWidget(x, y-40, x+80, y-60, 1, 'Use METAR below FL', 0, window, xpWidgetClass_Caption)
-        self.metarCheck = XPCreateWidget(x+115, y-44, x+145, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        XPCreateWidget(x, y-40, x+80, y-60, 1, 'Use METAR', 0, window, xpWidgetClass_Caption)
+        self.metarCheck = XPCreateWidget(x+80, y-40, x+90, y-60, 1, '', 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.metarCheck, xpProperty_ButtonType, xpRadioButton)
         XPSetWidgetProperty(self.metarCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
         XPSetWidgetProperty(self.metarCheck, xpProperty_ButtonState, self.conf.use_metar)
         
         y -= 20
-        self.transAltInput = XPCreateWidget(x, y-40, x+140, y-62, 1, '%i' % (self.conf.transalt*3.2808399/1000), 0, window, xpWidgetClass_TextField)
+        XPCreateWidget(x, y-40, x+80, y-60, 1, 'Below FL', 0, window, xpWidgetClass_Caption)
+        self.transAltInput = XPCreateWidget(x+80, y-40, x+140, y-62, 1, '%i' % (self.conf.transalt*3.2808399/1000), 0, window, xpWidgetClass_TextField)
+        XPSetWidgetProperty(self.transAltInput, xpProperty_TextFieldType, xpTextEntryField)
+        XPSetWidgetProperty(self.transAltInput, xpProperty_Enabled, 1)
+        
+        y -= 30
+        XPCreateWidget(x, y-40, x+80, y-60, 1, 'Update every # cycles', 0, window, xpWidgetClass_Caption)
+        self.updateRateInput = XPCreateWidget(x+120, y-40, x+140, y-62, 1, '%i' % (self.conf.updaterate * -1), 0, window, xpWidgetClass_TextField)
         XPSetWidgetProperty(self.transAltInput, xpProperty_TextFieldType, xpTextEntryField)
         XPSetWidgetProperty(self.transAltInput, xpProperty_Enabled, 1)
         
@@ -712,9 +725,10 @@ class PythonInterface:
 
             if (inParam1 == self.aboutVisit):
                 from webbrowser import open_new
-                open_new('https://github.com/joanpc/XplaneNoaaWeather');
+                open_new('http://forums.x-plane.org/index.php?app=downloads&showfile=15453');
                 return 1
             elif inParam1 == self.saveButton:
+                # Save configuration
                 self.conf.enabled       = XPGetWidgetProperty(self.enableCheck, xpProperty_ButtonState, None)
                 self.conf.set_wind      = XPGetWidgetProperty(self.windsCheck, xpProperty_ButtonState, None)
                 self.conf.set_clouds    = XPGetWidgetProperty(self.cloudsCheck, xpProperty_ButtonState, None)
@@ -723,7 +737,10 @@ class PythonInterface:
                 
                 buff = []
                 XPGetWidgetDescriptor(self.transAltInput, buff, 256)
-                self.conf.transalt = c.toFloat(buff[0]) * 0.3048 * 1000
+                self.conf.transalt = c.toFloat(buff[0], 100) * 0.3048 * 1000
+                buff = []
+                XPGetWidgetDescriptor(self.updateRateInput, buff, 256)
+                self.conf.updaterate = c.toFloat(buff[0], 1) * -1
                 
                 if not self.conf.use_metar:
                     self.weather.xpWeatherOn.value = 0
@@ -747,14 +764,15 @@ class PythonInterface:
         self.gfs.lon = self.londr.value
         self.weather.alt = self.altdr.value
         
+        # Switch METAR/GFS mode
         if self.conf.use_metar:
             if self.weather.xpWeatherOn.value:
-                if self.weather.alt > self.conf.transalt:
+                if self.weather.alt > self.conf.transalt and self.weather.xpWeatherOn.value:
                     self.weather.xpWeatherOn.value = 0
                 else:
-                    return -1
+                    return self.conf.updaterate
             else:
-                if self.weather.alt < self.conf.transalt:
+                if self.weather.alt < self.conf.transalt and not self.weather.xpWeatherOn.value:
                     self.weather.winds[0]['alt'].value = self.conf.transalt
                     self.weather.xpWeatherOn.value = 1
         
@@ -764,7 +782,7 @@ class PythonInterface:
         if self.conf.set_clouds and self.gfs.clouds:
             self.weather.setClouds(self.gfs.clouds)
         
-        return -1
+        return self.conf.updaterate
     
     def XPluginStop(self):
         # Destroy windows
