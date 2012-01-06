@@ -54,7 +54,7 @@ import sys
 from time import sleep
 import cPickle
 
-__VERSION__ = 'beta 5.3'
+__VERSION__ = 'beta 5.4'
 
 class c:
     '''
@@ -238,12 +238,13 @@ class weather:
                 else:
                     prevlayer = wlayer
             if prevlayer:
-                if  (wl[1]['alt'].value, wl[1]['hdg'].value, wl[1]['speed'].value)  != (prevlayer[0], prevlayer[1], prevlayer[2]):
+                if  (int(wl[1]['alt'].value), int(wl[1]['hdg'].value), int(wl[1]['speed'].value))  != (int(prevlayer[0]), int(prevlayer[1]), int(prevlayer[2])):
                     wl[1]['alt'].value, wl[1]['hdg'].value, wl[1]['speed'].value  = prevlayer[0], prevlayer[1], prevlayer[2]
-                if (wl[2]['alt'].value, wl[2]['hdg'].value, wl[2]['speed'].value)  != (wlayer[0], wlayer[1], wlayer[2]):
+                if (int(wl[2]['alt'].value), int(wl[2]['hdg'].value), int(wl[2]['speed'].value))  != (int(wlayer[0]), int(wlayer[1]), int(wlayer[2])):
                     wl[2]['alt'].value, wl[2]['hdg'].value, wl[2]['speed'].value  = wlayer[0], wlayer[1], wlayer[2]
             else:
-                wl[1]['alt'].value, wl[1]['hdg'].value, wl[1]['speed'].value  = wlayer[0], wlayer[1], wlayer[2]
+                if ((int(wl[1]['alt'].value), int(wl[1]['hdg'].value), int(wl[1]['speed'].value))  != (int(wlayer[0]), int(wlayer[1]), int(wlayer[2]))):
+                    wl[1]['alt'].value, wl[1]['hdg'].value, wl[1]['speed'].value  = wlayer[0], wlayer[1], wlayer[2]
             # Set temperature
             if self.conf.set_temp and wlayer[3]:
                 if prevlayer and prevlayer[0] != wlayer[0] and prevlayer[3]:
