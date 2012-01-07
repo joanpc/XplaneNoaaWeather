@@ -54,7 +54,7 @@ import sys
 from time import sleep
 import cPickle
 
-__VERSION__ = 'beta 5.4'
+__VERSION__ = '1.0rc1'
 
 class c:
     '''
@@ -125,7 +125,8 @@ class Conf:
         self.transalt   = 32808.399000000005
         self.use_metar  = False
         self.lastgrib   = False
-        self.updaterate = -1
+        self.updaterate = 4
+        self.parserate  = 4
         
         self.load()
         
@@ -161,6 +162,7 @@ class Conf:
                 'transalt'  : self.transalt,
                 'use_metar' : self.use_metar,
                 'enabled'   : self.enabled,
+                'updaterate': self.updaterate
                 }
         
         f = open(self.settingsfile, 'w')
@@ -260,7 +262,7 @@ class weather:
                 # Set first wind level if we don't use metar
                 if (int(wl[0]['alt'].value), int(wl[0]['hdg'].value), int(wl[0]['speed'].value))  != (int(winds[0][0]), int(winds[0][1]), int(winds[0][2])):
                     wl[0]['alt'].value, wl[0]['hdg'].value, wl[0]['speed'].value  = winds[0][0], winds[0][1], winds[0][2]
-            elif self.conf.alt > winds[0][0]:
+            elif self.alt > winds[0][0]:
                 # Set first wind level on "descent"
                 if (int(wl[0]['alt'].value), int(wl[0]['hdg'].value), int(wl[0]['speed'].value))  != (int(winds[0][0]), int(winds[0][1]), int(winds[0][2])):
                     wl[0]['alt'].value, wl[0]['hdg'].value, wl[0]['speed'].value  = winds[0][0], winds[0][1], winds[0][2]
@@ -365,12 +367,12 @@ class GFS(threading.Thread):
             if self.downloadWait < 1:
                 self.downloadCycle(datecycle, cycle, forecast)
             else:
-                self.downloadWait -= 4
+                self.downloadWait -= self.conf.parserate
     
         #wait
         if self.die.isSet():
             return
-        sleep(4)
+        sleep(self.conf.parserate)
     
     class asyncDownload(threading.Thread):
         '''
@@ -388,8 +390,8 @@ class GFS(threading.Thread):
             urlretrieve(self.url, tempfile)
             
             if os.path.getsize(tempfile) > 500:
-                # Suscess download
-                print "download size %i" % (os.path.getsize(tempfile))
+                # Downloaded
+                #print "download size %i" % (os.path.getsize(tempfile))
                 # unpack grib file
                 subprocess.call([self.conf.wgrib2bin, tempfile, '-set_grib_type', 'simple', '-grib_out', filepath])
                 os.remove(tempfile)
@@ -589,8 +591,8 @@ class PythonInterface:
 
     def CreateAboutWindow(self, x, y):
         x2 = x + 450
-        y2 = y - 60 - 20 * 10
-        Buffer = "X-Plane NOAA GFS Weather"
+        y2 = y - 85 - 20 * 9
+        Buffer = "X-Plane NOAA GFS Weather - %s" % (__VERSION__)
         top = y
             
         # Create the Main Widget window
@@ -605,57 +607,59 @@ class PythonInterface:
         x += 25
         
         # Main enalbe
-        XPCreateWidget(x, y-40, x+20, y-60, 1, 'Enable GFS', 0, window, xpWidgetClass_Caption)
-        self.enableCheck = XPCreateWidget(x+80, y-40, x+90, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        XPCreateWidget(x, y-40, x+20, y-60, 1, 'Enable XPGFS', 0, window, xpWidgetClass_Caption)
+        self.enableCheck = XPCreateWidget(x+110, y-40, x+120, y-60, 1, '', 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.enableCheck, xpProperty_ButtonType, xpRadioButton)
         XPSetWidgetProperty(self.enableCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
         XPSetWidgetProperty(self.enableCheck, xpProperty_ButtonState, self.conf.enabled)
         y -= 20
 
         # Winds enalbe
-        XPCreateWidget(x, y-40, x+20, y-60, 1, 'Set winds', 0, window, xpWidgetClass_Caption)
-        self.windsCheck = XPCreateWidget(x+80, y-40, x+90, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        XPCreateWidget(x, y-40, x+20, y-60, 1, 'Wind levels', 0, window, xpWidgetClass_Caption)
+        self.windsCheck = XPCreateWidget(x+110, y-40, x+120, y-60, 1, '', 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.windsCheck, xpProperty_ButtonType, xpRadioButton)
         XPSetWidgetProperty(self.windsCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
         XPSetWidgetProperty(self.windsCheck, xpProperty_ButtonState, self.conf.set_wind)
         y -= 20
         
         # Clouds enalbe
-        XPCreateWidget(x, y-40, x+20, y-60, 1, 'Set clouds', 0, window, xpWidgetClass_Caption)
-        self.cloudsCheck = XPCreateWidget(x+80, y-40, x+90, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        XPCreateWidget(x, y-40, x+20, y-60, 1, 'Cloud levels', 0, window, xpWidgetClass_Caption)
+        self.cloudsCheck = XPCreateWidget(x+110, y-40, x+120, y-60, 1, '', 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.cloudsCheck, xpProperty_ButtonType, xpRadioButton)
         XPSetWidgetProperty(self.cloudsCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
         XPSetWidgetProperty(self.cloudsCheck, xpProperty_ButtonState, self.conf.set_clouds)
         y -= 20
 
         # Temperature enalbe
-        XPCreateWidget(x, y-40, x+20, y-60, 1, 'Set Temp', 0, window, xpWidgetClass_Caption)
-        self.tempCheck = XPCreateWidget(x+80, y-40, x+90, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        XPCreateWidget(x, y-40, x+20, y-60, 1, 'Temperature', 0, window, xpWidgetClass_Caption)
+        self.tempCheck = XPCreateWidget(x+110, y-40, x+120, y-60, 1, '', 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.tempCheck, xpProperty_ButtonType, xpRadioButton)
         XPSetWidgetProperty(self.tempCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
         XPSetWidgetProperty(self.tempCheck, xpProperty_ButtonState, self.conf.set_temp)
         y -= 30     
         
         # trans altitude
-        XPCreateWidget(x, y-40, x+80, y-60, 1, 'Use METAR', 0, window, xpWidgetClass_Caption)
-        self.metarCheck = XPCreateWidget(x+80, y-40, x+90, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        XPCreateWidget(x, y-40, x+80, y-60, 1, 'Switch to METAR', 0, window, xpWidgetClass_Caption)
+        self.metarCheck = XPCreateWidget(x+110, y-40, x+120, y-60, 1, '', 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.metarCheck, xpProperty_ButtonType, xpRadioButton)
         XPSetWidgetProperty(self.metarCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
         XPSetWidgetProperty(self.metarCheck, xpProperty_ButtonState, self.conf.use_metar)
         
         y -= 20
-        XPCreateWidget(x, y-40, x+80, y-60, 1, 'Below FL', 0, window, xpWidgetClass_Caption)
-        self.transAltInput = XPCreateWidget(x+80, y-40, x+140, y-62, 1, '%i' % (self.conf.transalt*3.2808399/1000), 0, window, xpWidgetClass_TextField)
+        XPCreateWidget(x+20, y-40, x+80, y-60, 1, 'Below FL', 0, window, xpWidgetClass_Caption)
+        self.transAltInput = XPCreateWidget(x+100, y-40, x+140, y-62, 1, '%i' % (self.conf.transalt*3.2808399/1000), 0, window, xpWidgetClass_TextField)
         XPSetWidgetProperty(self.transAltInput, xpProperty_TextFieldType, xpTextEntryField)
         XPSetWidgetProperty(self.transAltInput, xpProperty_Enabled, 1)
         
         y -= 30
-        XPCreateWidget(x, y-40, x+80, y-60, 1, 'Update every # cycles', 0, window, xpWidgetClass_Caption)
-        self.updateRateInput = XPCreateWidget(x+120, y-40, x+140, y-62, 1, '%i' % (self.conf.updaterate * -1), 0, window, xpWidgetClass_TextField)
+        XPCreateWidget(x, y-40, x+80, y-60, 1, 'update every #s', 0, window, xpWidgetClass_Caption)
+        self.updateRateInput = XPCreateWidget(x+100, y-40, x+140, y-62, 1, '%i' % (self.conf.updaterate), 0, window, xpWidgetClass_TextField)
         XPSetWidgetProperty(self.transAltInput, xpProperty_TextFieldType, xpTextEntryField)
         XPSetWidgetProperty(self.transAltInput, xpProperty_Enabled, 1)
+        y -= 14
+        XPCreateWidget(x, y-40, x+80, y-60, 1, 'Increase to improve framerate', 0, window, xpWidgetClass_Caption)
         
-        y -= 40
+        y -= 35
         # Save
         self.saveButton = XPCreateWidget(x+20, y-20, x+120, y-60, 1, "Apply & Save", 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.saveButton, xpProperty_ButtonType, xpPushButton)
@@ -663,9 +667,8 @@ class PythonInterface:
         x += 170
         y = top
         
-        
         # ABOUT/ STATUS Sub Window
-        subw = XPCreateWidget(x+10, y-30, x2-20 + 10, y2+40 -25, 1, "" ,  0,window, xpWidgetClass_SubWindow)
+        subw = XPCreateWidget(x+10, y-30, x2-20 + 10, y-140 -25, 1, "" ,  0,window, xpWidgetClass_SubWindow)
         # Set the style to sub window
         XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
         x += 20
@@ -680,12 +683,15 @@ class PythonInterface:
             lastgrib = self.gfs.lastgrib.split('/');
             sysinfo = [
             'XPGFS Status:',
+            '',
             'lat: %f, lon: %f' % (self.gfs.lat, self.gfs.lon),
             'GFS Cycle: %s' % (lastgrib[0]),
             'GRIB File: %s' % (lastgrib[1]),
             'wind levels: %i' % (self.gfs.nwinds),
             'cloud levels: %i' % (self.gfs.nclouds),
             ]
+            if self.gfs.downloading:
+                sysinfo.append('Downloading new data...')
         else:
             sysinfo = ['XPGFS Status:',
                        'Data not ready'
@@ -695,7 +701,12 @@ class PythonInterface:
             y -= 15
             XPCreateWidget(x, y, x+40, y-20, 1, label, 0, window, xpWidgetClass_Caption)
         
-        y = top - 15 * 9   
+        y = top - 15 * 12 
+        
+        subw = XPCreateWidget(x-10, y, x2-20 + 10, y2 +15, 1, "" ,  0,window, xpWidgetClass_SubWindow)
+        x += 30
+        # Set the style to sub window
+        XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
         sysinfo = [
         'X-Plane NOAA Weather: %s' % __VERSION__,
         '(c) joan perez cauhe 2012',
@@ -705,7 +716,7 @@ class PythonInterface:
             XPCreateWidget(x, y, x+40, y-20, 1, label, 0, window, xpWidgetClass_Caption)
         
         # Visit site 
-        self.aboutVisit = XPCreateWidget(x+20, y-20, x+120, y-60, 1, "Visit site", 0, window, xpWidgetClass_Button)
+        self.aboutVisit = XPCreateWidget(x+20, y, x+120, y-60, 1, "Visit site", 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.aboutVisit, xpProperty_ButtonType, xpPushButton)
             
         # Register our widget handler
@@ -740,7 +751,7 @@ class PythonInterface:
                 self.conf.transalt = c.toFloat(buff[0], 100) * 0.3048 * 1000
                 buff = []
                 XPGetWidgetDescriptor(self.updateRateInput, buff, 256)
-                self.conf.updaterate = c.toFloat(buff[0], 1) * -1
+                self.conf.updaterate = c.toFloat(buff[0], 1)
                 
                 if not self.conf.use_metar:
                     self.weather.xpWeatherOn.value = 0
