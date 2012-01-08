@@ -54,7 +54,7 @@ import sys
 from time import sleep
 import cPickle
 
-__VERSION__ = '1.0rc1'
+__VERSION__ = '1.0rc2'
 
 class c:
     '''
@@ -352,7 +352,7 @@ class GFS(threading.Thread):
         while not self.die.isSet():
             if not self.conf.enabled:
                 #Sleep if disabled
-                sleep(10)
+                sleep(self.conf.parserate * 2)
                 continue
             
             # Parse grib if required
@@ -364,15 +364,17 @@ class GFS(threading.Thread):
                 self.newGrib = False
             
             datecycle, cycle, forecast = self.getCycleDate()
+
             if self.downloadWait < 1:
                 self.downloadCycle(datecycle, cycle, forecast)
-            else:
+            elif self.downloadWait > 0:
                 self.downloadWait -= self.conf.parserate
+                print self.downloadWait
     
-        #wait
-        if self.die.isSet():
-            return
-        sleep(self.conf.parserate)
+            #wait
+            if self.die.isSet():
+                return
+            sleep(self.conf.parserate)
     
     class asyncDownload(threading.Thread):
         '''
@@ -399,9 +401,9 @@ class GFS(threading.Thread):
                 self.conf.lastgrib = self.cachefile
                 self.parent.newGrib = True
             else:
-                # File unavaliable, empty file; wait 10 minutes
+                # File unavaliable, empty file; wait 5 minutes
                 print "XPGFS: Error downloading: %s" % (self.cachefile)
-                self.parent.downloadWait = 10 * 60
+                self.parent.downloadWait = 5 * 60
                 if os.path.exists(tempfile):
                     os.remove(tempfile)
 
