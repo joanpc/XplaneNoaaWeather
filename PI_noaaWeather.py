@@ -369,7 +369,6 @@ class GFS(threading.Thread):
                 self.downloadCycle(datecycle, cycle, forecast)
             elif self.downloadWait > 0:
                 self.downloadWait -= self.conf.parserate
-                print self.downloadWait
     
             #wait
             if self.die.isSet():
