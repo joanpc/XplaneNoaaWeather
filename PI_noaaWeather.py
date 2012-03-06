@@ -47,7 +47,7 @@ from XPStandardWidgets import *
 from urllib import urlretrieve
 from datetime import datetime, timedelta
 import threading, subprocess
-from math import hypot, atan2, degrees
+from math import hypot, atan2, degrees, exp
 from EasyDref import EasyDref
 import os
 import sys
@@ -93,12 +93,15 @@ class c:
         return (80 - rh)/20*24634
     @classmethod
     def toFloat(self, string, default = 0):
-        # try to convert to float or return 100
+        # try to convert to float or return default
         try: 
             val = float(string)
         except ValueError:
             val = default
         return val
+    @classmethod
+    def rh2visibility(self, rh):
+        return 60.0*exp(-2.5*(rh-15)/80.0)
 
 class Conf:
     '''
@@ -108,34 +111,34 @@ class Conf:
     
     def __init__(self):
         # Inits conf
-        self.syspath    = XPLMGetSystemPath(self.syspath)[:-1]
-        self.respath    = self.dirsep.join([self.syspath, 'Resources', 'plugins', 'PythonScripts', 'noaaWeatherResources'])
+        self.syspath      = XPLMGetSystemPath(self.syspath)[:-1]
+        self.respath      = self.dirsep.join([self.syspath, 'Resources', 'plugins', 'PythonScripts', 'noaaWeatherResources'])
         self.settingsfile = self.respath + self.dirsep + 'settings.pkl'
         
-        self.cachepath  = self.dirsep.join([self.respath, 'cache'])
+        self.cachepath    = self.dirsep.join([self.respath, 'cache'])
         if not os.path.exists(self.cachepath):
             os.makedirs(self.cachepath)
         
         
         # Storable settings, Defaults
-        self.enabled    = True
-        self.set_wind   = True
-        self.set_clouds = True
-        self.set_temp   = True
-        self.transalt   = 32808.399000000005
-        self.use_metar  = False
-        self.lastgrib   = False
-        self.updaterate = 4
-        self.parserate  = 4
+        self.enabled        = True
+        self.set_wind       = True
+        self.set_clouds     = True
+        self.set_temp       = True
+        self.set_visibility = False
+        self.transalt       = 32808.399000000005
+        self.use_metar      = False
+        self.lastgrib       = False
+        self.updaterate     = 4
+        self.parserate      = 4
+        self.vatsim         = False
         
         self.load()
         
         if self.lastgrib and not os.path.exists(self.cachepath + self.dirsep + self.lastgrib):
             self.lastgrib = False
         
-        #self.dirsep = os.sep
-        
-        # Selects the apropiate wgrib binari
+        # Selects the apropiate wgrib binary
         platform = sys.platform
         
         if platform == 'darwin':
@@ -162,7 +165,8 @@ class Conf:
                 'transalt'  : self.transalt,
                 'use_metar' : self.use_metar,
                 'enabled'   : self.enabled,
-                'updaterate': self.updaterate
+                'updaterate': self.updaterate,
+                'vatsim'    : self.vatsim
                 }
         
         f = open(self.settingsfile, 'w')
@@ -181,7 +185,7 @@ class Conf:
                     self.__dict__[var] = conf[var]
         
         
-class weather:
+class Weather:
     '''
     Sets x-plane weather
     '''
@@ -215,6 +219,7 @@ class weather:
         self.msltemp     = EasyDref('sim/weather/temperature_sealevel_c', 'float')
         self.dewpoint    = EasyDref('sim/weather/dewpoi_sealevel_c', 'float')
         self.thermalAlt  = EasyDref('sim/weather/thermal_altitude_msl_m', 'float')
+        self.visibility  = EasyDref('sim/weather/visibility_reported_m', 'float')
         
     def setWinds1(self, winds):
         wl = self.winds
@@ -241,31 +246,33 @@ class weather:
                 else:
                     prevlayer = wlayer
             if prevlayer:
-                if  (int(wl[1]['alt'].value), int(wl[1]['hdg'].value), int(wl[1]['speed'].value))  != (int(prevlayer[0]), int(prevlayer[1]), int(prevlayer[2])):
-                    wl[1]['alt'].value, wl[1]['hdg'].value, wl[1]['speed'].value  = prevlayer[0], prevlayer[1], prevlayer[2]
-                if (int(wl[2]['alt'].value), int(wl[2]['hdg'].value), int(wl[2]['speed'].value))  != (int(wlayer[0]), int(wlayer[1]), int(wlayer[2])):
-                    wl[2]['alt'].value, wl[2]['hdg'].value, wl[2]['speed'].value  = wlayer[0], wlayer[1], wlayer[2]
+                wl[1]['alt'].value, wl[1]['hdg'].value, wl[1]['speed'].value  = prevlayer[0], prevlayer[1], prevlayer[2]
+                wl[2]['alt'].value, wl[2]['hdg'].value, wl[2]['speed'].value  = wlayer[0], wlayer[1], wlayer[2]
             else:
-                if ((int(wl[1]['alt'].value), int(wl[1]['hdg'].value), int(wl[1]['speed'].value))  != (int(wlayer[0]), int(wlayer[1]), int(wlayer[2]))):
-                    wl[1]['alt'].value, wl[1]['hdg'].value, wl[1]['speed'].value  = wlayer[0], wlayer[1], wlayer[2]
+                wl[1]['alt'].value, wl[1]['hdg'].value, wl[1]['speed'].value  = wlayer[0], wlayer[1], wlayer[2]
             # Set temperature
-            if self.conf.set_temp and wlayer[3]:
-                if prevlayer and prevlayer[0] != wlayer[0] and prevlayer[3]:
-                    temp = c.interpolate(prevlayer[3], wlayer[3], prevlayer[0], wlayer[0], self.alt)
-                    if self.msltemp.value != temp:
-                        self.msltemp.value = temp
+            if self.conf.set_temp and wlayer[3]['temp']:
+                # Interpolate with previous layer
+                if prevlayer and prevlayer[0] != wlayer[0] and wlayer[3]['temp']:
+                    temp = c.interpolate(prevlayer[3]['temp'], wlayer[3]['temp'], prevlayer[0], wlayer[0], self.alt)
+                    self.msltemp.value = temp
                 else:
-                    if self.msltemp.value != wlayer[3]:
-                        self.msltemp.value = wlayer[3]
+                    self.msltemp.value = wlayer[3]['temp']
+            if self.conf.set_visibility and wlayer[3]['vis']:
+                if prevlayer and prevlayer[0] != wlayer[0] and wlayer[3]['vis']:
+                    self.visibility.value = c.interpolate(prevlayer[3]['vis'], wlayer[3]['vis'], prevlayer[0], wlayer[0], self.alt)
+                else:
+                    self.visibility.value = wlayer[3]['vis']
             
+            # First wind level
+            if self.conf.vatsim:
+                return
             if not self.conf.use_metar:
                 # Set first wind level if we don't use metar
-                if (int(wl[0]['alt'].value), int(wl[0]['hdg'].value), int(wl[0]['speed'].value))  != (int(winds[0][0]), int(winds[0][1]), int(winds[0][2])):
-                    wl[0]['alt'].value, wl[0]['hdg'].value, wl[0]['speed'].value  = winds[0][0], winds[0][1], winds[0][2]
+                wl[0]['alt'].value, wl[0]['hdg'].value, wl[0]['speed'].value  = winds[0][0], winds[0][1], winds[0][2]
             elif self.alt > winds[0][0]:
                 # Set first wind level on "descent"
-                if (int(wl[0]['alt'].value), int(wl[0]['hdg'].value), int(wl[0]['speed'].value))  != (int(winds[0][0]), int(winds[0][1]), int(winds[0][2])):
-                    wl[0]['alt'].value, wl[0]['hdg'].value, wl[0]['speed'].value  = winds[0][0], winds[0][1], winds[0][2]
+                wl[0]['alt'].value, wl[0]['hdg'].value, wl[0]['speed'].value  = winds[0][0], winds[0][1], winds[0][2]
     
     def setClouds(self, clouds):
         if len(clouds) > 2:
@@ -306,7 +313,7 @@ class GFS(threading.Thread):
               '500_mb', # FL180
               '400_mb', # FL235
               '300_mb', # FL300
-              #'200_mb', # FL380
+              '200_mb', # FL380
               'high_cloud_bottom_level',
               'high_cloud_layer',
               'high_cloud_top_level',
@@ -323,7 +330,8 @@ class GFS(threading.Thread):
                  'TCDC',
                  'UGRD',
                  'VGRD',
-                 'TMP'
+                 'TMP',
+                 'RH',
                  ]
     nwinds, nclouds = 0, 0
     
@@ -342,9 +350,12 @@ class GFS(threading.Thread):
     newGrib = False
     
     die = threading.Event()
+    
     def __init__(self, conf):
         self.conf = conf
         self.lastgrib = self.conf.lastgrib
+        self.refreshStatus = False
+        
         threading.Thread.__init__(self)
     
     def run(self):
@@ -358,10 +369,11 @@ class GFS(threading.Thread):
             # Parse grib if required
             lat, lon = int(self.lat*10/5)*5, int(self.lon*10/5)*5
             if self.newGrib or (self.lastgrib and lat != self.lastlat and lon != self.lastlon):
-                print "xpNooaW: parsing - %s - %i,%i" % (self.lastgrib, lat, lon)
+                print "XPGFS: parsing - %s - %i,%i" % (self.lastgrib, lat, lon)
                 self.parseGribData(self.lastgrib, self.lat, self.lon)
                 self.lastlat, self.lastlon = lat, lon
                 self.newGrib = False
+                self.refreshStatus = True
             
             datecycle, cycle, forecast = self.getCycleDate()
 
@@ -392,7 +404,6 @@ class GFS(threading.Thread):
             
             if os.path.getsize(tempfile) > 500:
                 # Downloaded
-                #print "download size %i" % (os.path.getsize(tempfile))
                 # unpack grib file
                 subprocess.call([self.conf.wgrib2bin, tempfile, '-set_grib_type', 'simple', '-grib_out', filepath])
                 os.remove(tempfile)
@@ -463,7 +474,7 @@ class GFS(threading.Thread):
             
             print 'XPGFS: downloading %s' % (filename)
             self.downloading = True
-            self.download = self.asyncDownload(self, url, cachefile)
+            self.download    = self.asyncDownload(self, url, cachefile)
             self.download.start()
             
         return False
@@ -516,11 +527,21 @@ class GFS(threading.Thread):
             if 'UGRD' in wind and 'VGRD' in wind:
                 hdg, vel = c.c2p(float(wind['UGRD']), float(wind['VGRD']))
                 alt = c.mb2alt(float(level))
+                
+                # Optional varialbes
+                temp, vis = False, False
+                # Temperature
                 if 'TMP' in wind:
                     temp = c.oat2msltemp(float(wind['TMP']), alt)
+                # Relative Humidity
+                if 'RH' in wind:
+                    vis = c.rh2visibility(float(wind['RH']))*1000
+                    if vis > 40000:
+                        vis = 40000
                 else:
                     temp = False
-                windlevels.append((alt, hdg, c.ms2knots(vel), temp))
+                windlevels.append((alt, hdg, c.ms2knots(vel), {'temp': temp, 'vis': vis}))
+                print 'alt: %i rh: %i vis: %i' % (alt, float(wind['RH']), vis) 
         
         # Convert cloud level
         for level in clouds:
@@ -528,7 +549,7 @@ class GFS(threading.Thread):
             if 'top' in level and 'bottom' in level and 'TCDC' in level:
                 top, bottom, cover = float(level['top']), float(level['bottom']), float(level['TCDC'])
                 print "XPGFS: top: %.0fmbar %.0fm, bottom: %.0fmbar %.0fm %d%%" % (top * 0.01, c.mb2alt(top * 0.01), bottom * 0.01, c.mb2alt(bottom * 0.01), cover)
-                cloudlevels.append((c.mb2alt(bottom * 0.01) * 0.3048, c.mb2alt(top * 0.01) * 0.3048, int(weather.cc2xp(cover))))
+                cloudlevels.append((c.mb2alt(bottom * 0.01) * 0.3048, c.mb2alt(top * 0.01) * 0.3048, int(Weather.cc2xp(cover))))
     
         windlevels.sort()        
         cloudlevels.sort(reverse=True)
@@ -560,7 +581,7 @@ class PythonInterface:
         self.altdr  = EasyDref('sim/flightmodel/position/elevation', 'double')
         
         self.conf = Conf()
-        self.weather = weather(self.conf)
+        self.weather = Weather(self.conf)
         
         self.gfs = False
          
@@ -592,7 +613,7 @@ class PythonInterface:
 
     def CreateAboutWindow(self, x, y):
         x2 = x + 450
-        y2 = y - 85 - 20 * 9
+        y2 = y - 85 - 20 * 10
         Buffer = "X-Plane NOAA GFS Weather - %s" % (__VERSION__)
         top = y
             
@@ -637,7 +658,15 @@ class PythonInterface:
         XPSetWidgetProperty(self.tempCheck, xpProperty_ButtonType, xpRadioButton)
         XPSetWidgetProperty(self.tempCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
         XPSetWidgetProperty(self.tempCheck, xpProperty_ButtonState, self.conf.set_temp)
-        y -= 30     
+        y -= 30
+        
+        # VATSIM Compatible
+        XPCreateWidget(x, y-40, x+20, y-60, 1, 'VATSIM compat', 0, window, xpWidgetClass_Caption)
+        self.vatsimCheck = XPCreateWidget(x+110, y-40, x+120, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        XPSetWidgetProperty(self.vatsimCheck, xpProperty_ButtonType, xpRadioButton)
+        XPSetWidgetProperty(self.vatsimCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
+        XPSetWidgetProperty(self.vatsimCheck, xpProperty_ButtonState, self.conf.vatsim)
+        y -= 20
         
         # trans altitude
         XPCreateWidget(x, y-40, x+80, y-60, 1, 'Switch to METAR', 0, window, xpWidgetClass_Caption)
@@ -655,8 +684,8 @@ class PythonInterface:
         y -= 30
         XPCreateWidget(x, y-40, x+80, y-60, 1, 'update every #s', 0, window, xpWidgetClass_Caption)
         self.updateRateInput = XPCreateWidget(x+100, y-40, x+140, y-62, 1, '%i' % (self.conf.updaterate), 0, window, xpWidgetClass_TextField)
-        XPSetWidgetProperty(self.transAltInput, xpProperty_TextFieldType, xpTextEntryField)
-        XPSetWidgetProperty(self.transAltInput, xpProperty_Enabled, 1)
+        XPSetWidgetProperty(self.updateRateInput, xpProperty_TextFieldType, xpTextEntryField)
+        XPSetWidgetProperty(self.updateRateInput, xpProperty_Enabled, 0)
         y -= 14
         XPCreateWidget(x, y-40, x+80, y-60, 1, 'Increase to improve framerate', 0, window, xpWidgetClass_Caption)
         
@@ -678,7 +707,103 @@ class PythonInterface:
         # Add Close Box decorations to the Main Widget
         XPSetWidgetProperty(window, xpProperty_MainWindowHasCloseBoxes, 1)
         
+        # Create status captions
+        self.statusBuff = []
+        for i in range(10):
+            y -= 15
+            self.statusBuff.append(XPCreateWidget(x, y, x+40, y-20, 1, '', 0, window, xpWidgetClass_Caption))
+            
+        self.updateStatus()
         
+        y = top - 15 * 12 
+        
+        subw = XPCreateWidget(x-10, y, x2-20 + 10, y2 +15, 1, "" ,  0,window, xpWidgetClass_SubWindow)
+        x += 30
+        # Set the style to sub window
+        XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
+        sysinfo = [
+        'X-Plane NOAA Weather: %s' % __VERSION__,
+        '(c) joan perez cauhe 2012',
+        ]
+        for label in sysinfo:
+            y -= 10
+            XPCreateWidget(x, y, x+40, y-20, 1, label, 0, window, xpWidgetClass_Caption)
+        
+        # Visit site Button
+        self.aboutVisit = XPCreateWidget(x+20, y, x+120, y-60, 1, "Visit site", 0, window, xpWidgetClass_Button)
+        XPSetWidgetProperty(self.aboutVisit, xpProperty_ButtonType, xpPushButton)
+        y -= 20
+        
+        # Donate Button
+        self.donate = XPCreateWidget(x+20, y, x+120, y-60, 1, "Donate", 0, window, xpWidgetClass_Button)
+        XPSetWidgetProperty(self.aboutVisit, xpProperty_ButtonType, xpPushButton)
+            
+        # Register our widget handler
+        self.aboutWindowHandlerCB = self.aboutWindowHandler
+        XPAddWidgetCallback(self, window, self.aboutWindowHandlerCB)
+        
+        self.aboutWindow = window
+    
+    def aboutWindowHandler(self, inMessage, inWidget, inParam1, inParam2):
+        # About window events
+        if (inMessage == xpMessage_CloseButtonPushed):
+            if self.aboutWindow:
+                XPDestroyWidget(self, self.aboutWindowWidget, 1)
+                self.aboutWindow = False
+            return 1
+
+        # Handle any button pushes
+        if (inMessage == xpMsg_PushButtonPressed):
+
+            if (inParam1 == self.aboutVisit):
+                from webbrowser import open_new
+                open_new('http://forums.x-plane.org/index.php?app=downloads&showfile=15453');
+                return 1
+            if (inParam1 == self.donate):
+                from webbrowser import open_new
+                open_new('https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=ZQL6V9YLKRFEJ&lc=US&item_name=joan%20x%2dplane%20developer&item_number=XP%20NOAA%20Weather&currency_code=EUR&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted');
+                return 1
+            elif inParam1 == self.saveButton:
+                # Save configuration
+                self.conf.enabled       = XPGetWidgetProperty(self.enableCheck, xpProperty_ButtonState, None)
+                self.conf.set_wind      = XPGetWidgetProperty(self.windsCheck, xpProperty_ButtonState, None)
+                self.conf.set_clouds    = XPGetWidgetProperty(self.cloudsCheck, xpProperty_ButtonState, None)
+                self.conf.set_temp      = XPGetWidgetProperty(self.tempCheck, xpProperty_ButtonState, None)
+                self.conf.use_metar     = XPGetWidgetProperty(self.metarCheck, xpProperty_ButtonState, None)
+                self.conf.vatsim        = XPGetWidgetProperty(self.vatsimCheck, xpProperty_ButtonState, None)
+                
+                buff = []
+                XPGetWidgetDescriptor(self.transAltInput, buff, 256)
+                self.conf.transalt = c.toFloat(buff[0], 100) * 0.3048 * 100
+                buff = []
+                XPGetWidgetDescriptor(self.updateRateInput, buff, 256)
+                self.conf.updaterate = c.toFloat(buff[0], 1)
+                
+                if self.conf.vatsim: 
+                    self.conf.set_clouds = False
+                    self.conf.set_temp   = False
+                    self.conf.use_metar  = False
+                    self.weather.winds[0]['alt'].value = self.conf.transalt
+                
+                if not self.conf.use_metar:
+                    self.weather.xpWeatherOn.value = 0
+                else:
+                    self.weather.winds[0]['alt'].value = self.conf.transalt   
+                
+                self.conf.save()
+                self.aboutWindowUpdate()
+        return 0
+    
+    def aboutWindowUpdate(self):
+        XPSetWidgetProperty(self.enableCheck, xpProperty_ButtonState, self.conf.enabled)
+        XPSetWidgetProperty(self.windsCheck, xpProperty_ButtonState, self.conf.set_wind)
+        XPSetWidgetProperty(self.cloudsCheck, xpProperty_ButtonState, self.conf.set_clouds)
+        XPSetWidgetProperty(self.tempCheck, xpProperty_ButtonState, self.conf.set_temp)
+        XPSetWidgetProperty(self.metarCheck, xpProperty_ButtonState, self.conf.use_metar)
+        XPSetWidgetProperty(self.vatsimCheck, xpProperty_ButtonState, self.conf.vatsim)
+        self.updateStatus()
+        
+    def updateStatus(self):
         if self.gfs and self.gfs.lastgrib:
             
             lastgrib = self.gfs.lastgrib.split('/');
@@ -697,70 +822,10 @@ class PythonInterface:
             sysinfo = ['XPGFS Status:',
                        'Data not ready'
                        ]
-        
+        i = 0
         for label in sysinfo:
-            y -= 15
-            XPCreateWidget(x, y, x+40, y-20, 1, label, 0, window, xpWidgetClass_Caption)
-        
-        y = top - 15 * 12 
-        
-        subw = XPCreateWidget(x-10, y, x2-20 + 10, y2 +15, 1, "" ,  0,window, xpWidgetClass_SubWindow)
-        x += 30
-        # Set the style to sub window
-        XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
-        sysinfo = [
-        'X-Plane NOAA Weather: %s' % __VERSION__,
-        '(c) joan perez cauhe 2012',
-        ]
-        for label in sysinfo:
-            y -= 10
-            XPCreateWidget(x, y, x+40, y-20, 1, label, 0, window, xpWidgetClass_Caption)
-        
-        # Visit site 
-        self.aboutVisit = XPCreateWidget(x+20, y, x+120, y-60, 1, "Visit site", 0, window, xpWidgetClass_Button)
-        XPSetWidgetProperty(self.aboutVisit, xpProperty_ButtonType, xpPushButton)
-            
-        # Register our widget handler
-        self.aboutWindowHandlerCB = self.aboutWindowHandler
-        XPAddWidgetCallback(self, window, self.aboutWindowHandlerCB)
-    
-    def aboutWindowHandler(self, inMessage, inWidget, inParam1, inParam2):
-        # About window events
-        if (inMessage == xpMessage_CloseButtonPushed):
-            if self.aboutWindow:
-                XPDestroyWidget(self, self.aboutWindowWidget, 1)
-                self.aboutWindow = False
-            return 1
-
-        # Handle any button pushes
-        if (inMessage == xpMsg_PushButtonPressed):
-
-            if (inParam1 == self.aboutVisit):
-                from webbrowser import open_new
-                open_new('http://forums.x-plane.org/index.php?app=downloads&showfile=15453');
-                return 1
-            elif inParam1 == self.saveButton:
-                # Save configuration
-                self.conf.enabled       = XPGetWidgetProperty(self.enableCheck, xpProperty_ButtonState, None)
-                self.conf.set_wind      = XPGetWidgetProperty(self.windsCheck, xpProperty_ButtonState, None)
-                self.conf.set_clouds    = XPGetWidgetProperty(self.cloudsCheck, xpProperty_ButtonState, None)
-                self.conf.set_temp      = XPGetWidgetProperty(self.tempCheck, xpProperty_ButtonState, None)
-                self.conf.use_metar     = XPGetWidgetProperty(self.metarCheck, xpProperty_ButtonState, None)
-                
-                buff = []
-                XPGetWidgetDescriptor(self.transAltInput, buff, 256)
-                self.conf.transalt = c.toFloat(buff[0], 100) * 0.3048 * 1000
-                buff = []
-                XPGetWidgetDescriptor(self.updateRateInput, buff, 256)
-                self.conf.updaterate = c.toFloat(buff[0], 1)
-                
-                if not self.conf.use_metar:
-                    self.weather.xpWeatherOn.value = 0
-                else:
-                    self.weather.winds[0]['alt'].value = self.conf.transalt   
-                  
-                self.conf.save()
-        return 0
+            XPSetWidgetDescriptor(self.statusBuff[i], label)
+            i +=1
 
     def floopCallback(self, elapsedMe, elapsedSim, counter, refcon):
         '''
@@ -793,8 +858,11 @@ class PythonInterface:
             self.weather.setWinds(self.gfs.winds)
         if self.conf.set_clouds and self.gfs.clouds:
             self.weather.setClouds(self.gfs.clouds)
-        
-        return self.conf.updaterate
+            
+        if self.gfs.refreshStatus:
+            self.updateStatus()
+            self.gfs.refreshStatus = False
+        return -1
     
     def XPluginStop(self):
         # Destroy windows
