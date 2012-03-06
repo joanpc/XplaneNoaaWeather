@@ -54,7 +54,7 @@ import sys
 from time import sleep
 import cPickle
 
-__VERSION__ = '1.0rc2'
+__VERSION__ = '1.2'
 
 class c:
     '''
