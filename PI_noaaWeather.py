@@ -677,7 +677,7 @@ class PythonInterface:
         
         y -= 20
         XPCreateWidget(x+20, y-40, x+80, y-60, 1, 'Below FL', 0, window, xpWidgetClass_Caption)
-        self.transAltInput = XPCreateWidget(x+100, y-40, x+140, y-62, 1, '%i' % (self.conf.transalt*3.2808399/1000), 0, window, xpWidgetClass_TextField)
+        self.transAltInput = XPCreateWidget(x+100, y-40, x+140, y-62, 1, '%i' % (self.conf.transalt*3.2808399/100), 0, window, xpWidgetClass_TextField)
         XPSetWidgetProperty(self.transAltInput, xpProperty_TextFieldType, xpTextEntryField)
         XPSetWidgetProperty(self.transAltInput, xpProperty_Enabled, 1)
         
@@ -859,7 +859,7 @@ class PythonInterface:
         if self.conf.set_clouds and self.gfs.clouds:
             self.weather.setClouds(self.gfs.clouds)
             
-        if self.gfs.refreshStatus:
+        if self.aboutWindow and self.gfs.refreshStatus:
             self.updateStatus()
             self.gfs.refreshStatus = False
         return -1
