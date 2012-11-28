@@ -115,6 +115,10 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             a = degrees(atan2(x, y))
             if a < 0:
                 a += 360
+            if a <= 180:
+                a = a + 180
+            else:
+                a = a -180
             return a, r
         
         @classmethod
@@ -433,8 +437,9 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                 #wait
                 if self.die.isSet():
                     return
-                sleep(self.conf.parserate)
-        
+                #sleep(self.conf.parserate)
+                sleep(1)
+                
         def getCycleDate(self):
             '''
             Returns last cycle date avaliable
@@ -549,6 +554,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                 wind = data[level]
                 if 'UGRD' in wind and 'VGRD' in wind:
                     hdg, vel = c.c2p(float(wind['UGRD']), float(wind['VGRD']))
+                    print wind['UGRD'], wind['VGRD'], float(wind['UGRD']), float(wind['VGRD']), hdg, vel
                     alt = c.mb2alt(float(level))
                     
                     # Optional varialbes
