@@ -41,7 +41,7 @@ from time import sleep
 import cPickle
 import multiprocessing
 
-__VERSION__ = '1.3rc1'
+__VERSION__ = '1.4'
 
 
 from urllib import urlretrieve
@@ -601,7 +601,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
         Xplane plugin
         '''
         def XPluginStart(self):
-            self.Name = "noaWeather - "
+            self.Name = "noaWeather - " + __VERSION__
             self.Sig = "noaWeather.joanpc.PI"
             self.Desc = "NOA GFS in x-plane"
              
@@ -876,7 +876,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             # Switch METAR/GFS mode
             if self.conf.use_metar:
                 if self.weather.xpWeatherOn.value:
-                    if self.weather.alt > self.conf.transalt and self.weather.xpWeatherOn.value:
+                    if self.weather.alt > self.conf.transalt:
                         self.weather.xpWeatherOn.value = 0
                     else:
                         return self.conf.updaterate
