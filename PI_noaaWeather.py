@@ -29,8 +29,9 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 '''
-#Python includes
+__VERSION__ = '1.4.1'
 
+#Python includes
 from datetime import datetime, timedelta
 import threading
 from math import hypot, atan2, degrees, exp
@@ -41,11 +42,23 @@ from time import sleep
 import cPickle
 import multiprocessing
 
-__VERSION__ = '1.4'
-
-
 from urllib import urlretrieve
 import subprocess
+
+#### stderr stdout ebeded python workaround ####
+class wr_stdout():
+    write = sys.stdout.write
+    def flush(self):
+        pass
+class wr_stderr():
+    write = sys.stderr.write
+    def flush(self):
+        pass
+sys.stdout = wr_stdout()
+sys.stderr = wr_stderr()
+# Argv missing on windows
+sys.argv = ['']
+###  ############################################
 
 class AsyncDownload():
     '''
