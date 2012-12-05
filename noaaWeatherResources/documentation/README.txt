@@ -12,8 +12,7 @@ Requirements
 Sandy Barbour Python Interface: http://www.xpluginsdk.org/python_interface_downloads.htm
 Python: http://www.python.org/getit/th
 Wgrib2: the plugin comes with wgrib2 for common os osx, win32 and linux i686 glib2.5
-
-Windows users must install cygwin: http://www.cygwin.com/
+Wgrib requires cygwin on windows but the .dll is provided on the bin folder and there's no need to install-it.
 
 ============
 Installation
