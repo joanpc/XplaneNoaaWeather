@@ -29,13 +29,12 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 '''
-__VERSION__ = '1.4.1'
+__VERSION__ = '1.4.2'
 
 #Python includes
 from datetime import datetime, timedelta
 import threading
 from math import hypot, atan2, degrees, exp
-from EasyDref import EasyDref
 import os
 import sys
 from time import sleep
@@ -67,15 +66,15 @@ class AsyncDownload():
     def __init__(self, conf, url, cachefile):
         self.q = multiprocessing.Queue()
         self.dirsep = conf.dirsep[:]
-        self.cachepath = conf.cachepath[:]
+        cachepath = conf.cachepath[:]
         self.wgrib2bin = conf.wgrib2bin[:]
         if sys.platform == 'win32':
             multiprocessing.set_executable(os.path.join(sys.exec_prefix, 'pythonw.exe'))
-        self.child = multiprocessing.Process(target=self.run, args=(url, cachefile))
+        self.child = multiprocessing.Process(target=self.run, args=(url, cachepath, cachefile))
         self.child.start()
         
-    def run(self, url, cachefile):
-        filepath = self.cachepath + self.dirsep + cachefile
+    def run(self, url, cachepath, cachefile):
+        filepath = cachepath + "/" + cachefile
         tempfile = filepath + '.tmp'
         urlretrieve(url, tempfile)
         
@@ -108,6 +107,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
     from XPWidgetDefs import *
     from XPWidgets import *
     from XPStandardWidgets import *
+    from EasyDref import EasyDref
     
     class c:
         '''
