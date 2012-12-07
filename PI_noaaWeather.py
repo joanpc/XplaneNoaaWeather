@@ -115,7 +115,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
         '''
         @classmethod
         def ms2knots(self, val):
-            return val * 0.514444
+            return val * 1.94384
         
         @classmethod
         def kel2cel(self, val):
