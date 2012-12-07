@@ -29,7 +29,7 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 '''
-__VERSION__ = '1.4.2'
+__VERSION__ = '1.4.3'
 
 #Python includes
 from datetime import datetime, timedelta
