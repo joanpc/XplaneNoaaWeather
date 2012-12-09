@@ -8,13 +8,10 @@ Uses wgrib2 to parse NOAA grib2 data files.
 Includes wgrib2 binaries for Mac Win32 and linux i386glibc6
 Win32 wgrib2 requires cgywin now included in the resources folder
 
-This plugin is under developement and INCOMPLETE
-
 TODO:
 - Remove shear and turbulence on transition
-- Turbulences, rain, snow, wind shears, visibility
+- Rain, snow, wind shears, visibility
 - msl pressure
-- clear cache
 - remove old grib files from cache
 
 Copyright (C) 2012  Joan Perez i Cauhe
@@ -29,7 +26,7 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 '''
-__VERSION__ = '1.5.0'
+__VERSION__ = '1.5.1'
 
 #Python includes
 from datetime import datetime, timedelta
@@ -184,6 +181,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             self.set_clouds     = True
             self.set_temp       = True
             self.set_visibility = False
+            self.set_turb       = True
             self.transalt       = 32808.399000000005
             self.use_metar      = False
             self.lastgrib       = False
@@ -193,6 +191,8 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             self.vatsim         = False
             
             self.load()
+            # Override config
+            self.parserate = 0.05
             
             if self.lastgrib and not os.path.exists(self.cachepath + self.dirsep + self.lastgrib):
                 self.lastgrib = False
@@ -221,6 +221,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                     'set_temp'  : self.set_temp,
                     'set_clouds': self.set_clouds,
                     'set_wind'  : self.set_wind,
+                    'set_turb'  : self.set_turb,
                     'transalt'  : self.transalt,
                     'use_metar' : self.use_metar,
                     'enabled'   : self.enabled,
@@ -867,7 +868,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             self.turbCheck = XPCreateWidget(x+110, y-40, x+120, y-60, 1, '', 0, window, xpWidgetClass_Button)
             XPSetWidgetProperty(self.turbCheck, xpProperty_ButtonType, xpRadioButton)
             XPSetWidgetProperty(self.turbCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
-            XPSetWidgetProperty(self.turbCheck, xpProperty_ButtonState, self.conf.set_temp)
+            XPSetWidgetProperty(self.turbCheck, xpProperty_ButtonState, self.conf.set_turb)
             y -= 30
             x -=5
             
@@ -981,6 +982,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                     self.conf.set_wind      = XPGetWidgetProperty(self.windsCheck, xpProperty_ButtonState, None)
                     self.conf.set_clouds    = XPGetWidgetProperty(self.cloudsCheck, xpProperty_ButtonState, None)
                     self.conf.set_temp      = XPGetWidgetProperty(self.tempCheck, xpProperty_ButtonState, None)
+                    self.conf.set_turb      = XPGetWidgetProperty(self.turbCheck, xpProperty_ButtonState, None)
                     self.conf.use_metar     = XPGetWidgetProperty(self.metarCheck, xpProperty_ButtonState, None)
                     self.conf.vatsim        = XPGetWidgetProperty(self.vatsimCheck, xpProperty_ButtonState, None)
                     
@@ -1079,10 +1081,9 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                 self.weather.setClouds(self.gfs.clouds)
             
             # Set turbulence
-            if self.gfs.wafs.turbulence:
+            if self.conf.set_turb and self.gfs.wafs.turbulence:
                 self.weather.setTurbulence(self.gfs.wafs.turbulence)
-                
-            #if self.aboutWindow and self.gfs.refreshStatus:
+            
             if self.aboutWindow and XPIsWidgetVisible(self.aboutWindowWidget):
                 self.updateStatus()
                 self.gfs.refreshStatus = False
