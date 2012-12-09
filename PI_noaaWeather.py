@@ -401,6 +401,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                   '400_mb', # FL235
                   '300_mb', # FL300
                   '200_mb', # FL380
+                  '150_mb', # FL443
                   'high_cloud_bottom_level',
                   'high_cloud_layer',
                   'high_cloud_top_level',
@@ -418,7 +419,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                      'UGRD',
                      'VGRD',
                      'TMP',
-                     'RH',
+                     #'RH',
                      ]
         nwinds, nclouds = 0, 0
         
@@ -762,6 +763,9 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             file = "WAFS_blended_%sf%02d.grib2" % (datecycle, forecast )
             url =  "%s/gfs.%s/%s" % (self.baseurl, datecycle, file)
             cachefile = self.conf.dirsep.join([datecycle, file]) 
+            path = self.conf.cachepath + '/' + datecycle
+            if not os.path.exists(path):
+                os.makedirs(path)
             #print cachefile, url
             self.download = AsyncDownload(self.conf, url, cachefile)
             
