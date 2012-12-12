@@ -1,6 +1,6 @@
-================================
-Xplane NOAA GFS forecast weather
-================================
+==========================================
+[XPGFS] Xplane Noa Global Forecast weather
+==========================================
 
 Downloads Forecast data from NOAA servers and sets x-plane wind and cloud layers using forecasted data for the current time and 
 world corrdinates.
@@ -9,10 +9,10 @@ world corrdinates.
 Requirements
 ============
 
-Sandy Barbour Python Interface: http://www.xpluginsdk.org/python_interface_downloads.htm
-Python: http://www.python.org/getit/th
+Sandy Barbour Python Interface: http://www.xpluginsdk.org/python_interface_latest_downloads.htm
+Python: 2.7 http://www.python.org/getit/
 Wgrib2: the plugin comes with wgrib2 for common os osx, win32 and linux i686 glib2.5
-Wgrib requires cygwin on windows but the .dll is provided on the bin folder and there's no need to install-it.
+Wgrib uses cygwin on windows but the .dll is provided on the bin folder and there's no need to install-it.
 
 ============
 Installation
@@ -27,17 +27,19 @@ The resulting installation should look like:
     X-Plane/Resources/plugins/PythonScripts/PI_noaaWeather.py
     X-Plane/Resources/plugins/PythonScripts/EasyDref.py
 
+
 =========
 RESOURCES
 =========
 
 NOOA:
 -----
-GFS Products:  http://www.nco.ncep.noaa.gov/pmb/products/gfs/
-Inventory:     http://www.nco.ncep.noaa.gov/pmb/products/gfs/gfs.t00z.pgrb2f06.shtml
+GFS Products:     http://www.nco.ncep.noaa.gov/pmb/products/gfs/
+GFS Inventory:    http://www.nco.ncep.noaa.gov/pmb/products/gfs/gfs.t00z.pgrb2f06.shtml
+WAFS Inventory:   http://www.nco.ncep.noaa.gov/pmb/products/gfs/WAFS_blended_2012010606f06.grib2.shtml
+
 NOMADS filter: http://nomads.ncep.noaa.gov/
 wgrib2:        http://www.cpc.ncep.noaa.gov/products/wesley/wgrib2/
-
 
 OpenGrADS:
 ----------
