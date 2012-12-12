@@ -157,7 +157,20 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
         @classmethod
         def rh2visibility(self, rh):
             return 60.0*exp(-2.5*(rh-15)/80.0)
-    
+        @classmethod
+        def shortHdg(self, a, b):
+            if a == 360: a = 0
+            if b == 360: b = 0
+            if a > b:
+                cw = (360 - a + b)
+                ccw = -(a - b);
+            else:
+                cw = -(360 - b + a)
+                ccw = (b - a)     
+            if abs(cw) < abs(ccw):
+                return cw
+            return ccw
+
     class Conf:
         '''
         Configuration variables
@@ -258,6 +271,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
         Sets x-plane weather from GSF parsed data
         '''
         alt = 0.0
+        ref_winds = {}
         def __init__(self, conf):
             
             self.conf = conf
@@ -292,42 +306,64 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             self.thermalAlt  = EasyDref('sim/weather/thermal_altitude_msl_m', 'float')
             self.visibility  = EasyDref('sim/weather/visibility_reported_m', 'float')
         
-        def setWindLayer(self, xpwind, data, elapsed):
-            calt, chdg, cspeed = xpwind['alt'].value, xpwind['hdg'].value, xpwind['speed'].value
+        def setWindLayer(self,xpwind, layer, data, elapsed):
+            # Sets wind layer and does transition if needed
             alt, hdg, speed = data[0], data[1], data[2]
-            
-            xpwind['alt'].value, xpwind['hdg'].value, xpwind['speed'].value = alt, hdg, speed
-            return
-            
-            if (int(calt * 100), int(chdg * 100), int(cspeed*100)) == (int(alt*100), int(hdg*100), int(speed*100)):
-                return
-            
-            if int(alt) != int(calt):
-                # layer change no need to smoth xplane does interpolation
+            calt = xpwind['alt'].value
+
+            if int(alt*100) != int(calt*100):
+                # layer change trasition not needed xplane does interpolation
                 xpwind['alt'].value, xpwind['hdg'].value, xpwind['speed'].value = alt, hdg, speed
-            else:
-                xpwind['hdg'].value   = self.transHdg(chdg, hdg, elapsed)
-                xpwind['speed'].value = self.transWind(cspeed, speed, elapsed)
+                self.ref_winds[layer] = (alt, hdg, speed)
                 
-        def transWind(self, current, new, elapsed, vel=6):
+            else:
+                # Transition
+                if not layer in self.ref_winds:
+                    # Store reference wind layer to ignore x-plane roundings
+                    self.ref_winds[layer] = ( xpwind['alt'].value, xpwind['hdg'].value, xpwind['speed'].value)
+                
+                if self.ref_winds[layer] == (data[0], data[1], data[2]):
+                    # No need to transition if the data is updated
+                    return
+                
+                calt, chdg, cspeed = self.ref_winds[layer]
+                hdg     = self.transHdg(chdg, hdg, elapsed)
+                speed   = self.transWind(cspeed, speed, elapsed)
+                
+                self.ref_winds[layer] = calt, hdg, speed
+                xpwind['hdg'].value   = hdg
+                xpwind['speed'].value = speed
+
+        def transWind(self, current, new, elapsed, vel=1):
             '''
-            Time based wind transition
+            Time based wind speed transition
             '''
-            diff = new - current
-            if abs(diff) < vel*elapsed + 0.1:
+            if current > new:
+                dir = -1
+            else:
+                dir = 1
+            if abs(current - new) < vel*elapsed + 0.1:
                 return new
             else:
-                return current - (diff**0) * vel * elapsed
+                return current + dir * vel * elapsed
             
-        def transHdg(self, current, new, elapsed, vel=9):
+        def transHdg(self, current, new, elapsed, vel=12):
             '''
-            Time based wind transition
+            Time based wind heading transition
             '''
             diff = c.shortHdg(current, new)
-            if abs(diff) < vel*elapsed + 0.1:
+            if abs(diff) < vel*elapsed:
                 return new
             else:
-                return current + (diff**0) * vel * elapsed
+                if diff > 0:
+                    diff = +1
+                else:
+                    diff = -1
+                newval = current + diff * vel * elapsed
+                if newval < 0:
+                    return newval + 360
+                else:
+                    return newval % 360
             
         def setTurbulence(self, turbulence):
             '''
@@ -364,10 +400,10 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                     else:
                         prevlayer = wlayer
                 if prevlayer:
-                    self.setWindLayer(wl[1], prevlayer, elapsed)
-                    self.setWindLayer(wl[2], wlayer, elapsed)
+                    self.setWindLayer(wl[1], 1, prevlayer, elapsed)
+                    self.setWindLayer(wl[2], 2, wlayer, elapsed)
                 else:
-                    self.setWindLayer(wl[1], wlayer, elapsed)
+                    self.setWindLayer(wl[1], 1, wlayer, elapsed)
 
                 # Set temperature
                 if self.conf.set_temp and wlayer[3]['temp']:
@@ -378,7 +414,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                     else:
                         self.msltemp.value = wlayer[3]['temp']
                 '''
-                # Ser visibility
+                # Set visibility
                 if self.conf.set_visibility and wlayer[3]['vis']:
                     if prevlayer and prevlayer[0] != wlayer[0] and wlayer[3]['vis']:
                         self.visibility.value = c.interpolate(prevlayer[3]['vis'], wlayer[3]['vis'], prevlayer[0], wlayer[0], self.alt)
@@ -391,10 +427,10 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                 
                 if not self.conf.use_metar:
                     # Set first wind level if we don't use metar
-                    self.setWindLayer(wl[0], winds[0], elapsed)
+                    self.setWindLayer(wl[0], 0, winds[0], elapsed)
                 elif self.alt > winds[0][0]:
                     # Set first wind level on "descent"
-                    self.setWindLayer(wl[0], winds[0], elapsed)
+                    self.setWindLayer(wl[0], 0, winds[0], elapsed)
         
         def setClouds(self, clouds):
             if len(clouds) > 2:
@@ -437,6 +473,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                   '300_mb', # FL300
                   '200_mb', # FL380
                   '150_mb', # FL443
+                  '100_mb', # FL518
                   'high_cloud_bottom_level',
                   'high_cloud_layer',
                   'high_cloud_top_level',
@@ -471,6 +508,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
         winds  = False
         clouds = False
         newGrib = False
+        parsed_latlon = (0, 0)
         
         die = threading.Event()
         lock = threading.Lock()
@@ -478,7 +516,6 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
         def __init__(self, conf):
             self.conf = conf
             self.lastgrib = self.conf.lastgrib
-            self.refreshStatus = False
             self.wafs = WAFS(conf, self.lock)
             self.dummy_event = threading.Event()
             threading.Thread.__init__(self)
@@ -493,13 +530,11 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                 
                 # Parse grib if required
                 lat, lon = int(self.lat*10/5)*5, int(self.lon*10/5)*5
-                #if self.newGrib or (self.lastgrib and lat != self.lastlat and lon != self.lastlon):
-                if self.lastgrib and lat != self.lastlat and lon != self.lastlon:
+                if self.lastgrib and (lat != self.lastlat or lon != self.lastlon):
                     #print "XPGFS: parsing - %s - %i,%i" % (self.lastgrib, lat, lon)
                     self.parseGribData(self.lastgrib, self.lat, self.lon)
                     self.lastlat, self.lastlon = lat, lon
                     self.newGrib = False
-                    self.refreshStatus = True
                 
                 datecycle, cycle, forecast = self.getCycleDate()
     
@@ -509,7 +544,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                     self.downloadWait -= self.conf.parserate
                 
                 # Run WAFS
-                self.wafs.run(self.lat, self.lon)
+                self.wafs.run(self.lat, self.lon, self.conf.parserate)
                 
                 #wait
                 if self.die.isSet():
@@ -554,17 +589,25 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             
             if self.downloading == True:
                 if not self.download.q.empty():
-                    self.lock.acquire()
+                
                     #Finished downloading
-                    self.lastgrib = self.download.q.get()
+                    lastgrib = self.download.q.get()
+                    
                     # Dowload success
-                    if self.lastgrib:
+                    if lastgrib:
+                        self.lock.acquire()
+                        self.lastgrib = lastgrib
                         self.conf.lastgrib = self.lastgrib
                         self.newGrib = True
                         #print "new grib file: " + self.lastgrib
+                        self.lock.release()
+                    else:
+                        # Wait a minute
+                        self.downloadWait = 60
+                        
                     self.downloading = False
-                    self.lock.release()
-            elif self.conf.download:
+                    
+            elif self.conf.download and self.downloadWait > 0:
                 # Download new grib
                 
                 ## Build download url
@@ -575,15 +618,17 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                 
                 # add variables
                 for level in self.levels:
-                    params.append('lev_' + level + '=on')
+                    params.append('lev_' + level + '=1')
                 for var in self.variables:
-                    params.append('var_' + var + '=on')
+                    params.append('var_' + var + '=1')
                 
-                url = self.baseurl + '&'.join(params) 
+                url = self.baseurl + '&'.join(params)
                 
                 #print 'XPGFS: downloading %s' % (filename)
                 self.downloading = True
                 self.download = AsyncDownload(self.conf, url, cachefile)
+                
+                #print url
                 
             return False
         
@@ -671,6 +716,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             self.clouds = cloudlevels
             self.nwinds = len(windlevels)
             self.nclouds = len(cloudlevels)
+            self.parsed_latlon = (lat, lon)
             self.lock.release()
         
         def reparse(self):
@@ -694,6 +740,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
         lastlat, lastlon = False, False
         turbulence = {}
         nturbulence = 0
+        downloadWait = 0
             
         def __init__(self, conf, lock):
             self.conf        = conf
@@ -705,12 +752,12 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                 self.lastgrib = self.conf.lastwafsgrib
                 self.current_datecycle = self.conf.lastwafsgrib.split('/')[0]
             
-        def run(self, lat, lon):
+        def run(self, lat, lon, rate):
             # Worker thread
             
             # Parse grib if required
             lat, lon = int(lat), int(lon)
-            if self.lastgrib and lat != self.lastlat and lon != self.lastlon:
+            if self.lastgrib and (lat != self.lastlat or lon != self.lastlon):
                 self.parseGribData(self.lastgrib, lat, lon)
                 self.lastlat, self.lastlon = lat, lon
                 self.newGrib = False
@@ -722,16 +769,23 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                 if not self.download.q.empty():
                     lastgrib = self.download.q.get()
                     #print "Downloaded grib: " + lastgrib
-                    self.lock.acquire()
+                    
                     self.downloading = False
                     if lastgrib:
+                        self.lock.acquire()
                         self.lastgrib = lastgrib
                         self.conf.lastwafsgrib = lastgrib
                         self.current_datecycle = self.conf.lastwafsgrib.split('/')[0]
-                    self.lock.release()
+                        self.lock.release()
+                    else:
+                        # Download fail
+                        self.downloadWait = 60
+            
+            if self.downloadWait > 0:
+                self.downloadWait -= rate
             
             # Download new grib if required
-            if self.current_datecycle != datecycle and self.conf.download and not self.downloading:
+            if self.current_datecycle != datecycle and self.conf.download and not self.downloading and self.downloadWait < 1:
                 self.downloadCycle(datecycle, cycle, forecast)
                 
         def getCycleDate(self):
@@ -1073,7 +1127,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                     lastwafsgrib = self.conf.lastwafsgrib.split('/')
                     sysinfo = [
                     'XPGFS Status:',
-                    'lat: %.2f, lon: %.2f' % (self.gfs.lat, self.gfs.lon),
+                    'lat: %.2f/%.2f lon: %.2f/%.2f' % (self.gfs.lat, self.gfs.parsed_latlon[0], self.gfs.lon, self.gfs.parsed_latlon[1]),
                     'GFS Cycle: %s' % (lastgrib[0]),
                     'WAFS Cycle: %s' % (lastwafsgrib[0]),
                     'wind layers: %i' % (self.gfs.nwinds),
@@ -1095,6 +1149,8 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             '''
             Floop Callback
             '''
+            if self.aboutWindow and XPIsWidgetVisible(self.aboutWindowWidget):
+                self.updateStatus()
             
             if not self.conf.enabled or not self.gfs:
                 # Worker stoped wait 4s
@@ -1109,11 +1165,15 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             if self.conf.use_metar:
                 if self.weather.xpWeatherOn.value == 1:
                     if self.weather.alt > self.conf.transalt:
+                        #  Swicth to GFS
+                        self.weather.winds[0]['alt'].value = self.conf.transalt 
+                        self.weather.ref_winds[0] = (self.weather.winds[1]['alt'].value, self.weather.winds[1]['hdg'].value, self.weather.winds[1]['speed'].value)
                         self.weather.xpWeatherOn.value = 0
                     else:
                         return -1
                 else:
                     if self.weather.alt < self.conf.transalt:
+                        # Switch to METAR
                         self.weather.winds[0]['alt'].value = self.conf.transalt 
                         self.weather.xpWeatherOn.value = 1
                         return -1
@@ -1133,9 +1193,6 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             # Unlock
             self.gfs.lock.release()
             
-            if self.aboutWindow and XPIsWidgetVisible(self.aboutWindowWidget):
-                self.updateStatus()
-                self.gfs.refreshStatus = False
             return -1
         
         def XPluginStop(self):
