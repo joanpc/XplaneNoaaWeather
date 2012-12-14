@@ -26,7 +26,7 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 '''
-__VERSION__ = '1.5.3'
+__VERSION__ = '1.5.4'
 
 #Python includes
 from datetime import datetime, timedelta
@@ -142,6 +142,9 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             return oat + 0.0065 * alt - 273.15
         @classmethod
         def interpolate(self, t1, t2, alt1, alt2, alt):
+            if (alt2 - alt1) == 0:
+                print '[XPGFS] BUG: please report: ', t1, t2, alt1, alt2, alt
+                return t2
             return t1 + (alt - alt1)*(t2 -t1)/(alt2 -alt1)
         @classmethod
         def fog2(self, rh):
@@ -296,6 +299,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                                 'top':      EasyDref('"sim/weather/cloud_tops_msl_m[%d]"' % (i), 'float'),
                                 'bottom':   EasyDref('"sim/weather/cloud_base_msl_m[%d]"' % (i), 'float'),
                                 'coverage': EasyDref('"sim/weather/cloud_type[%d]"' % (i), 'int'),
+                                # XP10 'coverage': EasyDref('"sim/weather/cloud_coverage[%d]"' % (i), 'float'),
                                     })
                 
             self.windata = []
@@ -703,7 +707,9 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                 if 'top' in level and 'bottom' in level and 'TCDC' in level:
                     top, bottom, cover = float(level['top']), float(level['bottom']), float(level['TCDC'])
                     #print "XPGFS: top: %.0fmbar %.0fm, bottom: %.0fmbar %.0fm %d%%" % (top * 0.01, c.mb2alt(top * 0.01), bottom * 0.01, c.mb2alt(bottom * 0.01), cover)
+                    
                     cloudlevels.append((c.mb2alt(bottom * 0.01) * 0.3048, c.mb2alt(top * 0.01) * 0.3048, int(Weather.cc2xp(cover))))
+                    #XP10 cloudlevels.append((c.mb2alt(bottom * 0.01) * 0.3048, c.mb2alt(top * 0.01) * 0.3048, cover/10))
         
             windlevels.sort()        
             cloudlevels.sort(reverse=True)
@@ -1102,7 +1108,11 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                         self.weather.winds[0]['alt'].value = self.conf.transalt   
                     
                     self.conf.save()
+                    if not self.gfs:
+                        self.gfs = GFS(self.conf)
+                        self.gfs.start()
                     self.aboutWindowUpdate()
+                    return 1
             return 0
         
         def aboutWindowUpdate(self):
