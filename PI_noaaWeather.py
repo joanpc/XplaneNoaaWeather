@@ -26,7 +26,7 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 '''
-__VERSION__ = '1.5.4'
+__VERSION__ = '1.5.5'
 
 #Python includes
 from datetime import datetime, timedelta
@@ -611,7 +611,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                         
                     self.downloading = False
                     
-            elif self.conf.download and self.downloadWait > 0:
+            elif self.conf.download and self.downloadWait < 1:
                 # Download new grib
                 
                 ## Build download url
@@ -631,8 +631,6 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                 #print 'XPGFS: downloading %s' % (filename)
                 self.downloading = True
                 self.download = AsyncDownload(self.conf, url, cachefile)
-                
-                #print url
                 
             return False
         
