@@ -26,7 +26,7 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 '''
-__VERSION__ = '1.5.5'
+__VERSION__ = '1.5.6'
 
 #Python includes
 from datetime import datetime, timedelta
@@ -87,6 +87,11 @@ class AsyncDownload():
             if os.path.exists(tempfile):
                 os.remove(tempfile)
             self.q.put(False)
+
+    def die(self):
+        if self.child.is_alive():
+            self.child.terminate()
+            self.child.join(4)
 
 # Detect x-plane plugin
 if sys.platform != 'win32' or 'plane' in sys.executable.lower():
@@ -552,6 +557,11 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                 
                 #wait
                 if self.die.isSet():
+                    # Kill downloaders if avaliable
+                    if self.wafs and self.wafs.downloading and self.wafs.download:
+                        self.wafs.download.die()
+                    if self.downloading and self.download:
+                        self.download.die()
                     return
                 self.dummy_event.wait(timeout=self.conf.parserate)
             
@@ -1070,7 +1080,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
     
                 if (inParam1 == self.aboutVisit):
                     from webbrowser import open_new
-                    open_new('http://forums.x-plane.org/index.php?app=downloads&showfile=15453');
+                    open_new('http://x-plane.joanpc.com/');
                     return 1
                 if (inParam1 == self.donate):
                     from webbrowser import open_new
@@ -1212,6 +1222,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             # kill working thread
             if self.gfs:
                 self.gfs.die.set()
+                self.gfs.join()
             # Destroy menus
             XPLMDestroyMenu(self, self.mMain)
             self.conf.save()
