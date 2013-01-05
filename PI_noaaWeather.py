@@ -26,7 +26,7 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 '''
-__VERSION__ = '1.5.6'
+__VERSION__ = '1.5.7'
 
 #Python includes
 from datetime import datetime, timedelta
@@ -538,10 +538,10 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                     continue
                 
                 # Parse grib if required
-                lat, lon = int(self.lat*10/5)*5, int(self.lon*10/5)*5
+                lat, lon = round(self.lat/5,1)*5, round(self.lon/5,1)*5
                 if self.lastgrib and (lat != self.lastlat or lon != self.lastlon):
                     #print "XPGFS: parsing - %s - %i,%i" % (self.lastgrib, lat, lon)
-                    self.parseGribData(self.lastgrib, self.lat, self.lon)
+                    self.parseGribData(self.lastgrib, lat, lon)
                     self.lastlat, self.lastlon = lat, lon
                     self.newGrib = False
                 
@@ -770,7 +770,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             # Worker thread
             
             # Parse grib if required
-            lat, lon = int(lat), int(lon)
+            lat, lon = round(lat), round(lon)
             if self.lastgrib and (lat != self.lastlat or lon != self.lastlon):
                 self.parseGribData(self.lastgrib, lat, lon)
                 self.lastlat, self.lastlon = lat, lon
@@ -1145,7 +1145,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                     lastwafsgrib = self.conf.lastwafsgrib.split('/')
                     sysinfo = [
                     'XPGFS Status:',
-                    'lat: %.2f/%.2f lon: %.2f/%.2f' % (self.gfs.lat, self.gfs.parsed_latlon[0], self.gfs.lon, self.gfs.parsed_latlon[1]),
+                    'lat: %.2f/%.1f lon: %.2f/%.1f' % (self.gfs.lat, self.gfs.parsed_latlon[0], self.gfs.lon, self.gfs.parsed_latlon[1]),
                     'GFS Cycle: %s' % (lastgrib[0]),
                     'WAFS Cycle: %s' % (lastwafsgrib[0]),
                     'wind layers: %i' % (self.gfs.nwinds),
