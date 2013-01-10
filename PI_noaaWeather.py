@@ -26,7 +26,7 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 '''
-__VERSION__ = '1.5.7'
+__VERSION__ = '1.5.8'
 
 #Python includes
 from datetime import datetime, timedelta
@@ -235,6 +235,11 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                 wgbin = 'linux-glib2.5-i686-wgrib2'
             
             self.wgrib2bin  = self.dirsep.join([self.respath, 'bin', wgbin])
+            # Enforce execution rights
+            try:
+                os.chmod(self.wgrib2bin, 0775)
+            except:
+                pass
     
         def save(self):
             conf = {
@@ -700,10 +705,10 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                     if 'TMP' in wind:
                         temp = c.oat2msltemp(float(wind['TMP']), alt)
                     # Relative Humidity
-                    if 'RH' in wind:
-                        vis = c.rh2visibility(float(wind['RH']))*1000
-                        if vis > 40000:
-                            vis = 40000
+                    #if 'RH' in wind:
+                    #    vis = c.rh2visibility(float(wind['RH']))*1000
+                    #    if vis > 40000:
+                    #        vis = 40000
                     else:
                         temp = False
                     windlevels.append((alt, hdg, c.ms2knots(vel), {'temp': temp, 'vis': vis}))
@@ -1045,7 +1050,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
             sysinfo = [
             'X-Plane NOAA Weather: %s' % __VERSION__,
-            '(c) joan perez cauhe 2012',
+            '(c) joan perez cauhe 2012-13',
             ]
             for label in sysinfo:
                 y -= 10
