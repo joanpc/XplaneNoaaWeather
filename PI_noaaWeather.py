@@ -26,7 +26,7 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 '''
-__VERSION__ = '1.5.8'
+__VERSION__ = '1.5.9'
 
 #Python includes
 from datetime import datetime, timedelta
@@ -34,7 +34,6 @@ import threading
 from math import hypot, atan2, degrees, exp
 import os
 import sys
-from time import sleep
 import cPickle
 import multiprocessing
 
