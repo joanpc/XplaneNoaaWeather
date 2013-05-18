@@ -221,6 +221,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             
             # Selects the apropiate wgrib binary
             platform = sys.platform
+            self.spinfo = False
             
             if platform == 'darwin':
                 sysname, nodename, release, version, machine = os.uname()
@@ -230,6 +231,10 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                     wgbin = 'OSX106wgrib2'
             elif platform == 'win32':
                 wgbin = 'WIN32wgrib2.exe'
+                # Configure subprocess
+                self.spinfo = subprocess.STARTUPINFO()
+                self.spinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                
             else:
                 # Linux?
                 wgbin = 'linux-glib2.5-i686-wgrib2'
@@ -659,8 +664,10 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                     '%f' % (lat),
                     self.conf.cachepath + self.conf.dirsep + filepath
                     ]
-            
-            p = subprocess.Popen([self.conf.wgrib2bin] + args, stdout=subprocess.PIPE)
+            if self.conf.spinfo:
+                p = subprocess.Popen([self.conf.wgrib2bin] + args, stdout=subprocess.PIPE, startupinfo=self.conf.spinfo)
+            else:
+                p = subprocess.Popen([self.conf.wgrib2bin] + args, stdout=subprocess.PIPE)
             it = iter(p.stdout)
             data = {}
             clouds = {}
@@ -843,7 +850,10 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                     self.conf.cachepath + self.conf.dirsep + filepath
                     ]
             
-            p = subprocess.Popen([self.conf.wgrib2bin] + args, stdout=subprocess.PIPE)
+            if self.conf.spinfo:
+                p = subprocess.Popen([self.conf.wgrib2bin] + args, stdout=subprocess.PIPE, startupinfo=self.conf.spinfo)
+            else:
+                p = subprocess.Popen([self.conf.wgrib2bin] + args, stdout=subprocess.PIPE)
             it = iter(p.stdout)
             
             cat = {}
