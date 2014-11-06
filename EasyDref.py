@@ -11,34 +11,34 @@ class EasyDref:
         dataref = dataref.strip()
         self.isarray, dref = False, False
         
-        if ('"' in dataref):
+        if '"' in dataref:
             dref = dataref.split('"')[1]
             dataref = dataref[dataref.rfind('"')+1:]
         
-        if ('(' in dataref):
+        if '(' in dataref:
             # Detect embedded type, and strip it from dataref
             type = dataref[dataref.find('(')+1:dataref.find(')')]
             dataref = dataref[:dataref.find('(')] + dataref[dataref.find(')')+1:]
         
-        if ('[' in dataref):
+        if '[' in dataref:
             # We have an array
             self.isarray = True
             range = dataref[dataref.find('[')+1:dataref.find(']')].split(':')
             dataref = dataref[:dataref.find('[')]
-            if (len(range) < 2):
+            if len(range) < 2:
                 range.append(range[0])
             
             self.initArrayDref(range[0], range[1], type)
             
-        elif (type == "int"):
+        elif type == "int":
             self.dr_get = XPLMGetDatai
             self.dr_set = XPLMSetDatai
             self.cast = int
-        elif (type == "float"):
+        elif type == "float":
             self.dr_get = XPLMGetDataf
             self.dr_set = XPLMSetDataf
             self.cast = float  
-        elif (type == "double"):
+        elif type == "double":
             self.dr_get = XPLMGetDatad
             self.dr_set = XPLMSetDatad
             self.cast = float
@@ -55,15 +55,15 @@ class EasyDref:
         self.count = int(last) - int(first) +1
         self.last = int(last)
         
-        if (type == "int"):
+        if type == "int":
             self.rget = XPLMGetDatavi
             self.rset = XPLMSetDatavi
             self.cast = int
-        elif (type == "float"):
+        elif type == "float":
             self.rget = XPLMGetDatavf
             self.rset = XPLMSetDatavf
             self.cast = float  
-        elif (type == "bit"):
+        elif type == "bit":
             self.rget = XPLMGetDatab
             self.rset = XPLMSetDatab
             self.cast = float
@@ -72,13 +72,13 @@ class EasyDref:
         pass
 
     def set(self, value):
-        if (self.isarray):
+        if self.isarray:
             self.rset(self.DataRef, value, self.index, len(value))
         else:
             self.dr_set(self.DataRef, self.cast(value))
             
     def get(self):
-        if (self.isarray):
+        if self.isarray:
             list = []
             self.rget(self.DataRef, list, self.index, self.count)
             return list

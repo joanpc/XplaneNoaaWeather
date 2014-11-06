@@ -302,17 +302,17 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             
             for i in range(3):
                 self.winds.append({
-                              'alt':  EasyDref('"sim/weather/wind_altitude_msl_m[%d]"' % (i)),
-                              'hdg':  EasyDref('"sim/weather/wind_direction_degt[%d]"' % (i)),
-                              'speed': EasyDref('"sim/weather/wind_speed_kt[%d]"' % (i)),
-                              'turbulence': EasyDref('"sim/weather/turbulence[%d]"' % (i)),
+                              'alt':  EasyDref('"sim/weather/wind_altitude_msl_m[%d]"' % i),
+                              'hdg':  EasyDref('"sim/weather/wind_direction_degt[%d]"' % i),
+                              'speed': EasyDref('"sim/weather/wind_speed_kt[%d]"' % i),
+                              'turbulence': EasyDref('"sim/weather/turbulence[%d]"' % i),
                 })
                 
             for i in range(3):
                 self.clouds.append({
-                                'top':      EasyDref('"sim/weather/cloud_tops_msl_m[%d]"' % (i)),
-                                'bottom':   EasyDref('"sim/weather/cloud_base_msl_m[%d]"' % (i)),
-                                'coverage': EasyDref('"sim/weather/cloud_type[%d]"' % (i), 'int'),
+                                'top':      EasyDref('"sim/weather/cloud_tops_msl_m[%d]"' % i),
+                                'bottom':   EasyDref('"sim/weather/cloud_base_msl_m[%d]"' % i),
+                                'coverage': EasyDref('"sim/weather/cloud_type[%d]"' % i, 'int'),
                                 # XP10 'coverage': EasyDref('"sim/weather/cloud_coverage[%d]"' % (i), 'float'),
                                     })
                 
@@ -591,7 +591,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                 adjs = +24
             forecast = (adjs + now.hour - lcycle)/3*3
     
-            return ( '%d%02d%02d%02d' % (cnow.year, cnow.month, cnow.day, lcycle), lcycle, forecast)
+            return '%d%02d%02d%02d' % (cnow.year, cnow.month, cnow.day, lcycle), lcycle, forecast
     
         def downloadCycle(self, datecycle, cycle, forecast):
             '''
@@ -635,7 +635,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                 
                 ## Build download url
                 params = self.params;
-                dir =  'dir=%%2Fgfs.%s%%2Fmaster' % (datecycle)
+                dir =  'dir=%%2Fgfs.%s%%2Fmaster' % datecycle
                 params.append(dir)
                 params.append('file=' + filename)  
                 
@@ -659,8 +659,8 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             '''
             args = ['-s',
                     '-lon',
-                    '%f' % (lon),
-                    '%f' % (lat),
+                    '%f' % lon,
+                    '%f' % lat,
                     self.conf.cachepath + self.conf.dirsep + filepath
                     ]
             if self.conf.spinfo:
@@ -836,7 +836,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                     forecast = fcast
                     break
     
-            return ( '%d%02d%02d%02d' % (cnow.year, cnow.month, cnow.day, lcycle), lcycle, forecast)
+            return '%d%02d%02d%02d' % (cnow.year, cnow.month, cnow.day, lcycle), lcycle, forecast
     
         def parseGribData(self, filepath, lat, lon):
             '''
@@ -844,8 +844,8 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             '''
             args = ['-s',
                     '-lon',
-                    '%f' % (lon),
-                    '%f' % (lat),
+                    '%f' % lon,
+                    '%f' % lat,
                     self.conf.cachepath + self.conf.dirsep + filepath
                     ]
             
@@ -931,16 +931,16 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             Main menu Callback
             '''
             if menuItem == 1:
-                if (not self.aboutWindow):
+                if not self.aboutWindow:
                     self.CreateAboutWindow(221, 640)
                     self.aboutWindow = True
-                elif (not XPIsWidgetVisible(self.aboutWindowWidget)):
+                elif not XPIsWidgetVisible(self.aboutWindowWidget):
                     XPShowWidget(self.aboutWindowWidget)
     
         def CreateAboutWindow(self, x, y):
             x2 = x + 450
             y2 = y - 85 - 20 * 10
-            Buffer = "X-Plane NOAA GFS Weather - %s" % (__VERSION__)
+            Buffer = "X-Plane NOAA GFS Weather - %s" % __VERSION__
             top = y
                 
             # Create the Main Widget window
@@ -1083,20 +1083,20 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
         
         def aboutWindowHandler(self, inMessage, inWidget, inParam1, inParam2):
             # About window events
-            if (inMessage == xpMessage_CloseButtonPushed):
+            if inMessage == xpMessage_CloseButtonPushed:
                 if self.aboutWindow:
                     XPDestroyWidget(self, self.aboutWindowWidget, 1)
                     self.aboutWindow = False
                 return 1
     
             # Handle any button pushes
-            if (inMessage == xpMsg_PushButtonPressed):
+            if inMessage == xpMsg_PushButtonPressed:
     
-                if (inParam1 == self.aboutVisit):
+                if inParam1 == self.aboutVisit:
                     from webbrowser import open_new
                     open_new('http://x-plane.joanpc.com/');
                     return 1
-                if (inParam1 == self.donate):
+                if inParam1 == self.donate:
                     from webbrowser import open_new
                     open_new('https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=ZQL6V9YLKRFEJ&lc=US&item_name=joan%20x%2dplane%20developer&item_number=XP%20NOAA%20Weather&currency_code=EUR&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted');
                     return 1
@@ -1162,9 +1162,9 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                     'lat: %.2f/%.1f lon: %.2f/%.1f' % (self.gfs.lat, self.gfs.parsed_latlon[0], self.gfs.lon, self.gfs.parsed_latlon[1]),
                     'GFS Cycle: %s' % (lastgrib[0]),
                     'WAFS Cycle: %s' % (lastwafsgrib[0]),
-                    'wind layers: %i' % (self.gfs.nwinds),
-                    'cloud layers: %i' % (self.gfs.nclouds),
-                    'turbulence layers: %i' % (self.gfs.wafs.nturbulence),
+                    'wind layers: %i' % self.gfs.nwinds,
+                    'cloud layers: %i' % self.gfs.nclouds,
+                    'turbulence layers: %i' % self.gfs.wafs.nturbulence,
                     ]
                 if self.gfs.downloading:
                     sysinfo.append('Downloading new cycle.')
@@ -1248,7 +1248,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             pass
         
         def XPluginReceiveMessage(self, inFromWho, inMessage, inParam):
-            if (inParam == XPLM_PLUGIN_XPLANE and inMessage == XPLM_MSG_AIRPORT_LOADED):
+            if inParam == XPLM_PLUGIN_XPLANE and inMessage == XPLM_MSG_AIRPORT_LOADED:
                 # X-Plane loaded, start worker
                 if not self.gfs:
                     self.gfs = GFS(self.conf)
