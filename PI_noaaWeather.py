@@ -131,9 +131,9 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             if a < 0:
                 a += 360
             if a <= 180:
-                a = a + 180
+                a += 180
             else:
-                a = a -180
+                a -= 180
             return a, r
         
         @classmethod
