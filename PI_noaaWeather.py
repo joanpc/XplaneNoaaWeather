@@ -610,7 +610,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             if not os.path.exists(path):
                 os.makedirs(path)
             
-            if self.downloading == True:
+            if self.downloading:
                 if not self.download.q.empty():
                 
                     #Finished downloading
@@ -790,7 +790,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             datecycle, cycle, forecast = self.getCycleDate()
             
             # Use new grib if dowloaded
-            if self.downloading == True:
+            if self.downloading:
                 if not self.download.q.empty():
                     lastgrib = self.download.q.get()
                     #print "Downloaded grib: " + lastgrib

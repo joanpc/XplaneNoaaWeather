@@ -47,7 +47,7 @@ class EasyDref:
         
         if dref: dataref = dref
         self.DataRef = XPLMFindDataRef(dataref)
-        if self.DataRef == False:
+        if not self.DataRef:
             print "Can't find " + dataref + " DataRef"
     
     def initArrayDref(self, first, last, type):
