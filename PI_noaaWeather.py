@@ -170,7 +170,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             if b == 360: b = 0
             if a > b:
                 cw = (360 - a + b)
-                ccw = -(a - b);
+                ccw = -(a - b)
             else:
                 cw = -(360 - b + a)
                 ccw = (b - a)     
@@ -634,7 +634,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                 # Download new grib
                 
                 ## Build download url
-                params = self.params;
+                params = self.params
                 dir =  'dir=%%2Fgfs.%s%%2Fmaster' % datecycle
                 params.append(dir)
                 params.append('file=' + filename)  
@@ -1094,11 +1094,11 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
     
                 if inParam1 == self.aboutVisit:
                     from webbrowser import open_new
-                    open_new('http://x-plane.joanpc.com/');
+                    open_new('http://x-plane.joanpc.com/')
                     return 1
                 if inParam1 == self.donate:
                     from webbrowser import open_new
-                    open_new('https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=ZQL6V9YLKRFEJ&lc=US&item_name=joan%20x%2dplane%20developer&item_number=XP%20NOAA%20Weather&currency_code=EUR&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted');
+                    open_new('https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=ZQL6V9YLKRFEJ&lc=US&item_name=joan%20x%2dplane%20developer&item_number=XP%20NOAA%20Weather&currency_code=EUR&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted')
                     return 1
                 elif inParam1 == self.saveButton:
                     # Save configuration
