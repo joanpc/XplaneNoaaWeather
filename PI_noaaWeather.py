@@ -302,16 +302,16 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             
             for i in range(3):
                 self.winds.append({
-                              'alt':  EasyDref('"sim/weather/wind_altitude_msl_m[%d]"' % (i), 'float'),
-                              'hdg':  EasyDref('"sim/weather/wind_direction_degt[%d]"' % (i), 'float'),
-                              'speed': EasyDref('"sim/weather/wind_speed_kt[%d]"' % (i), 'float'),
-                              'turbulence': EasyDref('"sim/weather/turbulence[%d]"' % (i), 'float'),
+                              'alt':  EasyDref('"sim/weather/wind_altitude_msl_m[%d]"' % (i)),
+                              'hdg':  EasyDref('"sim/weather/wind_direction_degt[%d]"' % (i)),
+                              'speed': EasyDref('"sim/weather/wind_speed_kt[%d]"' % (i)),
+                              'turbulence': EasyDref('"sim/weather/turbulence[%d]"' % (i)),
                 })
                 
             for i in range(3):
                 self.clouds.append({
-                                'top':      EasyDref('"sim/weather/cloud_tops_msl_m[%d]"' % (i), 'float'),
-                                'bottom':   EasyDref('"sim/weather/cloud_base_msl_m[%d]"' % (i), 'float'),
+                                'top':      EasyDref('"sim/weather/cloud_tops_msl_m[%d]"' % (i)),
+                                'bottom':   EasyDref('"sim/weather/cloud_base_msl_m[%d]"' % (i)),
                                 'coverage': EasyDref('"sim/weather/cloud_type[%d]"' % (i), 'int'),
                                 # XP10 'coverage': EasyDref('"sim/weather/cloud_coverage[%d]"' % (i), 'float'),
                                     })
@@ -319,10 +319,10 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             self.windata = []
     
             self.xpWeatherOn = EasyDref('sim/weather/use_real_weather_bool', 'int')
-            self.msltemp     = EasyDref('sim/weather/temperature_sealevel_c', 'float')
-            self.dewpoint    = EasyDref('sim/weather/dewpoi_sealevel_c', 'float')
-            self.thermalAlt  = EasyDref('sim/weather/thermal_altitude_msl_m', 'float')
-            self.visibility  = EasyDref('sim/weather/visibility_reported_m', 'float')
+            self.msltemp     = EasyDref('sim/weather/temperature_sealevel_c')
+            self.dewpoint    = EasyDref('sim/weather/dewpoi_sealevel_c')
+            self.thermalAlt  = EasyDref('sim/weather/thermal_altitude_msl_m')
+            self.visibility  = EasyDref('sim/weather/visibility_reported_m')
         
         def setWindLayer(self,xpwind, layer, data, elapsed):
             # Sets wind layer and does transition if needed
@@ -580,7 +580,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             '''
             now = datetime.utcnow() 
             #cycle is published with 3 hours delay
-            cnow = now - timedelta(hours=3, minutes=0)
+            cnow = now - timedelta(hours=3)
             #get last cycle
             for cycle in self.cycles:
                 if cnow.hour >= cycle:
@@ -819,7 +819,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             '''
             now = datetime.utcnow() 
             # cycle is published with 3 hours delay
-            cnow = now - timedelta(hours=6, minutes=0)
+            cnow = now - timedelta(hours=6)
             # Get last cycle
             for cycle in self.cycles:
                 if cnow.hour >= cycle:
