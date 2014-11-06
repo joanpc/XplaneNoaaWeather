@@ -268,7 +268,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
         
         def load(self):
             if os.path.exists(self.settingsfile):
-                f = open(self.settingsfile, 'r')
+                f = open(self.settingsfile)
                 try:
                     conf = cPickle.load(f)
                     f.close()
