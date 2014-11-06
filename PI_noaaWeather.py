@@ -41,11 +41,11 @@ from urllib import urlretrieve
 import subprocess
 
 #### stderr stdout ebeded python workaround ####
-class wr_stdout():
+class wr_stdout(object):
     write = sys.stdout.write
     def flush(self):
         pass
-class wr_stderr():
+class wr_stderr(object):
     write = sys.stderr.write
     def flush(self):
         pass
@@ -55,7 +55,7 @@ sys.stderr = wr_stderr()
 sys.argv = ['']
 ###  ############################################
 
-class AsyncDownload():
+class AsyncDownload(object):
     '''
     Asyncronous download
     '''
@@ -111,7 +111,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
     from XPStandardWidgets import *
     from EasyDref import EasyDref
     
-    class c:
+    class c(object):
         '''
         Conversion tools
         '''
@@ -178,7 +178,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                 return cw
             return ccw
 
-    class Conf:
+    class Conf(object):
         '''
         Configuration variables
         '''
@@ -283,7 +283,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                         self.__dict__[var] = conf[var]
             
             
-    class Weather:
+    class Weather(object):
         '''
         Sets x-plane weather from GSF parsed data
         '''
@@ -749,7 +749,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             self.lastlon = False
             self.newGrib = True
 
-    class WAFS:
+    class WAFS(object):
         '''
         World Area Forecast System - Upper Air Forecast
         Download and parse functions

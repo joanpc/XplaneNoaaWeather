@@ -1,6 +1,6 @@
 from XPLMDataAccess import *
 
-class EasyDref:    
+class EasyDref(object):
     '''
     Easy Dataref access
     
