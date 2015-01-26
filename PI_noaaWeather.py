@@ -26,7 +26,7 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 '''
-__VERSION__ = '1.5.9'
+__VERSION__ = '1.6'
 
 #Python includes
 from datetime import datetime, timedelta
@@ -476,7 +476,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
         NOAA GFS download and parse functions.
         '''
         cycles = [0, 6, 12, 18]
-        baseurl = 'http://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_hd.pl?'
+        baseurl = 'http://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p50.pl?'
         
         params = [
                   'leftlon=0',
@@ -598,7 +598,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             Downloads the requested grib file
             '''
             
-            filename = 'gfs.t%02dz.mastergrb2f%02d' % (cycle, forecast)
+            filename = 'gfs.t%02dz.pgrb2full.0p50.f0%02d' % (cycle, forecast)
             
             path = self.conf.dirsep.join([self.conf.cachepath, datecycle]) 
             cachefile = datecycle + self.conf.dirsep + filename  + '.grib'
@@ -635,7 +635,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                 
                 ## Build download url
                 params = self.params;
-                dir =  'dir=%%2Fgfs.%s%%2Fmaster' % (datecycle)
+                dir =  'dir=%%2Fgfs.%s' % (datecycle)
                 params.append(dir)
                 params.append('file=' + filename)  
                 
