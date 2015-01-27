@@ -177,6 +177,9 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             if abs(cw) < abs(ccw):
                 return cw
             return ccw
+        @classmethod
+        def pa2inhg(self, pa):
+            return pa * 0.0002952998016471232
 
     class Conf:
         '''
@@ -202,12 +205,13 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             self.set_temp       = True
             self.set_visibility = False
             self.set_turb       = True
+            self.set_pressure   = True
             self.transalt       = 32808.399000000005
             self.use_metar      = False
             self.lastgrib       = False
             self.lastwafsgrib   = False
             self.updaterate     = 4
-            self.parserate      = 0.05
+            self.parserate      = 0.1
             self.vatsim         = False
             self.download       = True
             
@@ -253,6 +257,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                     'set_clouds': self.set_clouds,
                     'set_wind'  : self.set_wind,
                     'set_turb'  : self.set_turb,
+                    'set_pressure' : self.set_pressure,
                     'transalt'  : self.transalt,
                     'use_metar' : self.use_metar,
                     'enabled'   : self.enabled,
@@ -323,6 +328,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             self.dewpoint    = EasyDref('sim/weather/dewpoi_sealevel_c', 'float')
             self.thermalAlt  = EasyDref('sim/weather/thermal_altitude_msl_m', 'float')
             self.visibility  = EasyDref('sim/weather/visibility_reported_m', 'float')
+            self.pressure    = EasyDref('sim/weather/barometer_sealevel_inhg', 'float')
         
         def setWindLayer(self,xpwind, layer, data, elapsed):
             # Sets wind layer and does transition if needed
@@ -461,6 +467,9 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                         if int(cl[i]['bottom'].value) != int(clayer[0]) and cl[i]['coverage'].value != clayer[2]:
                             cl[i]['bottom'].value, cl[i]['top'].value, cl[i]['coverage'].value  = clayer
         
+        def setPressure(self, pressure):
+            self.pressure.value = pressure
+        
         @classmethod
         def cc2xp(self, cover):
             #Cloud cover to X-plane
@@ -498,7 +507,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                   'low_cloud_bottom_level',
                   'low_cloud_layer',
                   'low_cloud_top_level',
-                  #'mean_sea_level',
+                  'mean_sea_level',
                   'middle_cloud_bottom_level',
                   'middle_cloud_layer',
                   'middle_cloud_top_level',
@@ -509,6 +518,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                      'UGRD',
                      'VGRD',
                      'TMP',
+                     'PRMSL',
                      #'RH',
                      ]
         nwinds, nclouds = 0, 0
@@ -525,6 +535,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
         
         winds  = False
         clouds = False
+        pressure = False
         newGrib = False
         parsed_latlon = (0, 0)
         
@@ -647,7 +658,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                 
                 url = self.baseurl + '&'.join(params)
                 
-                #print 'XPGFS: downloading %s' % (filename)
+                #print 'XPGFS: downloading %s' % (url)
                 self.downloading = True
                 self.download = AsyncDownload(self.conf, url, cachefile)
                 
@@ -670,6 +681,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             it = iter(p.stdout)
             data = {}
             clouds = {}
+            pressure = False
             for line in it:
                 r = line[:-1].split(':')
                 # Level, variable, value
@@ -688,10 +700,10 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                         # wind levels
                         data.setdefault(level[0], {})
                         data[level[0]][variable] = value
-                elif level[0] == 'surface':
-                    #surface layer
-                    pass
-    
+                    elif level[0] == 'mean':
+                        if variable == 'PRMSL':
+                            pressure = c.pa2inhg(float(value))
+        
             windlevels = []
             cloudlevels = []
             
@@ -742,6 +754,10 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             self.nwinds = len(windlevels)
             self.nclouds = len(cloudlevels)
             self.parsed_latlon = (lat, lon)
+            if pressure:
+                self.pressure = pressure
+            else:
+                self.pressure = False
             self.lock.release()
         
         def reparse(self):
@@ -990,6 +1006,14 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             XPSetWidgetProperty(self.tempCheck, xpProperty_ButtonState, self.conf.set_temp)
             y -= 20
             
+            # Pressure enalbe
+            XPCreateWidget(x+5, y-40, x+20, y-60, 1, 'Pressure', 0, window, xpWidgetClass_Caption)
+            self.pressureCheck = XPCreateWidget(x+110, y-40, x+120, y-60, 1, '', 0, window, xpWidgetClass_Button)
+            XPSetWidgetProperty(self.pressureCheck, xpProperty_ButtonType, xpRadioButton)
+            XPSetWidgetProperty(self.pressureCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
+            XPSetWidgetProperty(self.pressureCheck, xpProperty_ButtonState, self.conf.set_pressure)
+            y -= 20
+            
             # Turbulence enable
             XPCreateWidget(x+5, y-40, x+20, y-60, 1, 'Turbulence', 0, window, xpWidgetClass_Caption)
             self.turbCheck = XPCreateWidget(x+110, y-40, x+120, y-60, 1, '', 0, window, xpWidgetClass_Button)
@@ -1063,7 +1087,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
             sysinfo = [
             'X-Plane NOAA Weather: %s' % __VERSION__,
-            '(c) joan perez cauhe 2012-13',
+            '(c) joan perez cauhe 2012-15',
             ]
             for label in sysinfo:
                 y -= 10
@@ -1110,6 +1134,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                     self.conf.set_wind      = XPGetWidgetProperty(self.windsCheck, xpProperty_ButtonState, None)
                     self.conf.set_clouds    = XPGetWidgetProperty(self.cloudsCheck, xpProperty_ButtonState, None)
                     self.conf.set_temp      = XPGetWidgetProperty(self.tempCheck, xpProperty_ButtonState, None)
+                    self.conf.set_pressure  = XPGetWidgetProperty(self.pressureCheck, xpProperty_ButtonState, None)
                     self.conf.set_turb      = XPGetWidgetProperty(self.turbCheck, xpProperty_ButtonState, None)
                     self.conf.use_metar     = XPGetWidgetProperty(self.metarCheck, xpProperty_ButtonState, None)
                     self.conf.vatsim        = XPGetWidgetProperty(self.vatsimCheck, xpProperty_ButtonState, None)
@@ -1228,6 +1253,10 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             # Set turbulence
             if self.conf.set_turb and self.gfs.wafs.turbulence and self.gfs.wafs.nturbulence:
                 self.weather.setTurbulence(self.gfs.wafs.turbulence)
+            
+            # Set pressure
+            if self.conf.set_pressure and self.gfs.pressure:
+                self.weather.setPressure(self.gfs.pressure)
             
             # Unlock
             self.gfs.lock.release()
