@@ -138,7 +138,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
         
         @classmethod
         def mb2alt(self, mb):
-            altpress = 44330.8 - (4946.54 * (mb*100)**0.1902632)
+            altpress = (1 - (mb/1013.25)**0.190284) * 44307
             return altpress
         @classmethod
         def oat2msltemp(self, oat, alt):
@@ -727,7 +727,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                     top, bottom, cover = float(level['top']), float(level['bottom']), float(level['TCDC'])
                     #print "XPGFS: top: %.0fmbar %.0fm, bottom: %.0fmbar %.0fm %d%%" % (top * 0.01, c.mb2alt(top * 0.01), bottom * 0.01, c.mb2alt(bottom * 0.01), cover)
                     
-                    cloudlevels.append((c.mb2alt(bottom * 0.01) * 0.3048, c.mb2alt(top * 0.01) * 0.3048, int(Weather.cc2xp(cover))))
+                    cloudlevels.append((c.mb2alt(bottom * 0.01), c.mb2alt(top * 0.01), int(Weather.cc2xp(cover))))
                     #XP10 cloudlevels.append((c.mb2alt(bottom * 0.01) * 0.3048, c.mb2alt(top * 0.01) * 0.3048, cover/10))
         
             windlevels.sort()        
@@ -859,22 +859,26 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             for line in it:
                 r = line[:-1].split(':')
                 # Level, variable, value
-                level, variable, value = [r[4].split(' '),  r[3],  r[7].split(',')[2].split('=')[1]]
-                if len(level) > 1 and level[1] == 'mb':
+                level, variable, value, maxave = [r[4].split(' '),  r[3],  r[7].split(',')[2].split('=')[1], r[6]]
+                if len(level) > 1 and level[1] == 'mb' and maxave == 'spatial max':
                     #print level[1], variable, value
                     alt = c.mb2alt(float(level[0]))
                     value = float(value)
                     if value < 0:
                         value = 0
                     if variable == 'CTP':
-                        cat[alt] = value
-                    if variable == 'CAT':
-                        cat[alt] = value
+                        value *= 100
+                    if variable in ('CAT', 'CTP'):
+                        if alt in cat:
+                            # override existing value if bigger
+                            if value > cat[alt]:
+                                cat[alt] = value
+                        else:
+                            cat[alt] = value
             
             turbulence = []
             for key, value in cat.iteritems():
-                turbulence.append([key, value/10])
-            
+                turbulence.append([key, value/6])
             turbulence.sort()
             
             self.lock.acquire()
