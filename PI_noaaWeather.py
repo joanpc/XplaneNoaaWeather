@@ -26,7 +26,7 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 '''
-__VERSION__ = '1.6'
+__VERSION__ = '1.7'
 
 #Python includes
 from datetime import datetime, timedelta
@@ -36,6 +36,7 @@ import os
 import sys
 import cPickle
 import multiprocessing
+import Queue
 
 from urllib import urlretrieve
 import subprocess
@@ -60,14 +61,14 @@ class AsyncDownload():
     Asyncronous download
     '''
     def __init__(self, conf, url, cachefile):
-        self.q = multiprocessing.Queue()
+        self.q = Queue.Queue()
         self.dirsep = conf.dirsep[:]
         cachepath = conf.cachepath[:]
         self.wgrib2bin = conf.wgrib2bin[:]
-        if sys.platform == 'win32':
-            multiprocessing.set_executable(os.path.join(sys.exec_prefix, 'pythonw.exe'))
-        self.child = multiprocessing.Process(target=self.run, args=(url, cachepath, cachefile))
-        self.child.start()
+        
+        self.t = threading.Thread(target = self.run, args = (url, cachepath, cachefile))
+        self.t.daemon = True
+        self.t.start()
         
     def run(self, url, cachepath, cachefile):
         filepath = cachepath + "/" + cachefile
@@ -88,9 +89,8 @@ class AsyncDownload():
             self.q.put(False)
 
     def die(self):
-        if self.child.is_alive():
-            self.child.terminate()
-            self.child.join(4)
+        if self.t.is_alive():
+            self.t.join(4)
 
 # Detect x-plane plugin
 if sys.platform != 'win32' or 'plane' in sys.executable.lower():
@@ -579,8 +579,8 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             Returns last cycle date avaliable
             '''
             now = datetime.utcnow() 
-            #cycle is published with 3 hours delay
-            cnow = now - timedelta(hours=3, minutes=0)
+            #cycle is published with 4 hours delay
+            cnow = now - timedelta(hours=4, minutes=0)
             #get last cycle
             for cycle in self.cycles:
                 if cnow.hour >= cycle:
@@ -1156,7 +1156,10 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                 
                 if self.gfs.lastgrib:
                     lastgrib = self.gfs.lastgrib.split('/')
-                    lastwafsgrib = self.conf.lastwafsgrib.split('/')
+                    if self.gfs.wafs.lastgrib:
+                        lastwafsgrib = self.gfs.wafs.lastgrib.split('/')
+                    else:
+                        lastwafsgrib = ['none','']
                     sysinfo = [
                     'XPGFS Status:',
                     'lat: %.2f/%.1f lon: %.2f/%.1f' % (self.gfs.lat, self.gfs.parsed_latlon[0], self.gfs.lon, self.gfs.parsed_latlon[1]),
