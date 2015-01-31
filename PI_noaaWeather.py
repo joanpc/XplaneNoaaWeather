@@ -35,7 +35,6 @@ from math import hypot, atan2, degrees, exp
 import os
 import sys
 import cPickle
-import multiprocessing
 import Queue
 
 from urllib import urlretrieve
@@ -67,7 +66,6 @@ class AsyncDownload():
         self.wgrib2bin = conf.wgrib2bin[:]
         
         self.t = threading.Thread(target = self.run, args = (url, cachepath, cachefile))
-        self.t.daemon = True
         self.t.start()
         
     def run(self, url, cachepath, cachefile):
@@ -739,7 +737,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                     top, bottom, cover = float(level['top']), float(level['bottom']), float(level['TCDC'])
                     #print "XPGFS: top: %.0fmbar %.0fm, bottom: %.0fmbar %.0fm %d%%" % (top * 0.01, c.mb2alt(top * 0.01), bottom * 0.01, c.mb2alt(bottom * 0.01), cover)
                     
-                    cloudlevels.append((c.mb2alt(bottom * 0.01), c.mb2alt(top * 0.01), int(Weather.cc2xp(cover))))
+                    cloudlevels.append((c.mb2alt(bottom * 0.01) * 0.3048, c.mb2alt(top * 0.01) * 0.3048, int(Weather.cc2xp(cover))))
                     #XP10 cloudlevels.append((c.mb2alt(bottom * 0.01) * 0.3048, c.mb2alt(top * 0.01) * 0.3048, cover/10))
         
             windlevels.sort()        
