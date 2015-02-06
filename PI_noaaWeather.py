@@ -71,8 +71,13 @@ class AsyncDownload():
     def run(self, url, cachepath, cachefile):
         filepath = cachepath + "/" + cachefile
         tempfile = filepath + '.tmp'
-        urlretrieve(url, tempfile)
-        
+        try:
+            urlretrieve(url, tempfile)
+        except Exception:
+            if os.path.exists(tempfile):
+                os.remove(tempfile)
+            self.q.put(False)
+            
         if os.path.getsize(tempfile) > 500:
             # Downloaded
             # unpack grib file
@@ -493,6 +498,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
                   ]
         levels  = [
                   '700_mb', # FL100
+                  '600_mb', # FL140
                   '500_mb', # FL180
                   '400_mb', # FL235
                   '300_mb', # FL300
@@ -588,7 +594,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             Returns last cycle date avaliable
             '''
             now = datetime.utcnow() 
-            #cycle is published with 4 hours delay
+            #cycle is published with 4 hours 25min delay
             cnow = now - timedelta(hours=4, minutes=0)
             #get last cycle
             for cycle in self.cycles:
@@ -610,7 +616,7 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             filename = 'gfs.t%02dz.pgrb2full.0p50.f0%02d' % (cycle, forecast)
             
             path = self.conf.dirsep.join([self.conf.cachepath, datecycle]) 
-            cachefile = datecycle + self.conf.dirsep + filename  + '.grib'
+            cachefile = datecycle + self.conf.dirsep + filename  + '.grib2'
             
             if cachefile == self.lastgrib:
                 # No need to download
@@ -832,8 +838,8 @@ if sys.platform != 'win32' or 'plane' in sys.executable.lower():
             Returns last cycle date avaliable
             '''
             now = datetime.utcnow() 
-            # cycle is published with 3 hours delay
-            cnow = now - timedelta(hours=6, minutes=0)
+            # cycle is published with 4 hours 33min delay
+            cnow = now - timedelta(hours=5, minutes=0)
             # Get last cycle
             for cycle in self.cycles:
                 if cnow.hour >= cycle:
