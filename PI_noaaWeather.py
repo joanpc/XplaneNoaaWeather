@@ -14,7 +14,7 @@ TODO:
 - msl pressure
 - remove old grib files from cache
 
-Copyright (C) 2012  Joan Perez i Cauhe
+Copyright (C) 2012-2015 Joan Perez i Cauhe
 ---
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -26,7 +26,7 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 '''
-__VERSION__ = '1.8'
+__VERSION__ = '2.0_beta'
 
 #Python includes
 from datetime import datetime, timedelta
@@ -80,9 +80,12 @@ class AsyncDownload():
             
         if os.path.getsize(tempfile) > 500:
             # Downloaded
-            # unpack grib file
-            subprocess.call([self.wgrib2bin, tempfile, '-set_grib_type', 'simple', '-grib_out', filepath])
-            os.remove(tempfile)
+            if filepath.split('.')[-1] == 'grib2':
+                # Uncompress grib2 file
+                subprocess.call([self.wgrib2bin, tempfile, '-set_grib_type', 'simple', '-grib_out', filepath])
+                os.remove(tempfile)
+            else:
+                os.rename(tempfile, filepath)    
             self.q.put(cachefile)
         else:
             # File unavaliable, empty file; wait 5 minutes
@@ -180,6 +183,19 @@ class c:
     @classmethod
     def pa2inhg(self, pa):
         return pa * 0.0002952998016471232
+    @classmethod
+    def timeTrasition(self, current, new, elapsed, vel=1):
+        '''
+        Time based wind speed transition
+        '''
+        if current > new:
+            dir = -1
+        else:
+            dir = 1
+        if abs(current - new) < vel*elapsed + 0.1:
+            return new
+        else:
+            return current + dir * vel * elapsed
 
 class Conf:
     '''
@@ -235,8 +251,10 @@ class Conf:
         elif platform == 'win32':
             wgbin = 'WIN32wgrib2.exe'
             # Configure subprocess
+            
             self.spinfo = subprocess.STARTUPINFO()
             self.spinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            self.spinfo.wShowWindow = subprocess.SW_HIDE # 0 or SW_SHOWMINNOACTIVE 7 
             
         else:
             # Linux?
@@ -352,24 +370,11 @@ class Weather:
             
             calt, chdg, cspeed = self.ref_winds[layer]
             hdg     = self.transHdg(chdg, hdg, elapsed)
-            speed   = self.transWind(cspeed, speed, elapsed)
+            speed   = c.timeTrasition(cspeed, speed, elapsed)
             
             self.ref_winds[layer] = calt, hdg, speed
             xpwind['hdg'].value   = hdg
             xpwind['speed'].value = speed
-
-    def transWind(self, current, new, elapsed, vel=1):
-        '''
-        Time based wind speed transition
-        '''
-        if current > new:
-            dir = -1
-        else:
-            dir = 1
-        if abs(current - new) < vel*elapsed + 0.1:
-            return new
-        else:
-            return current + dir * vel * elapsed
         
     def transHdg(self, current, new, elapsed, vel=12):
         '''
@@ -467,8 +472,11 @@ class Weather:
                     if int(cl[i]['bottom'].value) != int(clayer[0]) and cl[i]['coverage'].value != clayer[2]:
                         cl[i]['bottom'].value, cl[i]['top'].value, cl[i]['coverage'].value  = clayer
     
-    def setPressure(self, pressure):
-        self.pressure.value = pressure
+    def setPressure(self, pressure, elapsed):
+        # Transition
+        if not 'ref_pressure' in self.__dict__:
+            self.ref_pressure = self.pressure.value 
+        self.pressure.value = c.timeTrasition(self.ref_pressure, pressure, elapsed, 0.1)
     
     @classmethod
     def cc2xp(self, cover):
@@ -1125,7 +1133,7 @@ class PythonInterface:
                 from webbrowser import open_new
                 open_new('http://x-plane.joanpc.com/');
                 return 1
-            if (inParam1 == self.donate):
+            elif (inParam1 == self.donate):
                 from webbrowser import open_new
                 open_new('https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=ZQL6V9YLKRFEJ&lc=US&item_name=joan%20x%2dplane%20developer&item_number=XP%20NOAA%20Weather&currency_code=EUR&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted');
                 return 1
