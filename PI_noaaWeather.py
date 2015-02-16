@@ -40,21 +40,6 @@ import Queue
 from urllib import urlretrieve
 import subprocess
 
-#### stderr stdout ebeded python workaround ####
-class wr_stdout():
-    write = sys.stdout.write
-    def flush(self):
-        pass
-class wr_stderr():
-    write = sys.stderr.write
-    def flush(self):
-        pass
-sys.stdout = wr_stdout()
-sys.stderr = wr_stderr()
-# Argv missing on windows
-sys.argv = ['']
-###  ############################################
-
 class AsyncDownload():
     '''
     Asyncronous download
