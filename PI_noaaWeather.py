@@ -9,9 +9,8 @@ Includes wgrib2 binaries for Mac Win32 and linux i386glibc6
 Win32 wgrib2 requires cgywin now included in the resources folder
 
 TODO:
-- Remove shear and turbulence on transition
+- Remove shear on transition
 - Rain, snow, wind shears, visibility
-- msl pressure
 - remove old grib files from cache
 
 Copyright (C) 2012-2015 Joan Perez i Cauhe
@@ -26,7 +25,7 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 '''
-__VERSION__ = '2.0_beta'
+__VERSION__ = '1.9'
 
 #Python includes
 from datetime import datetime, timedelta
@@ -37,33 +36,54 @@ import sys
 import cPickle
 import Queue
 
-from urllib import urlretrieve
+import urllib2, zlib
 import subprocess
 
 class AsyncDownload():
     '''
     Asyncronous download
     '''
-    def __init__(self, conf, url, cachefile):
+    def __init__(self, conf, url, cachefile, min_size = 500):
         self.q = Queue.Queue()
         self.dirsep = conf.dirsep[:]
         cachepath = conf.cachepath[:]
         self.wgrib2bin = conf.wgrib2bin[:]
+        self.cancel = threading.Event()
+        self.min_size = min_size
         
         self.t = threading.Thread(target = self.run, args = (url, cachepath, cachefile))
         self.t.start()
         
     def run(self, url, cachepath, cachefile):
-        filepath = cachepath + "/" + cachefile
+        filepath = '/'.join([cachepath, cachefile])
         tempfile = filepath + '.tmp'
+        
+        # Request gzipped file
+        request = urllib2.Request(url)
+        request.add_header('Accept-encoding', 'gzip,deflate')
+        response = urllib2.urlopen(request)
+        
+        # Check for gzziped file
+        isGzip = response.headers.get('content-encoding', '').find('gzip') >= 0
+        gz = zlib.decompressobj(16+zlib.MAX_WBITS)
+        of = open(tempfile, 'w')
+        
         try:
-            urlretrieve(url, tempfile)
+            while not self.cancel.isSet():
+                    data = response.read(1024*8)
+                    if not data:
+                        break
+                    if isGzip:
+                        data = gz.decompress(data)
+                    of.write(data)
         except Exception:
             if os.path.exists(tempfile):
                 os.remove(tempfile)
             self.q.put(False)
-            
-        if os.path.getsize(tempfile) > 500:
+        
+        of.close()
+        
+        if os.path.getsize(tempfile) > self.min_size:
             # Downloaded
             if filepath.split('.')[-1] == 'grib2':
                 # Uncompress grib2 file
@@ -73,15 +93,15 @@ class AsyncDownload():
                 os.rename(tempfile, filepath)    
             self.q.put(cachefile)
         else:
-            # File unavaliable, empty file; wait 5 minutes
-            #print "XPGFS: Error downloading: %s" % (self.cachefile)
+            # File to small, remove file.
             if os.path.exists(tempfile):
                 os.remove(tempfile)
             self.q.put(False)
 
     def die(self):
         if self.t.is_alive():
-            self.t.join(4)
+            self.cancel.set()
+            self.t.join()
               
 # X-plane includes
 from XPLMDefs import *
@@ -235,8 +255,7 @@ class Conf:
                 wgbin = 'OSX106wgrib2'
         elif platform == 'win32':
             wgbin = 'WIN32wgrib2.exe'
-            # Configure subprocess
-            
+            # Hide wgrib window for windows users
             self.spinfo = subprocess.STARTUPINFO()
             self.spinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
             self.spinfo.wShowWindow = subprocess.SW_HIDE # 0 or SW_SHOWMINNOACTIVE 7 
@@ -1250,7 +1269,7 @@ class PythonInterface:
         
         # Set pressure
         if self.conf.set_pressure and self.gfs.pressure:
-            self.weather.setPressure(self.gfs.pressure)
+            self.weather.setPressure(self.gfs.pressure, elapsedSim)
         
         # Unlock
         self.gfs.lock.release()
