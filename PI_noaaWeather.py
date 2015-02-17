@@ -69,7 +69,9 @@ class AsyncDownload():
         of = open(tempfile, 'w')
         
         try:
-            while not self.cancel.isSet():
+            while True:
+                    if self.cancel.isSet():
+                        raise Exception()
                     data = response.read(1024*8)
                     if not data:
                         break
@@ -83,7 +85,7 @@ class AsyncDownload():
         
         of.close()
         
-        if os.path.getsize(tempfile) > self.min_size:
+        if os.path.exists(tempfile) and os.path.getsize(tempfile) > self.min_size:
             # Downloaded
             if filepath.split('.')[-1] == 'grib2':
                 # Uncompress grib2 file
