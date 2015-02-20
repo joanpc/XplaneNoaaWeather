@@ -141,8 +141,8 @@ class Weather:
     def shutdown(self):
         # Shutdown client and server
         self.die.set()
-        self.shutdownWeatherServer()
         self.weatherClientThread.join(3)
+        self.shutdownWeatherServer()
     
     def setWindLayer(self, xpwind, layer, data, elapsed):
         # Sets wind layer and does transition if needed
@@ -194,6 +194,8 @@ class Weather:
         '''
         Set turbulence for all wind layers with our own interpolation
         '''
+        turb = 0
+        
         prevlayer = False
         if len(turbulence) > 1:
             for clayer in turbulence:
@@ -666,9 +668,6 @@ class PythonInterface:
         Floop Callback
         '''
         
-        #if not self.conf.enabled or not self.gfs:
-            # Worker stoped wait 4s
-        #    return 4
         '''
         # Switch METAR/GFS mode
         if self.conf.use_metar:
@@ -686,40 +685,10 @@ class PythonInterface:
                     self.weather.winds[0]['alt'].value = self.conf.transalt 
                     self.weather.xpWeatherOn.value = 1
                     return -1
-        # Lock 
-        self.gfs.lock.acquire()
-        
-        # get acf position
-        self.gfs.lat = self.latdr.value
-        self.gfs.lon = self.londr.value
-        self.weather.alt = self.altdr.value
-        
-        # Set winds and clouds
-        if self.conf.set_wind and self.gfs.winds:
-            self.weather.setWinds(self.gfs.winds, elapsedMe)
-        if self.conf.set_clouds and self.gfs.clouds:
-            self.weather.setClouds(self.gfs.clouds)
-        
-        # Set turbulence
-        if self.conf.set_turb and self.gfs.wafs.turbulence and self.gfs.wafs.nturbulence:
-            self.weather.setTurbulence(self.gfs.wafs.turbulence)
-        
-        # Set pressure
-        if self.conf.set_pressure and self.gfs.pressure:
-            self.weather.setPressure(self.gfs.pressure, elapsedSim)
-        
-        # Set visibility from metar
-        if self.gfs.metar.weather:
-            if self.gfs.metar.weather['visibility']:
-                self.weather.visibility.value =  c.limit(self.gfs.metar.weather['visibility'], self.conf.max_visibility)
-        
-        # Unlock
-        self.gfs.lock.release()
         '''
         
         if self.aboutWindow and XPIsWidgetVisible(self.aboutWindowWidget):
             self.updateStatus()
-        
         
         if not self.conf.enabled or not self.weather.weatherData:
             # Worker stoped wait 4s
@@ -734,7 +703,6 @@ class PythonInterface:
         self.weather.alt = self.altdr.value
         
         wdata = self.weather.weatherData
-        
         
         # Release lock
         self.weather.lock.release()
@@ -761,14 +729,13 @@ class PythonInterface:
         return -1
     
     def XPluginStop(self):
+        # kill weather server/client
+        self.weather.shutdown()
+        
         # Destroy windows
         if self.aboutWindow:
             XPDestroyWidget(self, self.aboutWindowWidget, 1)
         XPLMUnregisterFlightLoopCallback(self, self.floop, 0)
-        
-        # kill working thread
-        if self.weather.weatherClientThread.is_alive():
-            self.weather.shutdown()
         
         XPLMDestroyMenu(self, self.mMain)
         self.conf.save()
