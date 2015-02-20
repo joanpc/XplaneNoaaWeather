@@ -17,10 +17,17 @@ class clientHandler(SocketServer.BaseRequestHandler):
         '''
         Prepares weather response
         '''
+        lat, lon = float(data[0]), float(data[1])
+        
         response = {
             'gfs': {},
             'wafs': {},
-            'metar': {}
+            'metar': {},
+            'info': {'lat': lat,
+                     'lon': lon,
+                     'wafs_cycle': 'na',
+                     'gfs_cycle': 'na'
+                     }
             }
         
         lat, lon = float(data[0]), float(data[1])
@@ -28,8 +35,10 @@ class clientHandler(SocketServer.BaseRequestHandler):
         # Parse gfs and wfas
         if gfs.lastgrib:
             response['gfs'] = gfs.parseGribData(gfs.lastgrib, lat, lon)
+            response['info']['gfs_cycle'] = gfs.lastgrib
         if gfs.wafs.lastgrib:
             response['wafs'] = gfs.wafs.parseGribData(gfs.wafs.lastgrib, lat, lon)
+            response['info']['wafs_cycle'] = gfs.wafs.lastgrib
             
         # Parse metar
         apt = gfs.metar.getClosestStation(gfs.metar.connection, lat, lon)
@@ -60,10 +69,8 @@ class clientHandler(SocketServer.BaseRequestHandler):
                 print '%s: !shutdown' % (self.client_address[0])
                 self.shutdown()
             elif data == '!reload':
-                # TODO: reload config
-                #self.conf.reload()
-                pass
-                    
+                # reload config
+                conf.load()
             else:
                 return
         
