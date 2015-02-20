@@ -28,6 +28,9 @@ class Conf:
         
         if self.lastgrib and not os.path.exists(self.cachepath + self.dirsep + self.lastgrib):
             self.lastgrib = False
+            
+        if self.lastwafsgrib and not os.path.exists(self.cachepath + self.dirsep + self.lastwafsgrib):
+            self.lastwafsgrib = False
         
         # Selects the apropiate wgrib binary
         platform = sys.platform
