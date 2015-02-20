@@ -3,7 +3,7 @@ import cPickle
 import sys
 import subprocess
 
-__VERSION__ = '2.0_beta1'
+__VERSION__ = '2.0_beta1.1'
 
 class Conf:
     '''
