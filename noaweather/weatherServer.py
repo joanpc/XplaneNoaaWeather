@@ -18,22 +18,23 @@ class clientHandler(SocketServer.BaseRequestHandler):
         Prepares weather response
         '''
         response = {
-            'gfs': False,
-            'wafs': False,
-            'metar': False
+            'gfs': {},
+            'wafs': {},
+            'metar': {}
             }
         
         lat, lon = float(data[0]), float(data[1])
         
         # Parse gfs and wfas
-        if gfs.conf.lastgrib and os.path.exists(gfs.conf.lastgrib):
-            response['gfs'] = gfs.parseGribData(gfs.conf.lastgrib, lat, lon)
-        if gfs.conf.lastwafsgrib and os.path.exists(gfs.conf.lastwafsgrib):
-            response['wafs'] = gfs.wafs.parseGribData(gfs.conf.lastwafsgrib, lat, lon)
+        if gfs.lastgrib:
+            response['gfs'] = gfs.parseGribData(gfs.lastgrib, lat, lon)
+        if gfs.wafs.lastgrib:
+            response['wafs'] = gfs.wafs.parseGribData(gfs.wafs.lastgrib, lat, lon)
             
         # Parse metar
         apt = gfs.metar.getClosestStation(gfs.metar.connection, lat, lon)
-        response['metar'] = gfs.metar.parseMetar(apt[0], apt[5], apt[3])
+        if apt and len(apt) > 4:
+            response['metar'] = gfs.metar.parseMetar(apt[0], apt[5], apt[3])
         
         return response
     
