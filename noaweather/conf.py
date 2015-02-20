@@ -3,13 +3,14 @@ import cPickle
 import sys
 import subprocess
 
-__VERSION__ = '2.0_beta1.1'
+
 
 class Conf:
     '''
     Configuration variables
     '''
     syspath, dirsep = '','/'
+    __VERSION__ = '2.0_beta1.1'
     
     def __init__(self, syspath):
         # Inits conf
@@ -89,7 +90,7 @@ class Conf:
 
     def save(self):
         conf = {
-                'version'   : __VERSION__,
+                'version'   : self.__VERSION__,
                 'lastgrib'  : self.lastgrib,
                 'set_temp'  : self.set_temp,
                 'set_clouds': self.set_clouds,

@@ -24,7 +24,6 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 '''
-__VERSION__ = '1.9'
          
 # X-plane includes
 from XPLMDefs import *
@@ -54,7 +53,7 @@ class Weather:
     '''
     alt = 0.0
     ref_winds = {}
-    lat, lon, last_lat, last_lon = 0, 0, False, False
+    lat, lon, last_lat, last_lon = 99, 99, False, False
     def __init__(self, conf):
         
         self.conf = conf
@@ -111,7 +110,7 @@ class Weather:
         Wheather client thread fetches wheather from the server
         '''
         while not self.die.wait(self.conf.parserate):
-
+            
             lat, lon = round(self.lat, 2), round(self.lon, 2)
             
             #TODO: time refresh/push
@@ -291,7 +290,10 @@ class PythonInterface:
     Xplane plugin
     '''
     def XPluginStart(self):
-        self.Name = "noaWeather - " + __VERSION__
+        self.syspath = []
+        self.conf = Conf(XPLMGetSystemPath(self.syspath)[:-1])
+        
+        self.Name = "noaWeather - " + self.conf.__VERSION__
         self.Sig = "noaWeather.joanpc.PI"
         self.Desc = "NOA GFS in x-plane"
          
@@ -299,8 +301,6 @@ class PythonInterface:
         self.londr  = EasyDref('sim/flightmodel/position/longitude', 'double')
         self.altdr  = EasyDref('sim/flightmodel/position/elevation', 'double')
         
-        self.syspath = []
-        self.conf = Conf(XPLMGetSystemPath(self.syspath)[:-1])
         self.weather = Weather(self.conf)
         
         #self.gfs = False
@@ -334,7 +334,7 @@ class PythonInterface:
     def CreateAboutWindow(self, x, y):
         x2 = x + 780
         y2 = y - 85 - 20 * 15
-        Buffer = "X-Plane NOAA GFS Weather - %s" % (__VERSION__)
+        Buffer = "X-Plane NOAA GFS Weather - %s" % (self.conf.__VERSION__)
         top = y
             
         # Create the Main Widget window
@@ -461,7 +461,7 @@ class PythonInterface:
         # Set the style to sub window
         XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
         sysinfo = [
-        'X-Plane NOAA Weather: %s' % __VERSION__,
+        'X-Plane NOAA Weather: %s' % self.conf.__VERSION__,
         '(c) joan perez cauhe 2012-15',
         ]
         for label in sysinfo:
@@ -622,6 +622,13 @@ class PythonInterface:
         
         else:
             wdata = self.weather.weatherData
+            if 'info' in wdata:
+                sysinfo = [
+                           'XPGFS Status:',
+                           'lat: %.2f/%.1f lon: %.2f/%.1f' % (self.weather.lat , wdata['info']['lat'], self.weather.lon, wdata['info']['lon']),
+                           'GFS Cycle: %s' % (wdata['info']['gfs_cycle']),
+                           'WAFS Cycle: %s' % (wdata['info']['wafs_cycle']),
+                ]
         
             if 'metar' in wdata:
                 sysinfo += [
@@ -629,9 +636,9 @@ class PythonInterface:
                             'Temperature: %.1f, Dewpoint: %.1f, ' % (wdata['metar']['temperature'][0], wdata['metar']['temperature'][1]) +
                             'Visibility: %d meters, ' % (wdata['metar']['visibility']) +
                             'Pressure: %f inhg ' % (wdata['metar']['pressure']),
-                            #'Wind speed: %dkt, gust +%dkt'  (self.gfs.metar.weather['wind'][0], self.gfs.metar.weather['wind'][1])
+                            'Wind speed: %dkt, gust +%dkt' % (wdata['metar']['wind'][0], wdata['metar']['wind'][1])
                            ]
-            if 'gfs' in wdata:
+            if 'gfs' in wdata and 'winds' in wdata['gfs']:
                 sysinfo += ['Wind layers: %i FL/HDG/KT' % (len(wdata['gfs']['winds']))]
                 wlayers = ''
                 i = 0
