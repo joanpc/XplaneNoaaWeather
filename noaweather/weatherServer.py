@@ -62,11 +62,10 @@ class clientHandler(SocketServer.BaseRequestHandler):
         if len(data) > 1:
             if data[0] == '?':
                 # weather data request
-                data = data[1:].split('|')
-                if len(data) > 1:
-                    response = self.getWeatherData(data)
+                sdata = data[1:].split('|')
+                if len(sdata) > 1:
+                    response = self.getWeatherData(sdata)
             elif data == '!shutdown':
-                print '%s: !shutdown' % (self.client_address[0])
                 self.shutdown()
             elif data == '!reload':
                 # reload config
@@ -75,26 +74,31 @@ class clientHandler(SocketServer.BaseRequestHandler):
                 return
         
         socket = self.request[1]
+        nbytes = 0
         
         if response:
-            socket.sendto(cPickle.dumps(response), self.client_address)       
+            response = cPickle.dumps(response)
+            socket.sendto(response, self.client_address)   
+            nbytes = sys.getsizeof(response)
             
-        print '%s : %s' % (self.client_address[0], data)
+        print '%s:%s : %d bytes sent.' % (self.client_address[0], data, nbytes)
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         path = sys.argv[1]
     else:
-        path = '/Volumes/TO_GO/X-Plane 10'
+        #path = '/Volumes/TO_GO/X-Plane 10'
+        path = 'G:'
     
     conf = Conf(path)
     gfs = GFS(conf)
     gfs.start()
     
-    # Open logfile
-    logfile = open(os.sep.join([conf.respath, 'weatherServerLog.txt']), 'a')
-    sys.stderr = logfile
-    sys.stdout = logfile
+    # Open logfile for POSIX systems (windows users can look at the msdows windows)
+    if not conf.win32:
+        logfile = open(os.sep.join([conf.respath, 'weatherServerLog.txt']), 'a')
+        sys.stderr = logfile
+        sys.stdout = logfile
 
     server = SocketServer.UDPServer(("localhost", conf.server_port), clientHandler)
     
@@ -109,7 +113,8 @@ if __name__ == "__main__":
     gfs.die.set()
     conf.save()
     print 'Server stoped.'
-    logfile.close()
+    if not conf.win32:
+        logfile.close()
     
     
     

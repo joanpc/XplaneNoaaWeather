@@ -103,13 +103,15 @@ class Weather:
         
         self.startWeatherServer()
         
-        self.weatherClientThread = threading.Thread(target = self.weatherClient)
+        self.weatherClientThread = threading.Thread(target=self.weatherClient)
         self.weatherClientThread.start()
             
     def weatherClient(self):
         '''
         Wheather client thread fetches wheather from the server
         '''
+        # Allow x-plane start, wait 20 seconds
+        self.die.wait(20)
         while not self.die.wait(self.conf.parserate):
             
             lat, lon = round(self.lat, 2), round(self.lon, 2)

@@ -26,7 +26,12 @@ class AsyncDownload():
         filepath = os.sep.join([cachepath, cachefile])
         tempfile = filepath + '.tmp'
         
-        print "Dowloading: %s" % (url)
+        if os.path.exists(tempfile):
+            os.remove(tempfile)
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        
+        print "Dowloading: %s" % (cachefile)
         
         # Request gzipped file
         request = urllib2.Request(url)
@@ -40,7 +45,12 @@ class AsyncDownload():
         # Check for gzziped file
         isGzip = response.headers.get('content-encoding', '').find('gzip') >= 0
         gz = zlib.decompressobj(16+zlib.MAX_WBITS)
-        of = open(tempfile, 'w')
+        
+        binary = ''
+        if filepath.split('.')[-1] == 'grib2':
+            binary = 'b'
+        
+        of = open(tempfile, 'w' + binary)
         
         try:
             while True:
@@ -48,6 +58,7 @@ class AsyncDownload():
                     raise Exception()
                 data = response.read(1024*128)
                 if not data:
+                    print 'Downloaded: %s' % (cachefile)
                     break
                 if isGzip:
                     data = gz.decompress(data)
@@ -63,6 +74,7 @@ class AsyncDownload():
             # Downloaded
             if filepath.split('.')[-1] == 'grib2':
                 # Uncompress grib2 file
+                print "Uncompressing grib: %s %s" % (self.wgrib2bin, tempfile)
                 subprocess.call([self.wgrib2bin, tempfile, '-set_grib_type', 'simple', '-grib_out', filepath])
                 os.remove(tempfile)
             else:

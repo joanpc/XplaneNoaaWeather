@@ -23,7 +23,7 @@ http://www.xpluginsdk.org/python_interface_sdk100_downloads.htm
 Copy the zip file contents to your X-Plane/Resources/plugins/PythonScripts folder.
 The resulting installation should look like:
 
-    X-Plane/Resources/plugins/PythonScripts/noaaWeatherResources/
+    X-Plane/Resources/plugins/PythonScripts/noaweather/
     X-Plane/Resources/plugins/PythonScripts/PI_noaaWeather.py
     X-Plane/Resources/plugins/PythonScripts/EasyDref.py
 

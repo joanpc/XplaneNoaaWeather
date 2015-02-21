@@ -29,9 +29,9 @@ class WAFS:
         self.lock = lock
         
         # Use last grib stored in config if still avaliable
-        if self.conf.lastwafsgrib and os.path.exists(self.conf.cachepath + '/' + self.conf.lastwafsgrib):
+        if self.conf.lastwafsgrib and os.path.exists(os.sep.join([self.conf.cachepath, self.conf.lastwafsgrib])):
             self.lastgrib = self.conf.lastwafsgrib
-            self.current_datecycle = self.conf.lastwafsgrib.split('/')[0]
+            self.current_datecycle = self.conf.lastwafsgrib.split(os.sep)[0]
         
     def run(self, lat, lon, rate):
         # Worker thread
@@ -43,14 +43,13 @@ class WAFS:
         if self.downloading == True:
             if not self.download.q.empty():
                 lastgrib = self.download.q.get()
-                #print "Downloaded grib: " + lastgrib
                 
                 self.downloading = False
                 if lastgrib:
                     self.lock.acquire()
                     self.lastgrib = lastgrib
                     self.conf.lastwafsgrib = lastgrib
-                    self.current_datecycle = self.conf.lastwafsgrib.split('/')[0]
+                    self.current_datecycle = self.conf.lastwafsgrib.split(os.sep)[0]
                     self.lock.release()
                 else:
                     # Download fail

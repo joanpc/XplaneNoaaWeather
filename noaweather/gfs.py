@@ -7,6 +7,7 @@ from wafs import WAFS
 from metar import Metar
 from asyncdownload import AsyncDownload
 from c import c
+import sys
 
 
 
@@ -105,6 +106,9 @@ class GFS(threading.Thread):
                 if self.downloading and self.download:
                     self.download.die()
                 return
+            
+            # flush stdout on each cycle to help debuging
+            sys.stdout.flush()
         
     def getCycleDate(self):
         '''
