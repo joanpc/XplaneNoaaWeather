@@ -82,7 +82,12 @@ class clientHandler(SocketServer.BaseRequestHandler):
         print '%s : %s' % (self.client_address[0], data)
 
 if __name__ == "__main__":
-    conf = Conf('/Volumes/TO_GO/X-Plane 10')
+    if len(sys.argv) > 1:
+        path = sys.argv[1]
+    else:
+        path = '/Volumes/TO_GO/X-Plane 10'
+    
+    conf = Conf(path)
     gfs = GFS(conf)
     gfs.start()
     
@@ -93,6 +98,7 @@ if __name__ == "__main__":
 
     server = SocketServer.UDPServer(("localhost", conf.server_port), clientHandler)
     
+    print 'Server started.'
     # Server loop
     try:
         server.serve_forever()
@@ -102,6 +108,7 @@ if __name__ == "__main__":
     # Close gfs worker and save config
     gfs.die.set()
     conf.save()
+    print 'Server stoped.'
     logfile.close()
     
     
