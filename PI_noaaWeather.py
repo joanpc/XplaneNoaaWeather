@@ -44,6 +44,7 @@ import cPickle
 import socket
 import threading
 import subprocess
+import os
 
 from noaweather import EasyDref, Conf, c
         
@@ -126,7 +127,7 @@ class Weather:
     
     def startWeatherServer(self):
         DETACHED_PROCESS = 0x00000008
-        args = [self.conf.pythonpath, self.conf.respath + '/weatherServer.py', self.conf.syspath]
+        args = [self.conf.pythonpath, os.sep.join([self.conf.respath, 'weatherServer.py']), self.conf.syspath]
         print args
         
         if self.conf.spinfo:
@@ -555,67 +556,6 @@ class PythonInterface:
         Update Status window
         '''
         sysinfo = []
-        '''
-        if self.gfs:
-            
-            if self.gfs.lastgrib:
-                lastgrib = self.gfs.lastgrib.split('/')
-
-                sysinfo = [
-                'XPGFS Status:',
-                'lat: %.2f/%.1f lon: %.2f/%.1f' % (self.gfs.lat, self.gfs.parsed_latlon[0], self.gfs.lon, self.gfs.parsed_latlon[1]),
-                'GFS Cycle: %s' % (lastgrib[0]),
-                'cloud layers: %i' % (self.gfs.nclouds),
-                ]
-                
-            if self.gfs.winds:
-                sysinfo += ['Wind layers: %i FL/HDG/KT' % (self.gfs.nwinds)]
-                wlayers = ''
-                i = 0
-                for layer in self.gfs.winds:
-                    i += 1
-                    alt, hdg, speed = layer[0], layer[1], layer[2]
-                    wlayers += 'FL%d/%03d/%d ' % (alt * 3.28084 / 100, hdg, speed)
-                    if i > 5:
-                        i = 0
-                        sysinfo += [wlayers]
-                        wlayers = ''    
-                if i > 0:
-                    sysinfo += [wlayers]  
-                
-
-            if self.gfs.wafs.lastgrib:
-                lastwafsgrib = self.gfs.wafs.lastgrib.split('/')
-                
-                tblayers = ''
-                for layer in self.gfs.wafs.turbulence:
-                    tblayers += 'FL%d/%.1f ' % (layer[0] * 3.28084 / 100, layer[1]) 
-                
-                sysinfo += [
-                            'WAFS Cycle: %s' % (lastwafsgrib[0]),
-                            'Turbulence layers: %i' % (self.gfs.wafs.nturbulence),
-                            tblayers
-                            ]
-                
-            if self.gfs.metar.weather:
-                sysinfo += [
-                            'Metar station: %s %s' % (self.gfs.metar.weather['icao'], self.gfs.metar.weather['metar']),
-                            'Temperature: %.1f, Dewpoint: %.1f, ' % (self.gfs.metar.weather['temperature'][0], self.gfs.metar.weather['temperature'][1]) +
-                            'Visibility: %d meters, ' % (self.gfs.metar.weather['visibility']) +
-                            'Pressure: %f inhg ' % (self.gfs.metar.weather['pressure']),
-                            #'Wind speed: %dkt, gust +%dkt'  (self.gfs.metar.weather['wind'][0], self.gfs.metar.weather['wind'][1])
-                           ]
-            if self.gfs.downloading:
-                sysinfo.append('Downloading new cycle.')              
-                
-                
-        else:
-            sysinfo = ['XPGFS Status:',
-                       'Data not ready'
-                       ]
-        '''
-        
-        sysinfo = []
         
         if not self.weather.weatherData:
             sysinfo = ['Data not ready. Please wait.']
@@ -630,7 +570,7 @@ class PythonInterface:
                            'WAFS Cycle: %s' % (wdata['info']['wafs_cycle']),
                 ]
         
-            if 'metar' in wdata:
+            if 'metar' in wdata and 'icao' in wdata['metar']:
                 sysinfo += [
                             'Metar station: %s %s' % (wdata['metar']['icao'], wdata['metar']['metar']),
                             'Temperature: %.1f, Dewpoint: %.1f, ' % (wdata['metar']['temperature'][0], wdata['metar']['temperature'][1]) +
@@ -716,7 +656,7 @@ class PythonInterface:
         
         # Set visibility from metar
         if 'metar' in wdata:
-            if wdata['metar']['visibility']:
+            if 'visibility' in wdata['metar']:
                 self.weather.visibility.value =  c.limit(wdata['metar']['visibility'], self.conf.max_visibility)
         
         if 'gfs' in wdata:    

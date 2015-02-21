@@ -132,8 +132,8 @@ class GFS(threading.Thread):
         
         filename = 'gfs.t%02dz.pgrb2full.0p50.f0%02d' % (cycle, forecast)
         
-        path = self.conf.dirsep.join([self.conf.cachepath, datecycle]) 
-        cachefile = datecycle + self.conf.dirsep + filename  + '.grib2'
+        path = os.sep.join([self.conf.cachepath, datecycle]) 
+        cachefile = os.sep.join([datecycle, filename])  + '.grib2'
         
         if cachefile == self.lastgrib:
             # No need to download
@@ -193,7 +193,7 @@ class GFS(threading.Thread):
                 '-lon',
                 '%f' % (lon),
                 '%f' % (lat),
-                self.conf.cachepath + self.conf.dirsep + filepath
+                os.sep.join([self.conf.cachepath, filepath])
                 ]
         if self.conf.spinfo:
             p = subprocess.Popen([self.conf.wgrib2bin] + args, stdout=subprocess.PIPE, startupinfo=self.conf.spinfo)

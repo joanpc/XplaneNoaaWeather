@@ -3,22 +3,22 @@ import cPickle
 import sys
 import subprocess
 
-
-
 class Conf:
     '''
     Configuration variables
     '''
-    syspath, dirsep = '','/'
+    syspath, dirsep = '', os.sep
     __VERSION__ = '2.0_beta1.1'
     
     def __init__(self, syspath):
         # Inits conf
         self.syspath      = syspath
-        self.respath      = self.dirsep.join([self.syspath, 'Resources', 'plugins', 'PythonScripts', 'noaweather'])
-        self.settingsfile = self.respath + self.dirsep + 'settings.pkl'
+        self.respath      = os.sep.join([self.syspath, 'Resources', 'plugins', 'PythonScripts', 'noaweather'])
+        self.settingsfile = os.sep.join([self.respath, 'settings.pkl'])
         
-        self.cachepath    = self.dirsep.join([self.respath, 'cache'])
+        print self.respath
+        self.cachepath    = os.sep.join([self.respath, 'cache'])
+        print self.cachepath
         if not os.path.exists(self.cachepath):
             os.makedirs(self.cachepath)
         
@@ -27,10 +27,10 @@ class Conf:
         # Override config
         self.parserate = 1
         
-        if self.lastgrib and not os.path.exists(self.cachepath + self.dirsep + self.lastgrib):
+        if self.lastgrib and not os.path.exists(os.sep.join([self.cachepath, self.lastgrib])):
             self.lastgrib = False
             
-        if self.lastwafsgrib and not os.path.exists(self.cachepath + self.dirsep + self.lastwafsgrib):
+        if self.lastwafsgrib and not os.path.exists(os.sep.join([self.cachepath, self.lastwafsgrib])):
             self.lastwafsgrib = False
         
         # Selects the apropiate wgrib binary
@@ -47,7 +47,7 @@ class Conf:
                 wgbin = 'OSX106wgrib2'
         elif platform == 'win32':
             wgbin = 'WIN32wgrib2.exe'
-            self.pythonpath = sys.exec_prefix + '/pythonw.exe'
+            self.pythonpath = os.sep.join([sys.exec_prefix, 'pythonw.exe'])
             # Hide wgrib window for windows users
             self.spinfo = subprocess.STARTUPINFO()
             self.spinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
@@ -57,7 +57,7 @@ class Conf:
             # Linux?
             wgbin = 'linux-glib2.5-i686-wgrib2'
         
-        self.wgrib2bin  = self.dirsep.join([self.respath, 'bin', wgbin])
+        self.wgrib2bin  = os.sep.join([self.respath, 'bin', wgbin])
         
         # Enforce execution rights
         try:

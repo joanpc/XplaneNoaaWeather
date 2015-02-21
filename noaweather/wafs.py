@@ -96,7 +96,7 @@ class WAFS:
                 '-lon',
                 '%f' % (lon),
                 '%f' % (lat),
-                self.conf.cachepath + self.conf.dirsep + filepath
+                os.sep.join([self.conf.cachepath, filepath])
                 ]
         
         if self.conf.spinfo:
@@ -142,7 +142,7 @@ class WAFS:
         self.downloading = True
         filename = "WAFS_blended_%sf%02d.grib2" % (datecycle, forecast )
         url =  "%s/gfs.%s/%s" % (self.baseurl, datecycle, filename)
-        cachefile = self.conf.dirsep.join([datecycle, filename]) 
+        cachefile = os.sep.join([datecycle, filename]) 
         path = self.conf.cachepath + '/' + datecycle
         if not os.path.exists(path):
             os.makedirs(path)

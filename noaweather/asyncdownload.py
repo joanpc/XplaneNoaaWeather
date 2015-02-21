@@ -23,7 +23,7 @@ class AsyncDownload():
         self.t.start()
         
     def run(self, url, cachepath, cachefile):
-        filepath = '/'.join([cachepath, cachefile])
+        filepath = os.sep.join([cachepath, cachefile])
         tempfile = filepath + '.tmp'
         
         print "Dowloading: %s" % (url)
