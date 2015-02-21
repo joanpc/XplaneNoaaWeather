@@ -111,7 +111,7 @@ class WAFS:
             level, variable, value, maxave = [r[4].split(' '),  r[3],  r[7].split(',')[2].split('=')[1], r[6]]
             if len(level) > 1 and level[1] == 'mb' and maxave == 'spatial max':
                 #print level[1], variable, value
-                alt = c.mb2alt(float(level[0]))
+                alt = int(c.mb2alt(float(level[0])))
                 value = float(value)
                 if value < 0:
                     value = 0

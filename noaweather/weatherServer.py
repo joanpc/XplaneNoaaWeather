@@ -87,8 +87,13 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         path = sys.argv[1]
     else:
-        #path = '/Volumes/TO_GO/X-Plane 10'
-        path = 'G:'
+        # Joanpc's personal debuggin options
+        if sys.platform == 'win32':
+            path = 'G:'
+        else:
+            path = '/Volumes/TO_GO/X-Plane 10'
+        
+        
     
     conf = Conf(path)
     gfs = GFS(conf)

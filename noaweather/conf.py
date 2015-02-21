@@ -8,7 +8,7 @@ class Conf:
     Configuration variables
     '''
     syspath, dirsep = '', os.sep
-    __VERSION__ = '2.0_beta3'
+    __VERSION__ = '2.0_beta3.1'
     
     def __init__(self, syspath):
         # Inits conf
@@ -51,13 +51,11 @@ class Conf:
             # Set environ for cygwin
             os.environ['CYGWIN'] = 'nodosfilewarning'
             wgbin = 'WIN32wgrib2.exe'
-            self.pythonpath = os.sep.join([sys.exec_prefix, 'pythonw.exe'])
+            self.pythonpath = os.sep.join([sys.exec_prefix, 'python.exe'])
             # Hide wgrib window for windows users
             self.spinfo = subprocess.STARTUPINFO()
-            if sys.version > 3:
-                self.spinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW 
-            else:
-                self.spinfo.dwFlags |= subprocess._subprocess.STARTF_USESHOWWINDOW 
+
+            self.spinfo.dwFlags |= 1 # STARTF_USESHOWWINDOW
             self.spinfo.wShowWindow = 7 # 0 or SW_SHOWMINNOACTIVE 7 
             
         else:

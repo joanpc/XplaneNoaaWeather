@@ -107,7 +107,7 @@ class GFS(threading.Thread):
                     self.download.die()
                 return
             
-            # flush stdout on each cycle to help debuging
+            # flush stdout 
             sys.stdout.flush()
         
     def getCycleDate(self):
