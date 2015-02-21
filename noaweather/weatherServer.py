@@ -92,7 +92,7 @@ if __name__ == "__main__":
     gfs.start()
     
     # Open logfile
-    logfile = open(conf.respath + '/weatherServerLog.txt', 'a')
+    logfile = open(os.sep.join([conf.respath, 'weatherServerLog.txt']), 'a')
     sys.stderr = logfile
     sys.stdout = logfile
 
