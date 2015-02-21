@@ -51,7 +51,7 @@ class Conf:
             # Hide wgrib window for windows users
             self.spinfo = subprocess.STARTUPINFO()
             self.spinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-            self.spinfo.wShowWindow = subprocess.SW_HIDE # 0 or SW_SHOWMINNOACTIVE 7 
+            self.spinfo.wShowWindow = 7 # 0 or SW_SHOWMINNOACTIVE 7 
             
         else:
             # Linux?
