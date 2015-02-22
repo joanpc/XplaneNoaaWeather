@@ -92,25 +92,23 @@ if __name__ == "__main__":
     else:
         # Joanpc's personal debuggin options
         if sys.platform == 'win32':
-            path = 'G:'
+            path = 'H:'
         else:
             path = '/Volumes/TO_GO/X-Plane 10'
         
-        
-    
     conf = Conf(path)
+    
+    logfile = open(os.sep.join([conf.respath, 'weatherServerLog.txt']), 'a')
+    sys.stderr = logfile
+    sys.stdout = logfile
+    
     gfs = GFS(conf)
     gfs.start()
     
-    # Open logfile for POSIX systems (windows users can look at the msdows windows)
-    if not conf.win32:
-        logfile = open(os.sep.join([conf.respath, 'weatherServerLog.txt']), 'a')
-        sys.stderr = logfile
-        sys.stdout = logfile
-
     server = SocketServer.UDPServer(("localhost", conf.server_port), clientHandler)
     
-    print 'Server started.'
+    print 'Server started. argv: %d' % (len(sys.argv))
+    print sys.argv
     # Server loop
     try:
         server.serve_forever()
