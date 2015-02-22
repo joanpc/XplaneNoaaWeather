@@ -19,10 +19,10 @@ class AsyncDownload():
         self.cancel = threading.Event()
         self.min_size = min_size
         
-        self.t = threading.Thread(target = self.run, args = (url, cachepath, cachefile))
+        self.t = threading.Thread(target = self.run, args = (conf, url, cachepath, cachefile))
         self.t.start()
         
-    def run(self, url, cachepath, cachefile):
+    def run(self, conf, url, cachepath, cachefile):
         filepath = os.sep.join([cachepath, cachefile])
         tempfile = filepath + '.tmp'
         
@@ -75,7 +75,15 @@ class AsyncDownload():
             if filepath.split('.')[-1] == 'grib2':
                 # Uncompress grib2 file
                 print "Uncompressing grib: %s %s" % (self.wgrib2bin, tempfile)
-                subprocess.call([self.wgrib2bin, tempfile, '-set_grib_type', 'simple', '-grib_out', filepath])
+                
+                args = [self.wgrib2bin, tempfile, '-set_grib_type', 'simple', '-grib_out', filepath]         
+        
+                if conf.spinfo:
+                    p = subprocess.Popen(args, startupinfo=conf.spinfo, close_fds=True)
+                else:
+                    p = subprocess.Popen(args, close_fds=True)
+                p.wait()
+                
                 os.remove(tempfile)
             else:
                 os.rename(tempfile, filepath)    
