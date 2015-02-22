@@ -62,7 +62,7 @@ class Metar:
         
         # Metar stations update
         if (time.time() - self.conf.ms_update) > self.STATION_UPDATE_RATE * 86400:
-            self.ms_download = AsyncDownload(self.conf, self.METAR_STATIONS_URL, os.sep.join(['', 'metar', 'stations.txt']))
+            self.ms_download = AsyncDownload(self.conf, self.METAR_STATIONS_URL, os.sep.join(['metar', 'stations.txt']))
             
         self.last_latlon, self.last_station, self.last_timestamp = [False]*3
         
@@ -268,7 +268,7 @@ class Metar:
                 metarfile = self.download.q.get()
                 
                 if metarfile:
-                    self.updateMetar(self.th_db, self.conf.cachepath + metarfile)
+                    self.updateMetar(self.th_db, os.sep.join([self.conf.cachepath, metarfile]))
                     self.reparse = True
                 else:
                     # No file downloaded
@@ -283,7 +283,7 @@ class Metar:
                 
         # Update stations table if required
         if self.ms_download and not self.ms_download.q.empty():
-            self.updateStations(self.th_db, self.conf.cachepath + self.ms_download.q.get())
+            self.updateStations(self.th_db, os.sep.join([self.conf.cachepath, self.ms_download.q.get()]))
             self.ms_download = False
             
     def downloadCycle(self, cycle, timestamp):
@@ -293,7 +293,7 @@ class Metar:
         if not os.path.exists(cachepath):
             os.makedirs(cachepath)
         
-        cachefile = os.sep.join(['', 'metar', '%d_%s.txt' % (timestamp, cycle)])
+        cachefile = os.sep.join(['metar', '%d_%sZ.txt' % (timestamp, cycle)])
         url = self.METAR_REPORT_URL % (cycle)
         self.download = AsyncDownload(self.conf, url, cachefile)
         

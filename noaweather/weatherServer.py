@@ -65,6 +65,9 @@ class clientHandler(SocketServer.BaseRequestHandler):
                 sdata = data[1:].split('|')
                 if len(sdata) > 1:
                     response = self.getWeatherData(sdata)
+                elif len(data) == 5:
+                    # Icao
+                    response = gfs.metar.getMetar(gfs.metar.connection, data[1:])
             elif data == '!shutdown':
                 self.shutdown()
             elif data == '!reload':

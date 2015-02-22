@@ -54,7 +54,7 @@ class Weather:
     '''
     alt = 0.0
     ref_winds = {}
-    lat, lon, last_lat, last_lon = 99, 99, False, False
+    lat, lon, last_lat, last_lon = 0, 0, False, False
     def __init__(self, conf):
         
         self.conf = conf
@@ -68,9 +68,11 @@ class Weather:
         
         for i in range(3):
             self.winds.append({
-                          'alt':  EasyDref('"sim/weather/wind_altitude_msl_m[%d]"' % (i), 'float'),
-                          'hdg':  EasyDref('"sim/weather/wind_direction_degt[%d]"' % (i), 'float'),
-                          'speed': EasyDref('"sim/weather/wind_speed_kt[%d]"' % (i), 'float'),
+                          'alt':    EasyDref('"sim/weather/wind_altitude_msl_m[%d]"' % (i), 'float'),
+                          'hdg':    EasyDref('"sim/weather/wind_direction_degt[%d]"' % (i), 'float'),
+                          'speed':  EasyDref('"sim/weather/wind_speed_kt[%d]"' % (i), 'float'),
+                          'gust' :  EasyDref('"sim/weather/shear_speed_kt[%d]"' % (i), 'float'),
+                          'gust_hdg' : EasyDref('"sim/weather/shear_direction_degt[%d]"' % (i), 'float'),
                           'turbulence': EasyDref('"sim/weather/turbulence[%d]"' % (i), 'float'),
             })
             
@@ -94,6 +96,7 @@ class Weather:
         
         # Data
         self.weatherData = False
+        self.weatherClientThread = False
         
         # Create client socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -102,30 +105,31 @@ class Weather:
         self.lock = threading.Lock()
         
         self.startWeatherServer()
-        
-        self.weatherClientThread = threading.Thread(target=self.weatherClient)
-        self.weatherClientThread.start()
+    
+    def startWeatherClient(self):
+        if not self.weatherClientThread:
+            self.weatherClientThread = threading.Thread(target=self.weatherClient)
+            self.weatherClientThread.start()
             
     def weatherClient(self):
         '''
         Wheather client thread fetches wheather from the server
         '''
         # Allow x-plane start, wait 20 seconds
-        self.die.wait(20)
         while not self.die.wait(self.conf.parserate):
             
             lat, lon = round(self.lat, 2), round(self.lon, 2)
             
             #TODO: time refresh/push
-            if True or (self.last_lat, self.last_lon) != (lat, lon):
+            #if True or (self.last_lat, self.last_lon) != (lat, lon):
                 
-                self.last_lat, self.last_lon = lat, lon
-                self.sock.sendto("?%f|%f\n" % (lat, lon), ('127.0.0.1', self.conf.server_port))
-                received = self.sock.recv(1024*8)
-            
-                self.lock.acquire() 
-                self.weatherData = cPickle.loads(received)
-                self.lock.release()
+            self.last_lat, self.last_lon = lat, lon
+            self.sock.sendto("?%f|%f\n" % (lat, lon), ('127.0.0.1', self.conf.server_port))
+            received = self.sock.recv(1024*8)
+        
+            self.lock.acquire() 
+            self.weatherData = cPickle.loads(received)
+            self.lock.release()
     
     def startWeatherServer(self):
         DETACHED_PROCESS = 0x00000008
@@ -149,30 +153,52 @@ class Weather:
     def setWindLayer(self, xpwind, layer, data, elapsed):
         # Sets wind layer and does transition if needed
         alt, hdg, speed = data[0], data[1], data[2]
+        
+        if 'gust' in data[3]:
+            gust = data[3]['gust']
+        else:
+            gust = 0
+        
         calt = xpwind['alt'].value
 
         if int(alt*100) != int(calt*100):
             # layer change trasition not needed xplane does interpolation
             xpwind['alt'].value, xpwind['hdg'].value, xpwind['speed'].value = alt, hdg, speed
-            self.ref_winds[layer] = (alt, hdg, speed)
+            xpwind['gust'].value, xpwind['gust_hdg'].value = gust, 0
+            
+            self.ref_winds[layer] = (alt, hdg, speed, gust, 0)
             
         else:
             # Transition
             if not layer in self.ref_winds:
                 # Store reference wind layer to ignore x-plane roundings
-                self.ref_winds[layer] = ( xpwind['alt'].value, xpwind['hdg'].value, xpwind['speed'].value)
+                self.ref_winds[layer] = ( xpwind['alt'].value, xpwind['hdg'].value, xpwind['speed'].value,
+                                          xpwind['gust'].value, xpwind['gust_hdg'])
             
-            if self.ref_winds[layer] == (data[0], data[1], data[2]):
-                # No need to transition if the data is updated
+            if self.ref_winds[layer] == (data[0], data[1], data[2], gust, 0):
+                # No need to transition if the data is up to date
                 return
             
-            calt, chdg, cspeed = self.ref_winds[layer]
+            # Get reference values
+            calt, chdg, cspeed, cgust, cgust_hdg = self.ref_winds[layer]
+            
+            # do Transition
             hdg     = self.transHdg(chdg, hdg, elapsed)
             speed   = c.timeTrasition(cspeed, speed, elapsed)
+            gust    = c.timeTrasition(cgust, gust, elapsed)
             
-            self.ref_winds[layer] = calt, hdg, speed
-            xpwind['hdg'].value   = hdg
-            xpwind['speed'].value = speed
+            if layer == 0:
+                # Do altitude trasition for metar based wind layers 1m/s
+                alt = c.timeTrasition(calt, alt, elapsed)
+                xpwind['alt'].value = alt
+            
+            self.ref_winds[layer] = calt, hdg, speed, gust, cgust_hdg
+            
+            # Set the data to the datarefs
+            xpwind['hdg'].value         = hdg
+            xpwind['speed'].value       = speed
+            xpwind['gust'].value        = gust
+            xpwind['gust_hdg'].value    = 0
         
     def transHdg(self, current, new, elapsed, vel=12):
         '''
@@ -253,13 +279,20 @@ class Weather:
             # First wind level
             if self.conf.vatsim:
                 return
-            
+            '''
             if not self.conf.use_metar:
                 # Set first wind level if we don't use metar
                 self.setWindLayer(wl[0], 0, winds[0], elapsed)
             elif self.alt > winds[0][0]:
                 # Set first wind level on "descent"
                 self.setWindLayer(wl[0], 0, winds[0], elapsed)
+            '''
+            
+            if 'metar' in self.weatherData and 'wind' in self.weatherData['metar']:
+                alt = self.weatherData['metar']['elevation'] 
+                hdg, speed, gust = self.weatherData['metar']['wind']
+                self.setWindLayer(wl[0], 0, [alt, hdg, speed, {'gust': gust}], elapsed)
+                
     
     def setClouds(self, clouds):
         if len(clouds) > 2:
@@ -536,9 +569,9 @@ class PythonInterface:
                     self.weather.winds[0]['alt'].value = self.conf.transalt   
                 
                 self.conf.save()
-                #if not self.gfs:
-                #    self.gfs = GFS(self.conf)
-                #    self.gfs.start()
+                
+                self.weather.startWeatherClient()
+                
                 self.aboutWindowUpdate()
                 return 1
         return 0
@@ -578,7 +611,7 @@ class PythonInterface:
                             'Temperature: %.1f, Dewpoint: %.1f, ' % (wdata['metar']['temperature'][0], wdata['metar']['temperature'][1]) +
                             'Visibility: %d meters, ' % (wdata['metar']['visibility']) +
                             'Pressure: %f inhg ' % (wdata['metar']['pressure']),
-                            'Wind speed: %dkt, gust +%dkt' % (wdata['metar']['wind'][0], wdata['metar']['wind'][1])
+                            'Wind:  %d %dkt, gust +%dkt' % (wdata['metar']['wind'][0], wdata['metar']['wind'][1], wdata['metar']['wind'][2])
                            ]
             if 'gfs' in wdata and 'winds' in wdata['gfs']:
                 sysinfo += ['Wind layers: %i FL/HDG/KT' % (len(wdata['gfs']['winds']))]
@@ -669,7 +702,7 @@ class PythonInterface:
                 self.weather.setClouds(wdata['gfs']['clouds'])
             # Set pressure
             if self.conf.set_pressure and 'pressure' in wdata['gfs']:
-                self.weather.setPressure(wdata['gfs']['pressure'], elapsedSim)
+                self.weather.setPressure(wdata['gfs']['pressure'], elapsedMe)
         
         if self.conf.set_turb and 'wafs' in wdata:
             self.weather.setTurbulence(wdata['wafs'])
@@ -697,8 +730,4 @@ class PythonInterface:
     
     def XPluginReceiveMessage(self, inFromWho, inMessage, inParam):
         if (inParam == XPLM_PLUGIN_XPLANE and inMessage == XPLM_MSG_AIRPORT_LOADED):
-            # X-Plane loaded, start worker
-            #if not self.gfs:
-            #    self.gfs = GFS(self.conf)
-            #    self.gfs.start()
-            pass
+            self.weather.startWeatherClient()
