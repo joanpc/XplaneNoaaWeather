@@ -87,6 +87,7 @@ class clientHandler(SocketServer.BaseRequestHandler):
         print '%s:%s : %d bytes sent.' % (self.client_address[0], data, nbytes)
 
 if __name__ == "__main__":
+    # Get the X-Plane path from the arguments
     if len(sys.argv) > 1:
         path = sys.argv[1]
     else:

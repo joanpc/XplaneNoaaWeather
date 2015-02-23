@@ -20,7 +20,7 @@ class Metar:
     RE_PRESSURE     = re.compile('\b(Q|QNH|SLP|A) ?([0-9]{3,4})\b')
     RE_TEMPERATURE  = re.compile('(M|-)?([0-9]{1,2})/(M|-)?([0-9]{1,2})')
     RE_TEMPERATURE2 = re.compile('T(0|1)([0-9]){3}(0|1)([0-9]){3}')
-    RE_PRECIPITATION = re.compile('(-|\+)?(RA|DZ|SN|SG|IC|PL|TS)')
+    RE_PRECIPITATION = re.compile('(-|\+)?(DZ|SG|IC|PL)?(RA|SN|TS)')
     
     METAR_STATIONS_URL = 'http://www.aviationweather.gov/static/adds/metars/stations.txt'
     METAR_REPORT_URL = 'http://weather.noaa.gov/pub/data/observations/metar/cycles/%sZ.TXT'
@@ -173,7 +173,7 @@ class Metar:
                    'temperature': [0, 0], # Temperature, dewpoint
                    'pressure': c.pa2inhg(1013.25),
                    'visibility': 9999,
-                   'precipitation': 0,
+                   'precipitation': [],
                    }
         
         clouds = []
@@ -247,8 +247,8 @@ class Metar:
             
         precipitation = {}
         for precp in self.RE_PRECIPITATION.findall(metar):
-            intensity, type = precp
-            precipitation[type] = intensity
+            intensity, mod, type = precp
+            precipitation[type] = {'int': intensity ,'mod': mod}
             
         weather['precipitation'] = precipitation
     

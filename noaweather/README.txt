@@ -25,8 +25,6 @@ The resulting installation should look like:
 
     X-Plane/Resources/plugins/PythonScripts/noaweather/
     X-Plane/Resources/plugins/PythonScripts/PI_noaaWeather.py
-    X-Plane/Resources/plugins/PythonScripts/EasyDref.py
-
 
 =========
 RESOURCES

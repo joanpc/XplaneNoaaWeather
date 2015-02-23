@@ -1,16 +1,24 @@
 '''
 X-plane NOAA GFS weather plugin.
 
-Sets x-plane wind and cloud layers using NOAA real/forecast data.
-This plugin downloads required data from NOAA servers.
+Sets x-plane wind, temperature, cloud and turbulence layers 
+using NOAA real/forecast data and METAR reports.
+
+The plugin downloads all the required data from NOAA servers.
 
 Uses wgrib2 to parse NOAA grib2 data files.
-Includes wgrib2 binaries for Mac Win32 and linux i386glibc6
-Win32 wgrib2 requires cgywin now included in the resources folder
+Wgrib2 binaries for MacOSX Win32 and linux i386glibc6 are 
+provided Win32 wgrib2 requires cgywin also included in the 
+bin folder.
 
-TODO:
-- Remove shear on transition
-- remove old grib files from cache
+Official site:
+http://x-plane.joanpc.com/plugins/xpgfs-noaa-weather
+
+For support visit:
+http://forums.x-plane.org/index.php?showtopic=72313
+
+Github project page:
+https://github.com/joanpc/XplaneNoaaWeather
 
 Copyright (C) 2012-2015 Joan Perez i Cauhe
 ---
@@ -93,6 +101,8 @@ class Weather:
         self.visibility  = EasyDref('sim/weather/visibility_reported_m', 'float')
         self.pressure    = EasyDref('sim/weather/barometer_sealevel_inhg', 'float')
         
+        self.precipitation = EasyDref('sim/weather/rain_percent', 'float')
+        self.thunderstorm = EasyDref('sim/weather/thunderstorm_percent', 'float')
         
         # Data
         self.weatherData = False
@@ -134,7 +144,6 @@ class Weather:
     def startWeatherServer(self):
         DETACHED_PROCESS = 0x00000008
         args = [self.conf.pythonpath, os.sep.join([self.conf.respath, 'weatherServer.py']), self.conf.syspath]
-        print args
         
         if self.conf.spinfo:
             subprocess.Popen(args, startupinfo=self.conf.spinfo, close_fds=True, creationflags=DETACHED_PROCESS)
@@ -189,6 +198,7 @@ class Weather:
             
             if layer == 0:
                 # Do altitude trasition for metar based wind layers 1m/s
+                alt = c.limit(alt, max = 304.8) # XP minimum wind layer alt 1000 feet
                 alt = c.timeTrasition(calt, alt, elapsed)
                 xpwind['alt'].value = alt
             
@@ -613,6 +623,13 @@ class PythonInterface:
                             'Pressure: %f inhg ' % (wdata['metar']['pressure']),
                             'Wind:  %d %dkt, gust +%dkt' % (wdata['metar']['wind'][0], wdata['metar']['wind'][1], wdata['metar']['wind'][2])
                            ]
+                if 'precipitation' in wdata['metar'] and len(wdata['metar']['precipitation']):
+                    precip = ''
+                    for type in wdata['metar']['precipitation']:
+                        precip += '%s%s ' % (wdata['metar']['precipitation'][type]['int'], type)
+                
+                    sysinfo += ['Precipitation: %s' % (precip)]
+                     
             if 'gfs' in wdata and 'winds' in wdata['gfs']:
                 sysinfo += ['Wind layers: %i FL/HDG/KT' % (len(wdata['gfs']['winds']))]
                 wlayers = ''
@@ -689,10 +706,32 @@ class PythonInterface:
         # Release lock
         self.weather.lock.release()
         
+        pressSet = False
+        
+        rain, ts = 0, 0
+        
         # Set visibility from metar
         if 'metar' in wdata:
             if 'visibility' in wdata['metar']:
                 self.weather.visibility.value =  c.limit(wdata['metar']['visibility'], self.conf.max_visibility)
+            if 'pressure' in wdata['metar']:
+                self.weather.setPressure(wdata['metar']['pressure'], elapsedMe)
+                pressSet = True
+            if'precipitation' in wdata['metar'] and len(wdata['metar']['precipitation']):
+                precp = wdata['metar']['precipitation']
+                if 'RA'in precp:
+                    rain = c.metar2xpprecipitation('RA', precp['RA']['int'], precp['RA']['mod'])
+                if 'SN'in precp:
+                    rain = c.metar2xpprecipitation('RA', precp['SN']['int'], precp['SN']['mod'])
+                if 'TS' in precp:
+                    ts = 0.5
+                    if  precp['TS']['int'] == '-':
+                        ts = 0.25
+                    elif precp['TS']['int'] == '+':
+                        ts = 1
+        
+        self.weather.thunderstorm.value = ts
+        self.weather.precipitation.value = rain
         
         if 'gfs' in wdata:    
             # Set winds and clouds
@@ -701,11 +740,12 @@ class PythonInterface:
             if self.conf.set_clouds and 'clouds' in wdata['gfs']:
                 self.weather.setClouds(wdata['gfs']['clouds'])
             # Set pressure
-            if self.conf.set_pressure and 'pressure' in wdata['gfs']:
+            if not pressSet and self.conf.set_pressure and 'pressure' in wdata['gfs']:
                 self.weather.setPressure(wdata['gfs']['pressure'], elapsedMe)
         
         if self.conf.set_turb and 'wafs' in wdata:
             self.weather.setTurbulence(wdata['wafs'])
+            
         
         
         return -1

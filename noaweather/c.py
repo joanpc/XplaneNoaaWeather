@@ -99,3 +99,19 @@ class c:
         elif cover > 89:
             xp = 4
         return xp
+    @classmethod
+    def metar2xpprecipitation(self, type, int, mod):
+        ''' Return intensity '''
+        
+        ints = {'-': 0, '': 1, '+': 2} 
+        intensity = ints[int]
+        
+        types = {
+         'DZ': [0.1, 0.2 , 0.3],
+         'RA': [0.3 ,0.5, 0.8],
+         'SN': [0.25 ,0.5, 0.8], # Snow
+         'SH': [0.7, 0.8,  1]
+         }
+        
+        if type in types:
+            return types[type][intensity]
