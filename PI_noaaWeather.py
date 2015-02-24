@@ -53,7 +53,6 @@ import socket
 import threading
 import subprocess
 import os
-import time
 
 from noaweather import EasyDref, Conf, c
         
@@ -111,6 +110,7 @@ class Weather:
         
         # Create client socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        #self.sock.settimeout(1)
         
         self.die = threading.Event()
         self.lock = threading.Lock()
@@ -124,26 +124,16 @@ class Weather:
             
     def weatherClient(self):
         '''
-        Wheather client thread fetches wheather from the server
+        Wheather client thread fetches weather from the server
         '''
-        
-        while True: #not self.die.wait(self.conf.parserate):
-            
-            lat, lon = round(self.lat, 2), round(self.lon, 2)
-            
-            #TODO: time refresh/push
-            #if True or (self.last_lat, self.last_lon) != (lat, lon):
-                
-            self.last_lat, self.last_lon = lat, lon
-            self.sock.sendto("?%f|%f\n" % (lat, lon), ('127.0.0.1', self.conf.server_port))
+        while True:
+                        
             received = self.sock.recv(1024*8)
-        
-            #self.lock.acquire() 
             self.weatherData = cPickle.loads(received)
-            #self.lock.release()
+            if self.weatherData == '!bye':
+                break
             if self.die.is_set():
                 return
-            time.sleep(self.conf.parserate)
     
     def startWeatherServer(self):
         DETACHED_PROCESS = 0x00000008
@@ -160,7 +150,8 @@ class Weather:
     def shutdown(self):
         # Shutdown client and server
         self.die.set()
-        self.weatherClientThread.join(3)
+        self.weatherClientThread.join(4)
+        self.weatherClientThread = False
         self.shutdownWeatherServer()
     
     def setWindLayer(self, xpwind, layer, data, elapsed):
@@ -267,7 +258,8 @@ class Weather:
                 self.setWindLayer(wl[0], 0, [alt, hdg, speed, {'gust': gust}], elapsed)
                 
     
-    def setClouds(self, clouds):
+    def setClouds(self, cloudsr):
+        clouds = cloudsr[:]
         if len(clouds) > 2:
             for i in range(3):
                 clayer  = clouds.pop()
@@ -324,6 +316,10 @@ class PythonInterface:
         
         # Menu Items
         self.mReFuel    =  XPLMAppendMenuItem(self.mMain, 'Configuration', 1, 1)
+        
+        self.flcounter = 0
+        self.fltime = 1
+        self.lastParse = 0
         
         return self.Name, self.Sig, self.Desc
     
@@ -590,20 +586,28 @@ class PythonInterface:
                 
                     sysinfo += ['Precipitation: %s' % (precip)]
                      
-            if 'gfs' in wdata and 'winds' in wdata['gfs']:
-                sysinfo += ['Wind layers: %i FL/HDG/KT' % (len(wdata['gfs']['winds']))]
-                wlayers = ''
-                i = 0
-                for layer in wdata['gfs']['winds']:
-                    i += 1
-                    alt, hdg, speed = layer[0], layer[1], layer[2]
-                    wlayers += 'FL%d/%03d/%d ' % (alt * 3.28084 / 100, hdg, speed)
-                    if i > 5:
-                        i = 0
+            if 'gfs' in wdata:          
+                if 'winds' in wdata['gfs']:
+                    sysinfo += ['Wind layers: %i FL/HDG/KT' % (len(wdata['gfs']['winds']))]
+                    wlayers = ''
+                    i = 0
+                    for layer in wdata['gfs']['winds']:
+                        i += 1
+                        alt, hdg, speed = layer[0], layer[1], layer[2]
+                        wlayers += 'FL%d/%03d/%d ' % (alt * 3.28084 / 100, hdg, speed)
+                        if i > 5:
+                            i = 0
+                            sysinfo += [wlayers]
+                            wlayers = ''    
+                    if i > 0:
                         sysinfo += [wlayers]
-                        wlayers = ''    
-                if i > 0:
-                    sysinfo += [wlayers]
+                if 'clouds' in wdata['gfs']:
+                    clouds = 'Cloud layers %i BOTTOM/TOP/COVERAGE ' % (len(wdata['gfs']['clouds']))
+                    for layer in wdata['gfs']['clouds']:
+                        top, bottom, cover = layer
+                        clouds += '%d/%d/%.2f ' % (top * 3.28084/100, bottom * 3.28084/100, cover) 
+                    sysinfo += [clouds]
+                    
                 #if 'pressure' in wdata['gfs']:
                 #    sysinfo += ['Pressure (gfs): %.2f' % (wdata['gfs']['pressure'])]
             
@@ -648,12 +652,27 @@ class PythonInterface:
                     return -1
         '''
         
+        # Request data from the weather server
+        self.flcounter += elapsedMe
+        self.fltime += elapsedMe
+        if self.flcounter > self.conf.parserate and self.weather.weatherClientThread:
+            
+            lat, lon = round(self.latdr.value, 2), round(self.londr.value, 2)
+            
+            if (lat, lon) != (self.weather.last_lat, self.weather.last_lon) or (self.fltime - self.lastParse) > 5*60:
+                self.weather.last_lat, self.weather.last_lon = lat, lon
+                
+                self.weather.sock.sendto("?%.2f|%.2f\n" % (lat, lon),
+                                        ('127.0.0.1', self.conf.server_port))
+                self.flcounter = 0
+                self.lastParse = self.fltime
+        
         if self.aboutWindow and XPIsWidgetVisible(self.aboutWindowWidget):
             self.updateStatus()
         
         if not self.conf.enabled or not self.weather.weatherData:
             # Worker stoped wait 4s
-            return 4
+            return -1
         
         # Get weather lock
         #self.weather.lock.acquire()
@@ -713,13 +732,14 @@ class PythonInterface:
         return -1
     
     def XPluginStop(self):
-        # kill weather server/client
-        self.weather.shutdown()
-        
         # Destroy windows
         if self.aboutWindow:
             XPDestroyWidget(self, self.aboutWindowWidget, 1)
+        
         XPLMUnregisterFlightLoopCallback(self, self.floop, 0)
+        
+        # kill weather server/client
+        self.weather.shutdown()
         
         XPLMDestroyMenu(self, self.mMain)
         self.conf.save()

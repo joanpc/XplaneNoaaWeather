@@ -32,6 +32,9 @@ class clientHandler(SocketServer.BaseRequestHandler):
         
         lat, lon = float(data[0]), float(data[1])
         
+        if lat > 98 and lon > 98:
+            return False
+        
         # Parse gfs and wfas
         if gfs.lastgrib:
             response['gfs'] = gfs.parseGribData(gfs.lastgrib, lat, lon)
@@ -70,6 +73,7 @@ class clientHandler(SocketServer.BaseRequestHandler):
                     response = gfs.metar.getMetar(gfs.metar.connection, data[1:])
             elif data == '!shutdown':
                 self.shutdown()
+                response = '!bye'
             elif data == '!reload':
                 # reload config
                 conf.load()
