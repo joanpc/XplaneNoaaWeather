@@ -4,6 +4,9 @@ class c:
     '''
     Conversion tools
     '''
+    #transition references
+    transrefs = {}
+    
     @classmethod
     def ms2knots(self, val):
         return val * 1.94384
@@ -62,7 +65,7 @@ class c:
             ccw = -(a - b);
         else:
             cw = -(360 - b + a)
-            ccw = (b - a)     
+            ccw = (b - a)
         if abs(cw) < abs(ccw):
             return cw
         return ccw
@@ -70,7 +73,7 @@ class c:
     def pa2inhg(self, pa):
         return pa * 0.0002952998016471232
     @classmethod
-    def timeTrasition(self, current, new, elapsed, vel=1):
+    def timeTrasition(self, current, new, elapsed, vel=0.5):
         '''
         Time based wind speed transition
         '''
@@ -82,6 +85,64 @@ class c:
             return new
         else:
             return current + dir * vel * elapsed
+    
+    @classmethod
+    def datarefTransition(self, dataref, new, elapsed,speed=0.25):
+        '''
+        Dataref time 
+        '''
+        id = str(dataref.DataRef)
+        if not id in self.transrefs:
+            self.transrefs[id] = dataref.value
+        
+        if self.transrefs[id] == new:
+            return
+        
+        current = self.transrefs[id]
+        
+        if current > new:
+            dir = -1
+        else:
+            dir = 1
+        if abs(current - new) > speed*elapsed + speed:
+            new =  current + dir * speed * elapsed
+        
+        self.transrefs[id] = new
+        dataref.value = new
+    @classmethod
+    def datarefTransitionHdg(self, dataref, new, elapsed, vel=1):
+        '''
+        Time based wind heading transition
+        '''
+        id = str(dataref.DataRef)
+        if not id in self.transrefs:
+            self.transrefs[id] = dataref.value
+        
+        if self.transrefs[id] == new:
+            return
+        
+        current = self.transrefs[id]
+        
+        diff = c.shortHdg(current, new)
+        if abs(diff) < vel*elapsed:
+            newval = new
+        else:
+            if diff > 0:
+                diff = +1
+            else:
+                diff = -1
+            newval = current + diff * vel * elapsed
+            if newval < 0:
+                newval += 360
+            else:
+                newval %= 360
+        
+        #print 'current: %f new: %f target: %f' % (current, newval, new)
+        
+        self.transrefs[id] = newval
+        dataref.value = newval
+        
+    
     @classmethod
     def limit(self, value, max = None, min = None):
         if max and value > max:
@@ -105,13 +166,16 @@ class c:
         
         ints = {'-': 0, '': 1, '+': 2} 
         intensity = ints[int]
-        
+            
         types = {
          'DZ': [0.1, 0.2 , 0.3],
          'RA': [0.3 ,0.5, 0.8],
          'SN': [0.25 ,0.5, 0.8], # Snow
          'SH': [0.7, 0.8,  1]
          }
+        
+        if mod in ('SH', 'RE'):
+            type = 'SH'
         
         if type in types:
             return types[type][intensity]

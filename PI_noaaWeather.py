@@ -53,6 +53,7 @@ import socket
 import threading
 import subprocess
 import os
+import time
 
 from noaweather import EasyDref, Conf, c
         
@@ -62,7 +63,7 @@ class Weather:
     '''
     alt = 0.0
     ref_winds = {}
-    lat, lon, last_lat, last_lon = 0, 0, False, False
+    lat, lon, last_lat, last_lon = 99, 99, False, False
     def __init__(self, conf):
         
         self.conf = conf
@@ -125,8 +126,8 @@ class Weather:
         '''
         Wheather client thread fetches wheather from the server
         '''
-        # Allow x-plane start, wait 20 seconds
-        while not self.die.wait(self.conf.parserate):
+        
+        while True: #not self.die.wait(self.conf.parserate):
             
             lat, lon = round(self.lat, 2), round(self.lon, 2)
             
@@ -137,9 +138,12 @@ class Weather:
             self.sock.sendto("?%f|%f\n" % (lat, lon), ('127.0.0.1', self.conf.server_port))
             received = self.sock.recv(1024*8)
         
-            self.lock.acquire() 
+            #self.lock.acquire() 
             self.weatherData = cPickle.loads(received)
-            self.lock.release()
+            #self.lock.release()
+            if self.die.is_set():
+                return
+            time.sleep(self.conf.parserate)
     
     def startWeatherServer(self):
         DETACHED_PROCESS = 0x00000008
@@ -652,7 +656,7 @@ class PythonInterface:
             return 4
         
         # Get weather lock
-        self.weather.lock.acquire()
+        #self.weather.lock.acquire()
         
         # get acf position
         self.weather.lat = self.latdr.value
@@ -662,7 +666,7 @@ class PythonInterface:
         wdata = self.weather.weatherData
         
         # Release lock
-        self.weather.lock.release()
+        #self.weather.lock.release()
         
         pressSet = False
         
