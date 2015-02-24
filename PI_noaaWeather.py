@@ -110,7 +110,6 @@ class Weather:
         
         # Create client socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        #self.sock.settimeout(1)
         
         self.die = threading.Event()
         self.lock = threading.Lock()
@@ -126,8 +125,12 @@ class Weather:
         '''
         Wheather client thread fetches weather from the server
         '''
+        
+        # Send something for windows to bind
+        self.sock.sendto("?%.2f|%.2f\n" % (99, 99),
+                                 ('127.0.0.1', self.conf.server_port))
+        
         while True:
-                        
             received = self.sock.recv(1024*8)
             self.weatherData = cPickle.loads(received)
             if self.weatherData == '!bye':
@@ -321,6 +324,8 @@ class PythonInterface:
         self.fltime = 1
         self.lastParse = 0
         
+        self.aboutlines = 16
+        
         return self.Name, self.Sig, self.Desc
     
     def mainMenuCB(self, menuRef, menuItem):
@@ -429,10 +434,8 @@ class PythonInterface:
         x += 170
         y = top
         
-        aboutlines = 14
-        
         # ABOUT/ STATUS Sub Window
-        subw = XPCreateWidget(x+10, y-30, x2-20 + 10, y - (20 * aboutlines), 1, "" ,  0,window, xpWidgetClass_SubWindow)
+        subw = XPCreateWidget(x+10, y-30, x2-20 + 10, y - (20 * self.aboutlines), 1, "" ,  0,window, xpWidgetClass_SubWindow)
         # Set the style to sub window
         XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
         x += 20
@@ -443,7 +446,7 @@ class PythonInterface:
         
         # Create status captions
         self.statusBuff = []
-        for i in range(aboutlines):
+        for i in range(self.aboutlines):
             y -= 15
             self.statusBuff.append(XPCreateWidget(x, y, x+40, y-20, 1, '--', 0, window, xpWidgetClass_Caption))
             
@@ -460,7 +463,7 @@ class PythonInterface:
         
         y -= 40
         subw = XPCreateWidget(x-10, y, x2-20 + 10, y2 +15, 1, "" ,  0,window, xpWidgetClass_SubWindow)
-        x += 80
+        x += 10
         # Set the style to sub window
         XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
         sysinfo = [
@@ -470,9 +473,9 @@ class PythonInterface:
         for label in sysinfo:
             y -= 10
             XPCreateWidget(x, y, x+40, y-20, 1, label, 0, window, xpWidgetClass_Caption)
-        
-        y -= 20
+            
         # Visit site Button
+        x += 240
         self.aboutVisit = XPCreateWidget(x, y, x+100, y-20, 1, "Visit site", 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.aboutVisit, xpProperty_ButtonType, xpPushButton)
         
@@ -607,9 +610,6 @@ class PythonInterface:
                         top, bottom, cover = layer
                         clouds += '%d/%d/%.2f ' % (top * 3.28084/100, bottom * 3.28084/100, cover) 
                     sysinfo += [clouds]
-                    
-                #if 'pressure' in wdata['gfs']:
-                #    sysinfo += ['Pressure (gfs): %.2f' % (wdata['gfs']['pressure'])]
             
             if 'wafs' in wdata:
                 tblayers = ''
@@ -621,12 +621,13 @@ class PythonInterface:
                             'Turbulence layers: %d' % (len(wdata['wafs'])),
                             tblayers
                             ]
-
         
         i = 0
         for label in sysinfo:
             XPSetWidgetDescriptor(self.statusBuff[i], label)
             i +=1
+            if i > self.aboutlines:
+                break
 
     def floopCallback(self, elapsedMe, elapsedSim, counter, refcon):
         '''
@@ -664,6 +665,7 @@ class PythonInterface:
                 
                 self.weather.sock.sendto("?%.2f|%.2f\n" % (lat, lon),
                                         ('127.0.0.1', self.conf.server_port))
+                
                 self.flcounter = 0
                 self.lastParse = self.fltime
         

@@ -16,8 +16,8 @@ class Metar:
     # Metar parse regex
     RE_CLOUD        = re.compile(r'\b(FEW|BKN|SCT|OVC|VV)([0-9]+)([A-Z][A-Z])?\b')
     RE_WIND         = re.compile(r'\b([0-9]{3})([0-9]{2,3})(G[0-9]{2,3})?(MPH|KT?|MPS)\b')
-    RE_VISIBILITY   = re.compile(r'\b([0-9]{1,4}|CAVOK)(/[0-9])?(?:(SM|KM|M)|\b)')
-    RE_PRESSURE     = re.compile(r'\b[PM]?(Q|QNH|SLP|A)([0-9]{3,4})\b')
+    RE_VISIBILITY   = re.compile(r'\b[PM]?([0-9]{1,4}|CAVOK)(/[0-9])?(?:(SM|KM|M)|\b)')
+    RE_PRESSURE     = re.compile(r'\b(Q|QNH|SLP|A)([0-9]{3,4})\b')
     RE_TEMPERATURE  = re.compile('(M|-)?([0-9]{1,2})/(M|-)?([0-9]{1,2})')
     RE_TEMPERATURE2 = re.compile('T(0|1)([0-9]){3}(0|1)([0-9]){3}')
     RE_PRECIPITATION = re.compile('(-|\+)?(DZ|SG|IC|PL|SH|RE)?(RA|SN|TS)')
