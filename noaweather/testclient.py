@@ -4,6 +4,7 @@ Example weather test client
 '''
 import socket
 import cPickle
+import sys
 
 # tests requests
 tests = [
@@ -14,6 +15,9 @@ tests = [
          #'!reload',     # Reload configuration
          #'!shutdown',   # Shutdown server
          ]
+
+if len(sys.argv) > 1:
+    tests = sys.argv[1:]
 
 HOST, PORT = "127.0.0.1", 8950
 

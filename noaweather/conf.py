@@ -8,7 +8,7 @@ class Conf:
     Configuration variables
     '''
     syspath, dirsep = '', os.sep
-    __VERSION__ = '2.0_beta3.4'
+    __VERSION__ = '2.0_beta3.5'
     
     def __init__(self, syspath):
         # Inits conf
@@ -92,6 +92,12 @@ class Conf:
         self.ms_update      = 0
         self.max_visibility = 10000 # in meters
         self.server_port    = 8950
+        
+        self.windTransSpeed = 0.25 # kt/s
+        self.windGustTransSpeed = 0.5 # kt/s
+        self.windHdgTransSpeed = 1 # degrees/s
+        
+        
 
     def save(self):
         conf = {

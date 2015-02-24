@@ -170,64 +170,23 @@ class Weather:
         
         calt = xpwind['alt'].value
 
-        if int(alt*100) != int(calt*100):
+        if layer != 0 and abs(alt - calt) < 1000:
             # layer change trasition not needed xplane does interpolation
             xpwind['alt'].value, xpwind['hdg'].value, xpwind['speed'].value = alt, hdg, speed
             xpwind['gust'].value, xpwind['gust_hdg'].value = gust, 0
-            
-            self.ref_winds[layer] = (alt, hdg, speed, gust, 0)
-            
+                        
         else:
-            # Transition
-            if not layer in self.ref_winds:
-                # Store reference wind layer to ignore x-plane roundings
-                self.ref_winds[layer] = ( xpwind['alt'].value, xpwind['hdg'].value, xpwind['speed'].value,
-                                          xpwind['gust'].value, xpwind['gust_hdg'])
-            
-            if self.ref_winds[layer] == (data[0], data[1], data[2], gust, 0):
-                # No need to transition if the data is up to date
-                return
-            
-            # Get reference values
-            calt, chdg, cspeed, cgust, cgust_hdg = self.ref_winds[layer]
-            
             # do Transition
-            hdg     = self.transHdg(chdg, hdg, elapsed)
-            speed   = c.timeTrasition(cspeed, speed, elapsed)
-            gust    = c.timeTrasition(cgust, gust, elapsed)
+            c.datarefTransitionHdg(xpwind['hdg'], hdg, elapsed, self.conf.windHdgTransSpeed)
+            c.datarefTransition(xpwind['speed'], speed, elapsed, self.conf.windHdgTransSpeed)
+            c.datarefTransition(xpwind['gust'], gust, elapsed, self.conf.windGustTransSpeed)
+            xpwind['gust_hdg'].value = 0
             
             if layer == 0:
                 # Do altitude trasition for metar based wind layers 1m/s
                 alt = c.limit(alt, max = 304.8) # XP minimum wind layer alt 1000 feet
-                alt = c.timeTrasition(calt, alt, elapsed)
-                xpwind['alt'].value = alt
-            
-            self.ref_winds[layer] = calt, hdg, speed, gust, cgust_hdg
-            
-            # Set the data to the datarefs
-            xpwind['hdg'].value         = hdg
-            xpwind['speed'].value       = speed
-            xpwind['gust'].value        = gust
-            xpwind['gust_hdg'].value    = 0
-        
-    def transHdg(self, current, new, elapsed, vel=12):
-        '''
-        Time based wind heading transition
-        '''
-        diff = c.shortHdg(current, new)
-        if abs(diff) < vel*elapsed:
-            return new
-        else:
-            if diff > 0:
-                diff = +1
-            else:
-                diff = -1
-            newval = current + diff * vel * elapsed
-            if newval < 0:
-                return newval + 360
-            else:
-                return newval % 360
-        
+                c.datarefTransition(xpwind['alt'], alt, elapsed, )
+     
     def setTurbulence(self, turbulence):
         '''
         Set turbulence for all wind layers with our own interpolation
@@ -317,10 +276,8 @@ class Weather:
     
     def setPressure(self, pressure, elapsed):
         # Transition
-        if not 'ref_pressure' in self.__dict__:
-            self.ref_pressure = self.pressure.value 
-        self.pressure.value = c.timeTrasition(self.ref_pressure, pressure, elapsed, 0.1)
-    
+        c.datarefTransition(self.pressure, pressure, elapsed, 0.005)
+        
     @classmethod
     def cc2xp(self, cover):
         #Cloud cover to X-plane
@@ -604,13 +561,12 @@ class PythonInterface:
         
         if not self.weather.weatherData:
             sysinfo = ['Data not ready. Please wait.']
-        
         else:
             wdata = self.weather.weatherData
             if 'info' in wdata:
                 sysinfo = [
                            'XPGFS Status:',
-                           'lat: %.2f/%.1f lon: %.2f/%.1f' % (self.weather.lat , wdata['info']['lat'], self.weather.lon, wdata['info']['lon']),
+                           'lat: %.2f/%.2f lon: %.2f/%.2f' % (self.weather.lat , wdata['info']['lat'], self.weather.lon, wdata['info']['lon']),
                            'GFS Cycle: %s' % (wdata['info']['gfs_cycle']),
                            'WAFS Cycle: %s' % (wdata['info']['wafs_cycle']),
                 ]
@@ -620,7 +576,7 @@ class PythonInterface:
                             'Metar station: %s %s' % (wdata['metar']['icao'], wdata['metar']['metar']),
                             'Temperature: %.1f, Dewpoint: %.1f, ' % (wdata['metar']['temperature'][0], wdata['metar']['temperature'][1]) +
                             'Visibility: %d meters, ' % (wdata['metar']['visibility']) +
-                            'Pressure: %f inhg ' % (wdata['metar']['pressure']),
+                            'Pressure: %.2f inhg ' % (wdata['metar']['pressure']),
                             'Wind:  %d %dkt, gust +%dkt' % (wdata['metar']['wind'][0], wdata['metar']['wind'][1], wdata['metar']['wind'][2])
                            ]
                 if 'precipitation' in wdata['metar'] and len(wdata['metar']['precipitation']):
@@ -644,6 +600,8 @@ class PythonInterface:
                         wlayers = ''    
                 if i > 0:
                     sysinfo += [wlayers]
+                #if 'pressure' in wdata['gfs']:
+                #    sysinfo += ['Pressure (gfs): %.2f' % (wdata['gfs']['pressure'])]
             
             if 'wafs' in wdata:
                 tblayers = ''

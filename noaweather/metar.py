@@ -14,13 +14,13 @@ class Metar:
     Metar download and interpretation class
     '''
     # Metar parse regex
-    RE_CLOUD        = re.compile('(FEW|BKN|SCT|OVC|VV)([0-9]+)([A-Z][A-Z])?')
-    RE_WIND         = re.compile('([0-9]{3})([0-9]{2,3})(G[0-9]{2,3})?(MPH|KT?|MPS)')
-    RE_VISIBILITY   = re.compile(' ([0-9]{1,4})(/[0-9])?(SM|KM|M)? ')
-    RE_PRESSURE     = re.compile('\b(Q|QNH|SLP|A) ?([0-9]{3,4})\b')
+    RE_CLOUD        = re.compile(r'\b(FEW|BKN|SCT|OVC|VV)([0-9]+)([A-Z][A-Z])?\b')
+    RE_WIND         = re.compile(r'\b([0-9]{3})([0-9]{2,3})(G[0-9]{2,3})?(MPH|KT?|MPS)\b')
+    RE_VISIBILITY   = re.compile(r'\b([0-9]{1,4})(/[0-9])?(?:(SM|KM|M)|\b)')
+    RE_PRESSURE     = re.compile(r'\b(Q|QNH|SLP|A)([0-9]{3,4})\b')
     RE_TEMPERATURE  = re.compile('(M|-)?([0-9]{1,2})/(M|-)?([0-9]{1,2})')
     RE_TEMPERATURE2 = re.compile('T(0|1)([0-9]){3}(0|1)([0-9]){3}')
-    RE_PRECIPITATION = re.compile('(-|\+)?(DZ|SG|IC|PL)?(RA|SN|TS)')
+    RE_PRECIPITATION = re.compile('(-|\+)?(DZ|SG|IC|PL|SH|RE)?(RA|SN|TS)')
     
     METAR_STATIONS_URL = 'http://www.aviationweather.gov/static/adds/metars/stations.txt'
     METAR_REPORT_URL = 'http://weather.noaa.gov/pub/data/observations/metar/cycles/%sZ.TXT'
@@ -171,7 +171,7 @@ class Metar:
                    'wind': [0, 0, 0], # Heading, speed, shear
                    'clouds': [0, 0, False] * 3, # Alt, coverage type
                    'temperature': [0, 0], # Temperature, dewpoint
-                   'pressure': c.pa2inhg(1013.25),
+                   'pressure': 0, # space c.pa2inhg(10.1325),
                    'visibility': 9999,
                    'precipitation': [],
                    }
@@ -190,12 +190,13 @@ class Metar:
             unit, press = m.groups()
             press = float(press)
             
-            if unit in ('A'):
-                # inHg
-                press = press/100
-            else:
-                # unit Q
-                press = c.pa2inhg(press * 100)
+            if unit:
+                if unit == 'A':
+                    press = press/100
+                elif unit == 'SLP':
+                    press = unit / 10 + 1000 
+                elif unit == 'Q':
+                    press = c.pa2inhg(press * 100)
             
             weather['pressure'] = press
         
