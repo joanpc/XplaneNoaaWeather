@@ -70,7 +70,10 @@ class clientHandler(SocketServer.BaseRequestHandler):
                     response = self.getWeatherData(sdata)
                 elif len(data) == 5:
                     # Icao
-                    response = gfs.metar.getMetar(gfs.metar.connection, data[1:])
+                    response = {}
+                    apt = gfs.metar.getMetar(gfs.metar.connection, data[1:])
+                    response['metar'] = gfs.metar.parseMetar(apt[0], apt[5], apt[3])
+                    
             elif data == '!shutdown':
                 self.shutdown()
                 response = '!bye'

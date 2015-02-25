@@ -17,7 +17,7 @@ class Metar:
     RE_CLOUD        = re.compile(r'\b(FEW|BKN|SCT|OVC|VV)([0-9]+)([A-Z][A-Z])?\b')
     RE_WIND         = re.compile(r'\b([0-9]{3})([0-9]{2,3})(G[0-9]{2,3})?(MPH|KT?|MPS)\b')
     RE_VISIBILITY   = re.compile(r'\b[PM]?([0-9]{1,4}|CAVOK)(/[0-9])?(?:(SM|KM|M)|\b)')
-    RE_PRESSURE     = re.compile(r'\b(Q|QNH|SLP|A)([0-9]{3,4})\b')
+    RE_PRESSURE     = re.compile(r'\b(Q|QNH|SLP|A)[ ]?([0-9]{3,4})\b')
     RE_TEMPERATURE  = re.compile('(M|-)?([0-9]{1,2})/(M|-)?([0-9]{1,2})')
     RE_TEMPERATURE2 = re.compile('T(0|1)([0-9]){3}(0|1)([0-9]){3}')
     RE_PRECIPITATION = re.compile('(-|\+)?(DZ|SG|IC|PL|SH|RE)?(RA|SN|TS)')
@@ -172,7 +172,7 @@ class Metar:
                    'clouds': [0, 0, False] * 3, # Alt, coverage type
                    'temperature': [0, 0], # Temperature, dewpoint
                    'pressure': 0, # space c.pa2inhg(10.1325),
-                   'visibility': 9999,
+                   'visibility': 9998,
                    'precipitation': [],
                    }
         
@@ -255,7 +255,18 @@ class Metar:
             precipitation[type] = {'int': intensity ,'mod': mod}
             
         weather['precipitation'] = precipitation
-    
+        
+        #if temp and dew:
+        #    weather['RH'] = c.dewpoint2rh(temp, dew)
+        #    weather['rh_visibility'] = c.rh2visibility(weather['RH'])
+        
+        # Extended visibility
+        if weather['visibility'] > 9998:
+            weather['mt_visibility'] = weather['visibility']
+            ext_vis = c.rh2visibility(c.dewpoint2rh(weather['temperature'][0], weather['temperature'][1]))
+            if ext_vis > weather['visibility']:
+                weather['visibility'] = int(ext_vis)
+        
         return weather
     
     def run(self, lat, lon, rate):

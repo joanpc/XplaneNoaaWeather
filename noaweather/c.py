@@ -55,7 +55,12 @@ class c:
         return val
     @classmethod
     def rh2visibility(self, rh):
-        return 60.0*exp(-2.5*(rh-15)/80.0)
+        # http://journals.ametsoc.org/doi/pdf/10.1175/2009JAMC1927.1
+        return 1000*(-5.19*10**-10*rh**5.44+40.10) 
+    @classmethod
+    def dewpoint2rh(self, temp, dew):
+        return 100*(exp((17.625*dew)/(243.04+dew))/exp((17.625*temp)/(243.04+temp)))
+        
     @classmethod
     def shortHdg(self, a, b):
         if a == 360: a = 0
@@ -91,10 +96,12 @@ class c:
         '''
         Dataref time 
         '''
+        # Save reference to ignore x-plane roundings
         id = str(dataref.DataRef)
         if not id in self.transrefs:
             self.transrefs[id] = dataref.value
         
+        # Return if the value is already set
         if self.transrefs[id] == new:
             return
         
@@ -109,6 +116,7 @@ class c:
         
         self.transrefs[id] = new
         dataref.value = new
+    
     @classmethod
     def datarefTransitionHdg(self, dataref, new, elapsed, vel=1):
         '''
@@ -136,9 +144,7 @@ class c:
                 newval += 360
             else:
                 newval %= 360
-        
-        #print 'current: %f new: %f target: %f' % (current, newval, new)
-        
+             
         self.transrefs[id] = newval
         dataref.value = newval
         
@@ -160,9 +166,10 @@ class c:
         elif cover > 89:
             xp = 4
         return xp
+    
     @classmethod
     def metar2xpprecipitation(self, type, int, mod):
-        ''' Return intensity '''
+        ''' Return intensity of a metar precipitation '''
         
         ints = {'-': 0, '': 1, '+': 2} 
         intensity = ints[int]

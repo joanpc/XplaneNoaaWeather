@@ -72,7 +72,7 @@ class Conf:
 
     def setDefautls(self):
         # Default and storable settings
-        self.enabled        = True
+        self.enabled        = False
         self.set_wind       = True
         self.set_clouds     = True
         self.set_temp       = True
@@ -83,8 +83,7 @@ class Conf:
         self.use_metar      = False
         self.lastgrib       = False
         self.lastwafsgrib   = False
-        self.updaterate     = 4
-        self.parserate      = 0.1
+        self.parserate      = 1
         self.updaterate     = 1
         self.server_updaterate = 10
         self.vatsim         = False
@@ -93,12 +92,11 @@ class Conf:
         self.max_visibility = 10000 # in meters
         self.server_port    = 8950
         
+        # Transitions
         self.windTransSpeed = 0.25 # kt/s
         self.windGustTransSpeed = 0.5 # kt/s
         self.windHdgTransSpeed = 1 # degrees/s
-        
-        
-
+           
     def save(self):
         conf = {
                 'version'   : self.__VERSION__,

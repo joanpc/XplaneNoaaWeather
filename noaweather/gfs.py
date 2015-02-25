@@ -9,8 +9,6 @@ from asyncdownload import AsyncDownload
 from c import c
 import sys
 
-
-
 class GFS(threading.Thread):
     '''
     NOAA GFS download and parse functions.
@@ -51,7 +49,7 @@ class GFS(threading.Thread):
                  'VGRD',
                  'TMP',
                  'PRMSL',
-                 #'RH',
+                 'RH',
                  ]
     nwinds, nclouds = 0, 0
     
@@ -243,18 +241,16 @@ class GFS(threading.Thread):
                 alt = c.mb2alt(float(level))
                 
                 # Optional varialbes
-                temp, vis = False, False
+                temp, rh = False, False
                 # Temperature
                 if 'TMP' in wind:
                     temp = c.oat2msltemp(float(wind['TMP']), alt)
                 # Relative Humidity
-                #if 'RH' in wind:
-                #    vis = c.rh2visibility(float(wind['RH']))*1000
-                #    if vis > 40000:
-                #        vis = 40000
+                if 'RH' in wind:
+                    rh = wind['RH']
                 else:
                     temp = False
-                windlevels.append((alt, hdg, c.ms2knots(vel), {'temp': temp, 'vis': vis}))
+                windlevels.append((alt, hdg, c.ms2knots(vel), {'temp': temp, 'rh': rh}))
                 #print 'alt: %i rh: %i vis: %i' % (alt, float(wind['RH']), vis) 
         
         # Convert cloud level
