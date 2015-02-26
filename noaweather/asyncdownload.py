@@ -4,6 +4,7 @@ import urllib2
 import zlib
 import os
 import subprocess
+import sys
 
 class AsyncDownload():
     '''
@@ -79,9 +80,9 @@ class AsyncDownload():
                 args = [self.wgrib2bin, tempfile, '-set_grib_type', 'simple', '-grib_out', filepath]         
         
                 if conf.spinfo:
-                    p = subprocess.Popen(args, startupinfo=conf.spinfo, close_fds=True)
+                    p = subprocess.Popen(args, startupinfo=conf.spinfo, stdout=sys.stdout, stderr=sys.stderr)
                 else:
-                    p = subprocess.Popen(args, close_fds=True)
+                    p = subprocess.Popen(args, stdout=sys.stdout, stderr=sys.stderr)
                 p.wait()
                 
                 os.remove(tempfile)
