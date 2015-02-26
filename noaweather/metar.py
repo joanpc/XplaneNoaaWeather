@@ -16,7 +16,7 @@ class Metar:
     # Metar parse regex
     RE_CLOUD        = re.compile(r'\b(FEW|BKN|SCT|OVC|VV)([0-9]+)([A-Z][A-Z][A-Z]?)?\b')
     RE_WIND         = re.compile(r'\b([0-9]{3})([0-9]{2,3})(G[0-9]{2,3})?(MPH|KT?|MPS)\b')
-    RE_VISIBILITY   = re.compile(r'\b[PM]?([0-9]{1,4}|CAVOK)(/[0-9])?(?:(SM|KM|M)|\b)')
+    RE_VISIBILITY   = re.compile(r'\b[PM]?(?:([0-9]{4})|(?:([0-9]{1,2}) )?([0-9]{1,2})(/[0-9])?)(SM|KM|M)?\b')
     RE_PRESSURE     = re.compile(r'\b(Q|QNH|SLP|A)[ ]?([0-9]{3,4})\b')
     RE_TEMPERATURE  = re.compile('(M|-)?([0-9]{1,2})/(M|-)?([0-9]{1,2})')
     RE_TEMPERATURE2 = re.compile('T(0|1)([0-9]){3}(0|1)([0-9]){3}')
@@ -147,7 +147,7 @@ class Metar:
         ''' Get metar from icao name '''
         cursor = db.cursor()
         res = cursor.execute('''SELECT * FROM airports
-                                WHERE icao = ? AND metar NOT NULL LIMIT 1''', (icao, ))
+                                WHERE icao = ? AND metar NOT NULL LIMIT 1''', (icao.upper(), ))
         ret = res.fetchall()
         if len(ret) > 0:
             return ret[0]
@@ -222,10 +222,19 @@ class Metar:
             if m.group(1) == 'CAVOK':
                 visibility = 9999
             else:
-                visibility, div, unit = int(m.group(1)), m.group(2), m.group(3)
+                visibility = 0
+                
+                vis1, vis2, vis3, div, unit = m.groups()
+                
+                if vis1: visibility += int(vis1)
+                if vis2: visibility += int(vis2)
+                if vis3:
+                    vis3 = int(vis3)
+                    if div:
+                        vis3 /= float(div[1:])
+                    visibility += vis3
                 if unit == 'SM': visibility *= 1609.34
                 if unit == 'KM': visibility *= 1000
-                if div: visibility /= float(div[1:])
             
             weather['visibility'] = visibility
         
