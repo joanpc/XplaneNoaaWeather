@@ -85,7 +85,7 @@ class Conf:
         self.updaterate     = 1
         self.vatsim         = False
         self.download       = True
-        self.max_visibility = 10000 # in meters
+        self.max_visibility = False # in meters
         
         
         # Weather server configuration
@@ -129,7 +129,7 @@ class Conf:
                 'download'  : self.download,
                 }
         
-        dict(conf.items() + append.items())
+        conf = dict(conf.items() + append.items())
         
         f = open(self.settingsfile, 'w')
         cPickle.dump(conf, f)

@@ -153,9 +153,9 @@ class c:
     
     @classmethod
     def limit(self, value, max = None, min = None):
-        if max and value > max:
+        if max != False and value > max:
             return max
-        elif min and value < min:
+        elif min != False and value < min:
             return min
         else:
             return value
