@@ -72,14 +72,16 @@ class clientHandler(SocketServer.BaseRequestHandler):
                     # Icao
                     response = {}
                     apt = gfs.metar.getMetar(gfs.metar.connection, data[1:])
-                    response['metar'] = gfs.metar.parseMetar(apt[0], apt[5], apt[3])
+                    if len(apt) > 4:
+                        response['metar'] = gfs.metar.parseMetar(apt[0], apt[5], apt[3])
+                    else:
+                        response = False
                     
             elif data == '!shutdown':
                 self.shutdown()
                 response = '!bye'
             elif data == '!reload':
-                # reload config
-                conf.load()
+                conf.serverReloadSave()
             else:
                 return
         
@@ -125,7 +127,7 @@ if __name__ == "__main__":
     
     # Close gfs worker and save config
     gfs.die.set()
-    conf.save()
+    conf.serverReloadSave()
     print 'Server stoped.'
     if not conf.win32:
         logfile.close()

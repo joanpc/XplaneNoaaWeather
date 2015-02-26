@@ -1,4 +1,4 @@
-from math import hypot, atan2, degrees, exp
+from math import hypot, atan2, degrees, exp, log
 
 class c:
     '''
@@ -60,7 +60,9 @@ class c:
     @classmethod
     def dewpoint2rh(self, temp, dew):
         return 100*(exp((17.625*dew)/(243.04+dew))/exp((17.625*temp)/(243.04+temp)))
-        
+    @classmethod
+    def dewpoint(self, temp, rh):
+        return 243.04*(log(rh/100)+((17.625*temp)/(243.04+temp)))/(17.625-log(rh/100)-((17.625*temp)/(243.04+temp)))   
     @classmethod
     def shortHdg(self, a, b):
         if a == 360: a = 0

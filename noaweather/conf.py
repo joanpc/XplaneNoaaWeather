@@ -8,7 +8,7 @@ class Conf:
     Configuration variables
     '''
     syspath, dirsep = '', os.sep
-    __VERSION__ = '2.0_beta4.1'
+    __VERSION__ = '2.0_beta5'
     
     def __init__(self, syspath):
         # Inits conf
@@ -72,7 +72,7 @@ class Conf:
 
     def setDefautls(self):
         # Default and storable settings
-        self.enabled        = False
+        self.enabled        = True
         self.set_wind       = True
         self.set_clouds     = True
         self.set_temp       = True
@@ -81,26 +81,41 @@ class Conf:
         self.set_pressure   = True
         self.transalt       = 32808.399000000005
         self.use_metar      = False
-        self.lastgrib       = False
-        self.lastwafsgrib   = False
         self.parserate      = 1
         self.updaterate     = 1
-        self.server_updaterate = 10
         self.vatsim         = False
         self.download       = True
-        self.ms_update      = 0
         self.max_visibility = 10000 # in meters
+        
+        
+        # Weather server configuration
+        self.server_updaterate = 10
+        self.server_address = '127.0.0.1'
         self.server_port    = 8950
         
+        # Weather server variables
+        self.lastgrib       = False
+        self.lastwafsgrib   = False
+        self.ms_update      = 0
+        
         # Transitions
-        self.windTransSpeed = 0.25 # kt/s
+        self.windTransSpeed = 0.14 # kt/s
         self.windGustTransSpeed = 0.5 # kt/s
         self.windHdgTransSpeed = 1 # degrees/s
+    
+    def serverReloadSave(self):
+        # Save server variables
+        server_conf = {
+                       'lastgrib': self.lastgrib,
+                       'lastwafsgrib': self.lastwafsgrib,
+                       'ms_update' : self.ms_update
+                       }
+        self.load(server_conf)
+        self.save(server_conf)
            
-    def save(self):
+    def save(self, append = {}):
         conf = {
                 'version'   : self.__VERSION__,
-                'lastgrib'  : self.lastgrib,
                 'set_temp'  : self.set_temp,
                 'set_clouds': self.set_clouds,
                 'set_wind'  : self.set_wind,
@@ -111,16 +126,16 @@ class Conf:
                 'enabled'   : self.enabled,
                 'updaterate': self.updaterate,
                 'vatsim'    : self.vatsim,
-                'lastwafsgrib' : self.lastwafsgrib,
                 'download'  : self.download,
-                'ms_update' : self.ms_update
                 }
+        
+        dict(conf.items() + append.items())
         
         f = open(self.settingsfile, 'w')
         cPickle.dump(conf, f)
         f.close()
     
-    def load(self):
+    def load(self, ignore={}):
         if os.path.exists(self.settingsfile):
             f = open(self.settingsfile, 'r')
             try:
@@ -133,5 +148,5 @@ class Conf:
             
             # may be "dangerous" if someone messes our config file
             for var in conf:
-                if var in self.__dict__:
+                if var in self.__dict__ and not (var in ignore):
                     self.__dict__[var] = conf[var]

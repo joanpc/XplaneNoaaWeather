@@ -19,14 +19,11 @@ class WAFS:
     
     lastgrib = False
     lastlat, lastlon = False, False
-    turbulence = {}
-    nturbulence = 0
     downloadWait = 0
         
-    def __init__(self, conf, lock):
+    def __init__(self, conf):
         self.conf        = conf
         self.downloading = False
-        self.lock = lock
         
         # Use last grib stored in config if still avaliable
         if self.conf.lastwafsgrib and os.path.exists(os.sep.join([self.conf.cachepath, self.conf.lastwafsgrib])):
@@ -35,7 +32,6 @@ class WAFS:
         
     def run(self, lat, lon, rate):
         # Worker thread
-        
         
         datecycle, cycle, forecast = self.getCycleDate()
         
@@ -46,11 +42,9 @@ class WAFS:
                 
                 self.downloading = False
                 if lastgrib:
-                    self.lock.acquire()
                     self.lastgrib = lastgrib
                     self.conf.lastwafsgrib = lastgrib
                     self.current_datecycle = self.conf.lastwafsgrib.split(os.sep)[0]
-                    self.lock.release()
                 else:
                     # Download fail
                     self.downloadWait = 60
@@ -129,11 +123,6 @@ class WAFS:
         for key, value in cat.iteritems():
             turbulence.append([key, value/6])
         turbulence.sort()
-        
-        self.lock.acquire()
-        self.turbulence = turbulence
-        self.nturbulence = len(turbulence)
-        self.lock.release()
         
         return turbulence
 

@@ -63,9 +63,6 @@ class GFS(threading.Thread):
     cycle = ''
     lastcycle = ''
     
-    winds  = False
-    clouds = False
-    pressure = False
     newGrib = False
     parsed_latlon = (0, 0)
     
@@ -76,8 +73,8 @@ class GFS(threading.Thread):
     def __init__(self, conf):
         self.conf = conf
         self.lastgrib = self.conf.lastgrib
-        self.wafs = WAFS(conf, self.lock)
-        self.metar = Metar(conf, self.lock)
+        self.wafs = WAFS(conf)
+        self.metar = Metar(conf)
         threading.Thread.__init__(self)
     
     def run(self):
@@ -152,12 +149,10 @@ class GFS(threading.Thread):
                 
                 # Dowload success
                 if lastgrib:
-                    self.lock.acquire()
                     self.lastgrib = lastgrib
                     self.conf.lastgrib = self.lastgrib
                     self.newGrib = True
                     #print "new grib file: " + self.lastgrib
-                    self.lock.release()
                 else:
                     # Wait a minute
                     self.downloadWait = 60
@@ -241,16 +236,20 @@ class GFS(threading.Thread):
                 alt = c.mb2alt(float(level))
                 
                 # Optional varialbes
-                temp, rh = False, False
+                temp, rh, dew = False, False, False
                 # Temperature
                 if 'TMP' in wind:
                     temp = c.oat2msltemp(float(wind['TMP']), alt)
                 # Relative Humidity
                 if 'RH' in wind:
-                    rh = wind['RH']
+                    rh = float(wind['RH'])
                 else:
                     temp = False
-                windlevels.append((alt, hdg, c.ms2knots(vel), {'temp': temp, 'rh': rh}))
+                
+                if temp and rh:
+                    dew = c.dewpoint(temp, rh)
+                    
+                windlevels.append((alt, hdg, c.ms2knots(vel), {'temp': temp, 'rh': rh, 'dew': dew}))
                 #print 'alt: %i rh: %i vis: %i' % (alt, float(wind['RH']), vis) 
         
         # Convert cloud level
@@ -260,27 +259,13 @@ class GFS(threading.Thread):
                 top, bottom, cover = float(level['top']), float(level['bottom']), float(level['TCDC'])
                 #print "XPGFS: top: %.0fmbar %.0fm, bottom: %.0fmbar %.0fm %d%%" % (top * 0.01, c.mb2alt(top * 0.01), bottom * 0.01, c.mb2alt(bottom * 0.01), cover)
                 
+                #if bottom > 1 and alt > 1:
                 cloudlevels.append((c.mb2alt(bottom * 0.01) * 0.3048, c.mb2alt(top * 0.01) * 0.3048, int(c.cc2xp(cover))))
-                #XP10 cloudlevels.append((c.mb2alt(bottom * 0.01) * 0.3048, c.mb2alt(top * 0.01) * 0.3048, cover/10))
+                #XP10 
+                #cloudlevels.append((c.mb2alt(bottom * 0.01) * 0.3048, c.mb2alt(top * 0.01) * 0.3048, cover/10))
     
         windlevels.sort()        
-        cloudlevels.sort(reverse=True)
-        
-        #del data
-        #del clouds
-        
-        self.lock.acquire()
-        self.winds  = windlevels
-        self.clouds = cloudlevels
-        self.nwinds = len(windlevels)
-        self.nclouds = len(cloudlevels)
-        self.parsed_latlon = (lat, lon)
-                
-        if pressure:
-            self.pressure = pressure
-        else:
-            self.pressure = False
-        self.lock.release()
+        cloudlevels.sort()
         
         data = {
                 'winds': windlevels,
@@ -288,9 +273,4 @@ class GFS(threading.Thread):
                 'pressure': pressure
                 }
         
-        return data 
-    
-    def reparse(self):
-        self.lastlat = False
-        self.lastlon = False
-        self.newGrib = True
+        return data

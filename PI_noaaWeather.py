@@ -96,7 +96,7 @@ class Weather:
 
         self.xpWeatherOn = EasyDref('sim/weather/use_real_weather_bool', 'int')
         self.msltemp     = EasyDref('sim/weather/temperature_sealevel_c', 'float')
-        self.dewpoint    = EasyDref('sim/weather/dewpoi_sealevel_c', 'float')
+        self.msldewp    = EasyDref('sim/weather/dewpoi_sealevel_c', 'float')
         self.thermalAlt  = EasyDref('sim/weather/thermal_altitude_msl_m', 'float')
         self.visibility  = EasyDref('sim/weather/visibility_reported_m', 'float')
         self.pressure    = EasyDref('sim/weather/barometer_sealevel_inhg', 'float')
@@ -127,13 +127,12 @@ class Weather:
         '''
         
         # Send something for windows to bind
-        self.sock.sendto("?%.2f|%.2f\n" % (99, 99),
-                                 ('127.0.0.1', self.conf.server_port))
+        self.sock.sendto("?%.2f|%.2f\n" % (99, 99), ('127.0.0.1', self.conf.server_port))
         
         while True:
             received = self.sock.recv(1024*8)
             self.weatherData = cPickle.loads(received)
-            if self.weatherData == '!bye':
+            if self.die.is_set() or self.weatherData == '!bye':
                 break
             if self.die.is_set():
                 return
@@ -153,9 +152,10 @@ class Weather:
     def shutdown(self):
         # Shutdown client and server
         self.die.set()
-        self.weatherClientThread.join(4)
-        self.weatherClientThread = False
         self.shutdownWeatherServer()
+        self.weatherClientThread.join()
+        self.weatherClientThread = False
+        
     
     def setWindLayer(self, xpwind, layer, data, elapsed):
         # Sets wind layer and does transition if needed
@@ -209,7 +209,7 @@ class Weather:
         self.winds[1]['turbulence'].value = turb
         self.winds[2]['turbulence'].value = turb
     
-    def setWinds(self, winds, elapsed):
+    def setWinds(self, winds, elapsed, setTemp = True):
         # Sets wind layers and temperature
         prevlayer = False
         wl = self.winds
@@ -228,7 +228,7 @@ class Weather:
                 self.setWindLayer(wl[1], 1, wlayer, elapsed)
 
             # Set temperature
-            if self.conf.set_temp and wlayer[3]['temp']:
+            if setTemp and self.conf.set_temp and wlayer[3]['temp']:
                 # Interpolate with previous layer
                 if prevlayer and prevlayer[0] != wlayer[0] and wlayer[3]['temp']:
                     temp = c.interpolate(prevlayer[3]['temp'], wlayer[3]['temp'], prevlayer[0], wlayer[0], self.alt)
@@ -262,16 +262,46 @@ class Weather:
                 
     
     def setClouds(self, cloudsr):
-        clouds = cloudsr[:]
-        if len(clouds) > 2:
-            for i in range(3):
-                clayer  = clouds.pop()
-                cl = self.clouds
-                if clayer[2] == '0':
-                    cl[i]['coverage'].value = clayer[2]
+        # Clear = 0, High Cirrus = 1, Scattered = 2, Broken = 3, Overcast = 4, Stratus = 5
+        xpClouds = {
+                    'FEW': 2,
+                    'SCT': 2,
+                    'BKN': 3,
+                    'OVC': 4,
+                    }
+        
+        # Metar clouds disabled
+        if False and self.weatherData and 'metar' in self.weatherData and 'clouds' in self.weatherData['metar']:
+            
+            i = 0
+            for cloud in self.weatherData['metar']['clouds']:
+                
+                alt, coverage, type = cloud
+                
+                if coverage in xpClouds:
+                    coverage = xpClouds[coverage]
                 else:
-                    if int(cl[i]['bottom'].value) != int(clayer[0]) and cl[i]['coverage'].value != clayer[2]:
-                        cl[i]['bottom'].value, cl[i]['top'].value, cl[i]['coverage'].value  = clayer
+                    coverage = xpClouds['FEW']
+                
+                self.clouds[i]['bottom'].value = alt
+                self.clouds[i]['top'].value = alt + 3000
+                self.clouds[i]['coverage'].value = coverage
+                
+                i += 1
+        
+        else:
+            # Gfs clouds
+            clouds = cloudsr[:]
+            clouds.sort(reverse=True)
+            if len(clouds) > 2:
+                for i in range(3):
+                    clayer  = clouds.pop()
+                    cl = self.clouds
+                    if clayer[2] == '0':
+                        cl[i]['coverage'].value = clayer[2]
+                    else:
+                        if int(cl[i]['bottom'].value) != int(clayer[0]) and cl[i]['coverage'].value != clayer[2]:
+                            cl[i]['bottom'].value, cl[i]['top'].value, cl[i]['coverage'].value  = clayer
     
     def setPressure(self, pressure, elapsed):
         # Transition
@@ -320,6 +350,7 @@ class PythonInterface:
         # Menu Items
         self.mReFuel    =  XPLMAppendMenuItem(self.mMain, 'Configuration', 1, 1)
         
+        # Flightloop counters
         self.flcounter = 0
         self.fltime = 1
         self.lastParse = 0
@@ -569,7 +600,7 @@ class PythonInterface:
             if 'info' in wdata:
                 sysinfo = [
                            'XPGFS Status:',
-                           'lat: %.2f/%.2f lon: %.2f/%.2f' % (self.weather.lat , wdata['info']['lat'], self.weather.lon, wdata['info']['lon']),
+                           'lat: %.2f/%.2f lon: %.2f/%.2f' % (self.latdr.value , wdata['info']['lat'], self.londr.value, wdata['info']['lon']),
                            'GFS Cycle: %s' % (wdata['info']['gfs_cycle']),
                            'WAFS Cycle: %s' % (wdata['info']['wafs_cycle']),
                 ]
@@ -588,6 +619,12 @@ class PythonInterface:
                         precip += '%s%s ' % (wdata['metar']['precipitation'][type]['int'], type)
                 
                     sysinfo += ['Precipitation: %s' % (precip)]
+                if 'clouds' in wdata['metar']:
+                    clouds = 'Clouds: '
+                    for cloud in wdata['metar']['clouds']:
+                        alt, coverage, type = cloud
+                        clouds += '%d/%s%s ' % (alt, coverage, type)
+                    sysinfo += [clouds]
                      
             if 'gfs' in wdata:          
                 if 'winds' in wdata['gfs']:
@@ -605,10 +642,11 @@ class PythonInterface:
                     if i > 0:
                         sysinfo += [wlayers]
                 if 'clouds' in wdata['gfs']:
-                    clouds = 'Cloud layers %i BOTTOM/TOP/COVERAGE ' % (len(wdata['gfs']['clouds']))
+                    clouds = 'Clouds  BOTTOM/TOP/COVERAGE '
                     for layer in wdata['gfs']['clouds']:
                         top, bottom, cover = layer
-                        clouds += '%d/%d/%.2f ' % (top * 3.28084/100, bottom * 3.28084/100, cover) 
+                        if top > 0:
+                            clouds += '%d/%d/%.2f ' % (top * 3.28084/100, bottom * 3.28084/100, cover) 
                     sysinfo += [clouds]
             
             if 'wafs' in wdata:
@@ -660,7 +698,8 @@ class PythonInterface:
             
             lat, lon = round(self.latdr.value, 2), round(self.londr.value, 2)
             
-            if (lat, lon) != (self.weather.last_lat, self.weather.last_lon) or (self.fltime - self.lastParse) > 5*60:
+            # Parse on location change or every 60 seconds
+            if (lat, lon) != (self.weather.last_lat, self.weather.last_lon) or (self.fltime - self.lastParse) > 60:
                 self.weather.last_lat, self.weather.last_lon = lat, lon
                 
                 self.weather.sock.sendto("?%.2f|%.2f\n" % (lat, lon),
@@ -676,30 +715,31 @@ class PythonInterface:
             # Worker stoped wait 4s
             return -1
         
-        # Get weather lock
-        #self.weather.lock.acquire()
-        
         # get acf position
-        self.weather.lat = self.latdr.value
-        self.weather.lon = self.londr.value
         self.weather.alt = self.altdr.value
         
         wdata = self.weather.weatherData
         
-        # Release lock
-        #self.weather.lock.release()
-        
         pressSet = False
+        tempSet = False
         
         rain, ts = 0, 0
         
-        # Set visibility from metar
+        # Set metar values
         if 'metar' in wdata:
             if 'visibility' in wdata['metar']:
                 self.weather.visibility.value =  c.limit(wdata['metar']['visibility'], self.conf.max_visibility)
             if 'pressure' in wdata['metar']:
                 self.weather.setPressure(wdata['metar']['pressure'], elapsedMe)
                 pressSet = True
+            if 'temperature' in wdata['metar'] and self.weather.alt < (1300 + wdata['metar']['elevation']):
+                # Set metar temperature below 5000m
+                temp, dew = wdata['metar']['temperature']
+            
+                self.weather.msltemp.value = c.oat2msltemp(temp + 274.15, wdata['metar']['elevation'])
+                self.weather.msldewp.value = c.oat2msltemp(temp + 274.15, wdata['metar']['elevation'])
+                tempSet = True
+                
             if'precipitation' in wdata['metar'] and len(wdata['metar']['precipitation']):
                 precp = wdata['metar']['precipitation']
                 if 'RA'in precp:
@@ -719,7 +759,7 @@ class PythonInterface:
         if 'gfs' in wdata:    
             # Set winds and clouds
             if self.conf.set_wind and 'winds' in wdata['gfs']:
-                self.weather.setWinds(wdata['gfs']['winds'], elapsedMe)
+                self.weather.setWinds(wdata['gfs']['winds'], elapsedMe, not tempSet)
             if self.conf.set_clouds and 'clouds' in wdata['gfs']:
                 self.weather.setClouds(wdata['gfs']['clouds'])
             # Set pressure
@@ -729,8 +769,6 @@ class PythonInterface:
         if self.conf.set_turb and 'wafs' in wdata:
             self.weather.setTurbulence(wdata['wafs'])
             
-        
-        
         return -1
     
     def XPluginStop(self):
