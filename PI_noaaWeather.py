@@ -168,7 +168,7 @@ class Weather:
         
         calt = xpwind['alt'].value
 
-        if layer != 0 and abs(alt - calt) < 1000:
+        if layer != 0 and abs(alt - calt) < 100:
             # layer change trasition not needed xplane does interpolation
             xpwind['alt'].value, xpwind['hdg'].value, xpwind['speed'].value = alt, hdg, speed
             xpwind['gust'].value, xpwind['gust_hdg'].value = gust, 0
@@ -181,9 +181,12 @@ class Weather:
             xpwind['gust_hdg'].value = 0
             
             if layer == 0:
-                # Do altitude trasition for metar based wind layers 1m/s
-                alt = c.limit(alt, max = 304.8) # XP minimum wind layer alt 1000 feet
-                c.datarefTransition(xpwind['alt'], alt, elapsed, )
+                # Do altitude transition for metar based wind layers 1m/s
+                alt += self.conf.metar_agl_limit
+                if self.alt > self.winds[1]['alt'].value:
+                    xpwind['alt'].value = alt
+                else:
+                    c.datarefTransition(xpwind['alt'], alt, elapsed, 1)
      
     def setTurbulence(self, turbulence):
         '''
@@ -606,8 +609,19 @@ class PythonInterface:
                 ]
         
             if 'metar' in wdata and 'icao' in wdata['metar']:
+                
+                # Split metar if needed
+                splitlen = 80
+                metar = 'Metar station: %s %s' % (wdata['metar']['icao'], wdata['metar']['metar'])
+                
+                if len(metar) > splitlen:
+                    icut = metar.rfind(' ', 0, splitlen)
+                    sysinfo += [metar[:icut], metar[icut+1:]]
+                else:
+                    sysinfo += [metar]
+                    
                 sysinfo += [
-                            'Metar station: %s %s' % (wdata['metar']['icao'], wdata['metar']['metar']),
+                            'Airport altitude: %dft, gfs switch alt: %dft' % (wdata['metar']['elevation'] * 3.28084, (wdata['metar']['elevation'] + self.conf.metar_agl_limit) * 3.28084 ),
                             'Temperature: %.1f, Dewpoint: %.1f, ' % (wdata['metar']['temperature'][0], wdata['metar']['temperature'][1]) +
                             'Visibility: %d meters, ' % (wdata['metar']['visibility']) +
                             'Pressure: %.2f inhg ' % (wdata['metar']['pressure']),
@@ -623,7 +637,7 @@ class PythonInterface:
                     clouds = 'Clouds: '
                     for cloud in wdata['metar']['clouds']:
                         alt, coverage, type = cloud
-                        clouds += '%d/%s%s ' % (alt, coverage, type)
+                        clouds += '%d/%s%s ' % (alt * 3.28084 / 100, coverage, type)
                     sysinfo += [clouds]
                      
             if 'gfs' in wdata:          
@@ -642,7 +656,7 @@ class PythonInterface:
                     if i > 0:
                         sysinfo += [wlayers]
                 if 'clouds' in wdata['gfs']:
-                    clouds = 'Clouds  BOTTOM/TOP/COVERAGE '
+                    clouds = 'Clouds  base/top/cover '
                     for layer in wdata['gfs']['clouds']:
                         top, bottom, cover = layer
                         if top > 0:
@@ -664,7 +678,7 @@ class PythonInterface:
         for label in sysinfo:
             XPSetWidgetDescriptor(self.statusBuff[i], label)
             i +=1
-            if i > self.aboutlines:
+            if i > self.aboutlines -1:
                 break
 
     def floopCallback(self, elapsedMe, elapsedSim, counter, refcon):
@@ -696,9 +710,9 @@ class PythonInterface:
         self.fltime += elapsedMe
         if self.flcounter > self.conf.parserate and self.weather.weatherClientThread:
             
-            lat, lon = round(self.latdr.value, 2), round(self.londr.value, 2)
+            lat, lon = round(self.latdr.value, 1), round(self.londr.value, 1)
             
-            # Parse on location change or every 60 seconds
+            # Parse on location change or every 60 seconds or every 0.1 degree
             if (lat, lon) != (self.weather.last_lat, self.weather.last_lon) or (self.fltime - self.lastParse) > 60:
                 self.weather.last_lat, self.weather.last_lon = lat, lon
                 
@@ -732,7 +746,7 @@ class PythonInterface:
             if 'pressure' in wdata['metar']:
                 self.weather.setPressure(wdata['metar']['pressure'], elapsedMe)
                 pressSet = True
-            if 'temperature' in wdata['metar'] and self.weather.alt < (1300 + wdata['metar']['elevation']):
+            if 'temperature' in wdata['metar'] and self.weather.alt < (self.conf.metar_agl_limit + wdata['metar']['elevation']):
                 # Set metar temperature below 5000m
                 temp, dew = wdata['metar']['temperature']
             

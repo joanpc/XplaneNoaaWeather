@@ -80,6 +80,9 @@ class Conf:
         self.set_turb       = True
         self.set_pressure   = True
         self.transalt       = 32808.399000000005
+        
+        self.metar_agl_limit = 1300 # Below that level metar values are used. In meters.
+        
         self.use_metar      = False
         self.parserate      = 1
         self.updaterate     = 1
