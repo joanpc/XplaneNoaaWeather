@@ -80,7 +80,7 @@ class AsyncDownload():
                 args = [self.wgrib2bin, tempfile, '-set_grib_type', 'simple', '-grib_out', filepath]         
         
                 if conf.spinfo:
-                    p = subprocess.Popen(args, startupinfo=conf.spinfo, stdout=sys.stdout, stderr=sys.stderr)
+                    p = subprocess.Popen(args, startupinfo=conf.spinfo, stdout=sys.stdout, stderr=sys.stderr, shell=True)
                 else:
                     p = subprocess.Popen(args, stdout=sys.stdout, stderr=sys.stderr)
                 p.wait()

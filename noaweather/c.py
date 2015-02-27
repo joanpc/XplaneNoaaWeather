@@ -92,14 +92,21 @@ class c:
             return new
         else:
             return current + dir * vel * elapsed
+    @classmethod
+    def setTransRefs(self, datarefs):
+        for dataref in datarefs:
+            id = str(dataref)
+            if id in self.transrefs:
+                self.transrefs[id] = dataref.value
     
     @classmethod
-    def datarefTransition(self, dataref, new, elapsed,speed=0.25):
+    def datarefTransition(self, dataref, new, elapsed, speed=0.25, id=False):
         '''
         Dataref time 
         '''
         # Save reference to ignore x-plane roundings
-        id = str(dataref.DataRef)
+        if not id:
+            id = str(dataref.DataRef)
         if not id in self.transrefs:
             self.transrefs[id] = dataref.value
         

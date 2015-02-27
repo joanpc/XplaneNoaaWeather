@@ -193,7 +193,7 @@ class GFS(threading.Thread):
                 os.sep.join([self.conf.cachepath, filepath])
                 ]
         if self.conf.spinfo:
-            p = subprocess.Popen([self.conf.wgrib2bin] + args, stdout=subprocess.PIPE, startupinfo=self.conf.spinfo)
+            p = subprocess.Popen([self.conf.wgrib2bin] + args, stdout=subprocess.PIPE, startupinfo=self.conf.spinfo, shell=True)
         else:
             p = subprocess.Popen([self.conf.wgrib2bin] + args, stdout=subprocess.PIPE)
         it = iter(p.stdout)

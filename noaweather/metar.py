@@ -16,7 +16,7 @@ class Metar:
     # Metar parse regex
     RE_CLOUD        = re.compile(r'\b(FEW|BKN|SCT|OVC|VV)([0-9]+)([A-Z][A-Z][A-Z]?)?\b')
     RE_WIND         = re.compile(r'\b([0-9]{3})([0-9]{2,3})(G[0-9]{2,3})?(MPH|KT?|MPS)\b')
-    RE_VISIBILITY   = re.compile(r'\b[PM]?(?:([0-9]{4})|(?:([0-9]{1,2}) )?([0-9]{1,2})(/[0-9])?)(SM|KM|M)?\b')
+    RE_VISIBILITY   = re.compile(r'\b(CAVOK|[PM]?([0-9]{4})|([0-9] )?([0-9]{1,2})(/[0-9])?(SM))\b')
     RE_PRESSURE     = re.compile(r'\b(Q|QNH|SLP|A)[ ]?([0-9]{3,4})\b')
     RE_TEMPERATURE  = re.compile('(M|-)?([0-9]{1,2})/(M|-)?([0-9]{1,2})')
     RE_TEMPERATURE2 = re.compile('T(0|1)([0-9]){3}(0|1)([0-9]){3}')
@@ -204,8 +204,8 @@ class Metar:
             tp, temp, dp, dew = m.groups()
             temp = float(temp) * 0.1
             dew = float(dew) * 0.1
-            if tp == '0': temp *= -1
-            if dp == '0': dew *= -1
+            if tp == '1': temp *= -1
+            if dp == '1': dew *= -1
             weather['temperature'] = [temp, dew]  
         else:  
             m = self.RE_TEMPERATURE.search(metar)
@@ -219,12 +219,12 @@ class Metar:
         
         m = self.RE_VISIBILITY.search(metar)
         if m:
-            if m.group(1) == 'CAVOK':
+            if m.group(0) == 'CAVOK':
                 visibility = 9999
             else:
                 visibility = 0
                 
-                vis1, vis2, vis3, div, unit = m.groups()
+                vis0, vis1, vis2, vis3, div, unit = m.groups()
                 
                 if vis1: visibility += int(vis1)
                 if vis2: visibility += int(vis2)

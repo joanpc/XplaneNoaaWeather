@@ -168,11 +168,13 @@ class Weather:
         
         calt = xpwind['alt'].value
 
-        if layer != 0 and abs(alt - calt) < 100:
+        if layer != 0 and abs(alt - calt) > 500:
             # layer change trasition not needed xplane does interpolation
             xpwind['alt'].value, xpwind['hdg'].value, xpwind['speed'].value = alt, hdg, speed
             xpwind['gust'].value, xpwind['gust_hdg'].value = gust, 0
-                        
+            
+            # Set transition references
+            c.setTransRefs([xpwind['hdg'], xpwind['speed'], xpwind['gust']])
         else:
             # do Transition
             c.datarefTransitionHdg(xpwind['hdg'], hdg, elapsed, self.conf.windHdgTransSpeed)
@@ -186,7 +188,7 @@ class Weather:
                 if self.alt > self.winds[1]['alt'].value:
                     xpwind['alt'].value = alt
                 else:
-                    c.datarefTransition(xpwind['alt'], alt, elapsed, 1)
+                    c.datarefTransition(xpwind['alt'], alt, elapsed, 1, 'metar_alt')
      
     def setTurbulence(self, turbulence):
         '''

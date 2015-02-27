@@ -8,7 +8,7 @@ class Conf:
     Configuration variables
     '''
     syspath, dirsep = '', os.sep
-    __VERSION__ = '2.0_beta5.2'
+    __VERSION__ = '2.0_beta5.3'
     
     def __init__(self, syspath):
         # Inits conf
@@ -16,9 +16,7 @@ class Conf:
         self.respath      = os.sep.join([self.syspath, 'Resources', 'plugins', 'PythonScripts', 'noaweather'])
         self.settingsfile = os.sep.join([self.respath, 'settings.pkl'])
         
-        print self.respath
         self.cachepath    = os.sep.join([self.respath, 'cache'])
-        print self.cachepath
         if not os.path.exists(self.cachepath):
             os.makedirs(self.cachepath)
         
@@ -56,7 +54,7 @@ class Conf:
             self.spinfo = subprocess.STARTUPINFO()
 
             self.spinfo.dwFlags |= 1 # STARTF_USESHOWWINDOW
-            self.spinfo.wShowWindow = 7 # 0 or SW_SHOWMINNOACTIVE 7 
+            self.spinfo.wShowWindow = 0 # 0 or SW_HIDE 0 
             
         else:
             # Linux?
