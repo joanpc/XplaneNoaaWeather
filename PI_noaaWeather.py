@@ -104,9 +104,13 @@ class Weather:
         self.precipitation = EasyDref('sim/weather/rain_percent', 'float')
         self.thunderstorm = EasyDref('sim/weather/thunderstorm_percent', 'float')
         
+        self.mag_deviation = EasyDref('sim/flightmodel/position/magnetic_variation', 'float')
+        
         # Data
         self.weatherData = False
         self.weatherClientThread = False
+        
+        self.windAlts = (0, 0)
         
         # Create client socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -115,6 +119,9 @@ class Weather:
         self.lock = threading.Lock()
         
         self.startWeatherServer()
+        
+        self.tlayer = False
+        self.blayer = False
     
     def startWeatherClient(self):
         if not self.weatherClientThread:
@@ -155,40 +162,6 @@ class Weather:
         self.shutdownWeatherServer()
         self.weatherClientThread.join()
         self.weatherClientThread = False
-        
-    
-    def setWindLayer(self, xpwind, layer, data, elapsed):
-        # Sets wind layer and does transition if needed
-        alt, hdg, speed = data[0], data[1], data[2]
-        
-        if 'gust' in data[3]:
-            gust = data[3]['gust']
-        else:
-            gust = 0
-        
-        calt = xpwind['alt'].value
-
-        if layer != 0 and abs(alt - calt) > 500:
-            # layer change trasition not needed xplane does interpolation
-            xpwind['alt'].value, xpwind['hdg'].value, xpwind['speed'].value = alt, hdg, speed
-            xpwind['gust'].value, xpwind['gust_hdg'].value = gust, 0
-            
-            # Set transition references
-            c.setTransRefs([xpwind['hdg'], xpwind['speed'], xpwind['gust']])
-        else:
-            # do Transition
-            c.datarefTransitionHdg(xpwind['hdg'], hdg, elapsed, self.conf.windHdgTransSpeed)
-            c.datarefTransition(xpwind['speed'], speed, elapsed, self.conf.windHdgTransSpeed)
-            c.datarefTransition(xpwind['gust'], gust, elapsed, self.conf.windGustTransSpeed)
-            xpwind['gust_hdg'].value = 0
-            
-            if layer == 0:
-                # Do altitude transition for metar based wind layers 1m/s
-                alt += self.conf.metar_agl_limit
-                if self.alt > self.winds[1]['alt'].value:
-                    xpwind['alt'].value = alt
-                else:
-                    c.datarefTransition(xpwind['alt'], alt, elapsed, 1, 'metar_alt')
      
     def setTurbulence(self, turbulence):
         '''
@@ -215,56 +188,123 @@ class Weather:
         self.winds[2]['turbulence'].value = turb
     
     def setWinds(self, winds, elapsed, setTemp = True):
-        # Sets wind layers and temperature
-        prevlayer = False
-        wl = self.winds
+        '''Set winds'''  
+        
+        metarAlt = False
+        
+        # Add metar layer 
+        if 'metar' in self.weatherData and 'wind' in self.weatherData['metar']:
+            alt = self.weatherData['metar']['elevation']
+            hdg, speed, gust = self.weatherData['metar']['wind']
+            extra = {'gust': gust}
+
+            # Transition metar layer altitude
+            metarAlt = alt
+            alt = c.transition(alt, 'metar_wind_alt', elapsed, 1) + self.conf.metar_agl_limit
+
+            if 'temperature' in self.weatherData['metar']:    
+                extra['temp'] = self.weatherData['metar']['temperature'][0] + 274.15
+                extra['dew'] = self.weatherData['metar']['temperature'][1] + 274.15
+            
+            winds = [[alt, hdg, speed, extra]] + winds
+            
+        # Search current top and bottom layer:
+        blayer = False
+        
         if len(winds) > 1:
             for wind in range(len(winds)):
-                wlayer = winds[wind]
-                if wlayer[0] > self.alt:
-                    #last layer
+                tlayer = winds[wind]
+                if tlayer[0] > self.alt:
                     break
                 else:
-                    prevlayer = wlayer
-            if prevlayer:
-                self.setWindLayer(wl[1], 1, prevlayer, elapsed)
-                self.setWindLayer(wl[2], 2, wlayer, elapsed)
-            else:
-                self.setWindLayer(wl[1], 1, wlayer, elapsed)
-
-            # Set temperature
-            if setTemp and self.conf.set_temp and wlayer[3]['temp']:
-                # Interpolate with previous layer
-                if prevlayer and prevlayer[0] != wlayer[0] and wlayer[3]['temp']:
-                    temp = c.interpolate(prevlayer[3]['temp'], wlayer[3]['temp'], prevlayer[0], wlayer[0], self.alt)
-                    self.msltemp.value = temp
+                    blayer = tlayer
+            if blayer:
+                if self.windAlts != (tlayer[0], blayer[0]):
+                    # Layer change, don't transition     
+                    self.windAlts = (tlayer[0], blayer[0])
+                    # Reset references
+                    c.transitionClearReferences()
                 else:
-                    self.msltemp.value = wlayer[3]['temp']
-            '''
-            # Set visibility
-            if self.conf.set_visibility and wlayer[3]['vis']:
-                if prevlayer and prevlayer[0] != wlayer[0] and wlayer[3]['vis']:
-                    self.visibility.value = c.interpolate(prevlayer[3]['vis'], wlayer[3]['vis'], prevlayer[0], wlayer[0], self.alt)
+                    # Transition both layers
+                    tlayer = self.transWindLayer(tlayer, 'top_wind_layer_', elapsed)
+                    blayer = self.transWindLayer(blayer, 'bottom_wind_layer_', elapsed)
+                    pass
+                    
+                # Interpolate if whe are above
+                if blayer[0] < self.alt:
+                    # TODO: add metar trans
+                    layer = self.interpolateWindLayer(tlayer, blayer, self.alt)
                 else:
-                    self.visibility.value = wlayer[3]['vis']
-            '''
-            # First wind level
-            if self.conf.vatsim:
-                return
-            '''
-            if not self.conf.use_metar:
-                # Set first wind level if we don't use metar
-                self.setWindLayer(wl[0], 0, winds[0], elapsed)
-            elif self.alt > winds[0][0]:
-                # Set first wind level on "descent"
-                self.setWindLayer(wl[0], 0, winds[0], elapsed)
-            '''
-            
-            if 'metar' in self.weatherData and 'wind' in self.weatherData['metar']:
-                alt = self.weatherData['metar']['elevation'] 
-                hdg, speed, gust = self.weatherData['metar']['wind']
-                self.setWindLayer(wl[0], 0, [alt, hdg, speed, {'gust': gust}], elapsed)
+                    layer = tlayer
                 
+            else:
+                tlayer = self.transWindLayer(tlayer, 'top_wind_layer_', elapsed)
+                layer = tlayer;
+            
+        # Set layers
+        self.setWindLayer(0, layer)
+        self.setWindLayer(1, layer)
+        self.setWindLayer(2, layer)
+        
+        extra = layer[3]
+        
+        # Fix metar altitude
+        if metarAlt != False:
+            alt = metarAlt
+        else:
+            alt = layer[0]
+        
+        if 'dew' in extra:
+            self.msldewp.value = c.oat2msltemp(extra['dew'], alt)
+        if 'temp' in extra:
+            self.msltemp.value = c.oat2msltemp(extra['temp'], alt)
+    
+    def setWindLayer(self, index,  wlayer):
+        alt, hdg, speed, extra = wlayer
+        
+        wind = self.winds[index]
+        wind['hdg'].value, wind['speed'].value = hdg, speed
+        
+        if 'gust' in extra:
+            wind['gust'].value = extra['gust']
+                
+    def transWindLayer(self, wlayer, id, elapsed):
+        ''' Transition wind layer values'''
+        alt, hdg, speed, extra = wlayer
+        
+        hdg = c.transitionHdg(hdg, id + '_hdg', elapsed, self.conf.windHdgTransSpeed)
+        speed = c.transition(speed, id + '_speed', elapsed, self.conf.windHdgTransSpeed)
+        
+        # Extra vars
+        for var in ['gust', 'rh', 'dew']:
+            if var in extra:
+                extra[var] = c.transition(extra[var], id + '_' + var , elapsed, self.conf.windGustTransSpeed)
+        
+        # Special cases
+        if 'gust_hdg' in extra:
+            extra['gust_hdg'] = 0
+        
+        return alt, hdg, speed, extra
+              
+    
+    def interpolateWindLayer(self, wlayer1, wlayer2, current_altitude):
+        ''' Interpolates 2 wind layers 
+        layer array: [alt, hdg, speed, extra] '''
+  
+        layer = [0, 0, 0, {}]
+        
+        layer[0] = current_altitude
+        layer[1] = c.interpolateHeading(wlayer1[1], wlayer2[1], wlayer1[0], wlayer2[0], current_altitude)
+        layer[2] = c.interpolate(wlayer1[2], wlayer2[2], wlayer1[0], wlayer2[0], current_altitude)
+        
+        # Interpolate extras
+        for key in wlayer1[3]:
+            if key in wlayer2[3]:
+                layer[3][key] = c.interpolate(wlayer1[3][key], wlayer2[3][key], wlayer1[0], wlayer2[0], current_altitude)
+            else:
+                layer[3][key] = wlayer1[3][key]
+            
+        return layer              
     
     def setClouds(self, cloudsr):
         # Clear = 0, High Cirrus = 1, Scattered = 2, Broken = 3, Overcast = 4, Stratus = 5
@@ -309,7 +349,6 @@ class Weather:
                             cl[i]['bottom'].value, cl[i]['top'].value, cl[i]['coverage'].value  = clayer
     
     def setPressure(self, pressure, elapsed):
-        # Transition
         c.datarefTransition(self.pressure, pressure, elapsed, 0.005)
         
     @classmethod
@@ -339,8 +378,6 @@ class PythonInterface:
         self.altdr  = EasyDref('sim/flightmodel/position/elevation', 'double')
         
         self.weather = Weather(self.conf)
-        
-        #self.gfs = False
          
         # floop
         self.floop = self.floopCallback
@@ -442,25 +479,25 @@ class PythonInterface:
         x -=5
         
         # VATSIM Compatible
-        XPCreateWidget(x, y-40, x+20, y-60, 1, 'VATSIM compat', 0, window, xpWidgetClass_Caption)
-        self.vatsimCheck = XPCreateWidget(x+110, y-40, x+120, y-60, 1, '', 0, window, xpWidgetClass_Button)
-        XPSetWidgetProperty(self.vatsimCheck, xpProperty_ButtonType, xpRadioButton)
-        XPSetWidgetProperty(self.vatsimCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
-        XPSetWidgetProperty(self.vatsimCheck, xpProperty_ButtonState, self.conf.vatsim)
-        y -= 20
+        #XPCreateWidget(x, y-40, x+20, y-60, 1, 'VATSIM compat', 0, window, xpWidgetClass_Caption)
+        #self.vatsimCheck = XPCreateWidget(x+110, y-40, x+120, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        #XPSetWidgetProperty(self.vatsimCheck, xpProperty_ButtonType, xpRadioButton)
+        #XPSetWidgetProperty(self.vatsimCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
+        #XPSetWidgetProperty(self.vatsimCheck, xpProperty_ButtonState, self.conf.vatsim)
+        #y -= 20
         
         # trans altitude
-        XPCreateWidget(x, y-40, x+80, y-60, 1, 'Switch to METAR', 0, window, xpWidgetClass_Caption)
-        self.metarCheck = XPCreateWidget(x+110, y-40, x+120, y-60, 1, '', 0, window, xpWidgetClass_Button)
-        XPSetWidgetProperty(self.metarCheck, xpProperty_ButtonType, xpRadioButton)
-        XPSetWidgetProperty(self.metarCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
-        XPSetWidgetProperty(self.metarCheck, xpProperty_ButtonState, self.conf.use_metar)
+        #XPCreateWidget(x, y-40, x+80, y-60, 1, 'Switch to METAR', 0, window, xpWidgetClass_Caption)
+        #self.metarCheck = XPCreateWidget(x+110, y-40, x+120, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        #XPSetWidgetProperty(self.metarCheck, xpProperty_ButtonType, xpRadioButton)
+        #XPSetWidgetProperty(self.metarCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
+        #XPSetWidgetProperty(self.metarCheck, xpProperty_ButtonState, self.conf.use_metar)
         
-        y -= 20
-        XPCreateWidget(x+20, y-40, x+80, y-60, 1, 'Below FL', 0, window, xpWidgetClass_Caption)
-        self.transAltInput = XPCreateWidget(x+100, y-40, x+140, y-62, 1, '%i' % (self.conf.transalt*3.2808399/100), 0, window, xpWidgetClass_TextField)
-        XPSetWidgetProperty(self.transAltInput, xpProperty_TextFieldType, xpTextEntryField)
-        XPSetWidgetProperty(self.transAltInput, xpProperty_Enabled, 1)
+        #y -= 20
+        #XPCreateWidget(x+20, y-40, x+80, y-60, 1, 'Below FL', 0, window, xpWidgetClass_Caption)
+        #self.transAltInput = XPCreateWidget(x+100, y-40, x+140, y-62, 1, '%i' % (self.conf.transalt*3.2808399/100), 0, window, xpWidgetClass_TextField)
+        #XPSetWidgetProperty(self.transAltInput, xpProperty_TextFieldType, xpTextEntryField)
+        #XPSetWidgetProperty(self.transAltInput, xpProperty_Enabled, 1)
         
         y -= 35
         # Save
@@ -487,7 +524,6 @@ class PythonInterface:
             self.statusBuff.append(XPCreateWidget(x, y, x+40, y-20, 1, '--', 0, window, xpWidgetClass_Caption))
             
         self.updateStatus()
-        
         # Enable download
         
         y -= 20
@@ -552,27 +588,27 @@ class PythonInterface:
                 self.conf.set_temp      = XPGetWidgetProperty(self.tempCheck, xpProperty_ButtonState, None)
                 self.conf.set_pressure  = XPGetWidgetProperty(self.pressureCheck, xpProperty_ButtonState, None)
                 self.conf.set_turb      = XPGetWidgetProperty(self.turbCheck, xpProperty_ButtonState, None)
-                self.conf.use_metar     = XPGetWidgetProperty(self.metarCheck, xpProperty_ButtonState, None)
-                self.conf.vatsim        = XPGetWidgetProperty(self.vatsimCheck, xpProperty_ButtonState, None)
+                #self.conf.use_metar     = XPGetWidgetProperty(self.metarCheck, xpProperty_ButtonState, None)
+                #self.conf.vatsim        = XPGetWidgetProperty(self.vatsimCheck, xpProperty_ButtonState, None)
                 self.conf.download      = XPGetWidgetProperty(self.downloadCheck, xpProperty_ButtonState, None)
                 
                 buff = []
                 XPGetWidgetDescriptor(self.transAltInput, buff, 256)
-                self.conf.transalt = c.toFloat(buff[0], 100) * 0.3048 * 100
+                #self.conf.transalt = c.toFloat(buff[0], 100) * 0.3048 * 100
                 #buff = []
                 #XPGetWidgetDescriptor(self.updateRateInput, buff, 256)
                 #self.conf.updaterate = c.toFloat(buff[0], 1)
                 
-                if self.conf.vatsim: 
-                    self.conf.set_clouds = False
-                    self.conf.set_temp   = False
-                    self.conf.use_metar  = False
-                    self.weather.winds[0]['alt'].value = self.conf.transalt
+                #if self.conf.vatsim: 
+                #     self.conf.set_clouds = False
+                #    self.conf.set_temp   = False
+                #    self.conf.use_metar  = False
+                #    self.weather.winds[0]['alt'].value = self.conf.transalt
                 
-                if not self.conf.use_metar:
-                    self.weather.xpWeatherOn.value = 0
-                else:
-                    self.weather.winds[0]['alt'].value = self.conf.transalt   
+                #if not self.conf.use_metar:
+                #    self.weather.xpWeatherOn.value = 0
+                #else:
+                #    self.weather.winds[0]['alt'].value = self.conf.transalt   
                 
                 self.conf.save()
                 
@@ -605,7 +641,7 @@ class PythonInterface:
             if 'info' in wdata:
                 sysinfo = [
                            'XPGFS Status:',
-                           'lat: %.2f/%.2f lon: %.2f/%.2f' % (self.latdr.value , wdata['info']['lat'], self.londr.value, wdata['info']['lon']),
+                           'lat: %.2f/%.2f lon: %.2f/%.2f magnetic deviation: %2.f' % (self.latdr.value , wdata['info']['lat'], self.londr.value, wdata['info']['lon'], self.weather.mag_deviation.value),
                            'GFS Cycle: %s' % (wdata['info']['gfs_cycle']),
                            'WAFS Cycle: %s' % (wdata['info']['wafs_cycle']),
                 ]
@@ -688,25 +724,6 @@ class PythonInterface:
         Floop Callback
         '''
         
-        '''
-        # Switch METAR/GFS mode
-        if self.conf.use_metar:
-            if self.weather.xpWeatherOn.value == 1:
-                if self.weather.alt > self.conf.transalt:
-                    #  Swicth to GFS
-                    self.weather.winds[0]['alt'].value = self.conf.transalt 
-                    self.weather.ref_winds[0] = (self.weather.winds[1]['alt'].value, self.weather.winds[1]['hdg'].value, self.weather.winds[1]['speed'].value)
-                    self.weather.xpWeatherOn.value = 0
-                else:
-                    return -1
-            else:
-                if self.weather.alt < self.conf.transalt:
-                    # Switch to METAR
-                    self.weather.winds[0]['alt'].value = self.conf.transalt 
-                    self.weather.xpWeatherOn.value = 1
-                    return -1
-        '''
-        
         # Request data from the weather server
         self.flcounter += elapsedMe
         self.fltime += elapsedMe
@@ -714,7 +731,7 @@ class PythonInterface:
             
             lat, lon = round(self.latdr.value, 1), round(self.londr.value, 1)
             
-            # Parse on location change or every 60 seconds or every 0.1 degree
+            # Request data on postion change, every 0.1 degree or 60 seconds 
             if (lat, lon) != (self.weather.last_lat, self.weather.last_lon) or (self.fltime - self.lastParse) > 60:
                 self.weather.last_lat, self.weather.last_lon = lat, lon
                 
@@ -728,10 +745,9 @@ class PythonInterface:
             self.updateStatus()
         
         if not self.conf.enabled or not self.weather.weatherData:
-            # Worker stoped wait 4s
             return -1
         
-        # get acf position
+        # Store altitude
         self.weather.alt = self.altdr.value
         
         wdata = self.weather.weatherData

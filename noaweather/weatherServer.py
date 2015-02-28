@@ -1,6 +1,15 @@
 #!/usb/bin/python
 '''
-Noa weather daemon server
+NOAA weather daemon server
+
+---
+X-plane NOAA GFS weather plugin.
+Copyright (C) 2012-2015 Joan Perez i Cauhe
+---
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or any later version.
 '''
 
 from conf import Conf
@@ -75,7 +84,7 @@ class clientHandler(SocketServer.BaseRequestHandler):
                     if len(apt) > 4:
                         response['metar'] = gfs.metar.parseMetar(apt[0], apt[5], apt[3])
                     else:
-                        response = False
+                        response = [False]
                     
             elif data == '!shutdown':
                 self.shutdown()

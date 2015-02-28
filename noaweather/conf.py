@@ -1,3 +1,13 @@
+'''
+X-plane NOAA GFS weather plugin.
+Copyright (C) 2012-2015 Joan Perez i Cauhe
+---
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or any later version.
+'''
+
 import os
 import cPickle
 import sys
@@ -8,7 +18,7 @@ class Conf:
     Configuration variables
     '''
     syspath, dirsep = '', os.sep
-    __VERSION__ = '2.0_beta5.3'
+    __VERSION__ = '2.0_beta6'
     
     def __init__(self, syspath):
         # Inits conf
@@ -102,7 +112,7 @@ class Conf:
         # Transitions
         self.windTransSpeed = 0.14 # kt/s
         self.windGustTransSpeed = 0.5 # kt/s
-        self.windHdgTransSpeed = 1 # degrees/s
+        self.windHdgTransSpeed = 0.5 # degrees/s
     
     def serverReloadSave(self):
         # Save server variables
