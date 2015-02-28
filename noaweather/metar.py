@@ -19,7 +19,7 @@ class Metar:
     RE_VISIBILITY   = re.compile(r'\b(CAVOK|[PM]?([0-9]{4})|([0-9] )?([0-9]{1,2})(/[0-9])?(SM))\b')
     RE_PRESSURE     = re.compile(r'\b(Q|QNH|SLP|A)[ ]?([0-9]{3,4})\b')
     RE_TEMPERATURE  = re.compile('(M|-)?([0-9]{1,2})/(M|-)?([0-9]{1,2})')
-    RE_TEMPERATURE2 = re.compile('T(0|1)([0-9]){3}(0|1)([0-9]){3}')
+    RE_TEMPERATURE2 = re.compile(r'\bT(0|1)([0-9]{3})(0|1)([0-9]{3})\b')
     RE_PRECIPITATION = re.compile('(-|\+)?(DZ|SG|IC|PL|SH|RE)?(RA|SN|TS)')
     
     METAR_STATIONS_URL = 'http://www.aviationweather.gov/static/adds/metars/stations.txt'
