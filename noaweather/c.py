@@ -66,9 +66,9 @@ class c:
     @classmethod
     def interpolateHeading(self, hdg1, hdg2, alt1, alt2, alt):
         
-        if alt == alt1: return alt1
-        if alt == alt2: return alt2 
-        if alt1 == alt2: return alt1
+        if alt == alt1: return hdg1
+        if alt == alt2: return hdg1 
+        if alt1 == alt2: return hdg1
         
         t1 = 0
         t2 = self.shortHdg(hdg1, hdg2)

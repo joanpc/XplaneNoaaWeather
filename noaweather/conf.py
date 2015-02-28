@@ -18,7 +18,7 @@ class Conf:
     Configuration variables
     '''
     syspath, dirsep = '', os.sep
-    __VERSION__ = '2.0_beta6'
+    __VERSION__ = '2.0_beta6.1'
     
     def __init__(self, syspath):
         # Inits conf
@@ -89,18 +89,20 @@ class Conf:
         self.set_pressure   = True
         self.transalt       = 32808.399000000005
         
-        self.metar_agl_limit = 1300 # Below that level metar values are used. In meters.
+        self.metar_agl_limit = 900 # Below that level metar values are used. In meters.
         
         self.use_metar      = False
         self.parserate      = 1
         self.updaterate     = 1
         self.vatsim         = False
         self.download       = True
-        self.max_visibility = False # in meters
         
+        # Performance tweaks
+        self.max_visibility = False # in meters
+        self.max_cloud_thickness = False # in meters
         
         # Weather server configuration
-        self.server_updaterate = 10
+        self.server_updaterate = 10 # Run the weather loop each #seconds
         self.server_address = '127.0.0.1'
         self.server_port    = 8950
         
