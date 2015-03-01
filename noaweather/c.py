@@ -51,10 +51,9 @@ class c:
         from FL360 (11km) to FL655 (20km) the temperature deviation stays constant at -71.5degreeC
         from MSL up to FL360 (11km) the temperature decreases at a rate of 6.5degreeC/km
         '''
-        if alt > 11000: 
-            return oat + 71.5 - 273.15
-        else:
-            return oat + 0.0065 * alt - 273.15
+        if alt > 11000:
+            return oat + 71.5
+        return oat + 0.0065 * alt
     
     @classmethod
     def interpolate(self, t1, t2, alt1, alt2, alt):

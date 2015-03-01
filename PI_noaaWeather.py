@@ -190,23 +190,20 @@ class Weather:
     def setWinds(self, winds, elapsed, setTemp = True):
         '''Set winds'''  
         
-        metarAlt = False
-        
         # Add metar layer 
         if 'metar' in self.weatherData and 'wind' in self.weatherData['metar']:
             alt = self.weatherData['metar']['elevation']
             hdg, speed, gust = self.weatherData['metar']['wind']
-            extra = {'gust': gust}
+            extra = {'gust': gust, 'metar': True}
 
             # Transition metar layer altitude
-            metarAlt = alt
-            alt = c.transition(alt, 'metar_wind_alt', elapsed, 1) + self.conf.metar_agl_limit
+            talt = c.transition(alt, 'metar_wind_alt', elapsed, 1) + self.conf.metar_agl_limit
 
-            if 'temperature' in self.weatherData['metar']:    
-                extra['temp'] = self.weatherData['metar']['temperature'][0] + 274.15
-                extra['dew'] = self.weatherData['metar']['temperature'][1] + 274.15
+            if 'temperature' in self.weatherData['metar']:
+                extra['temp'] = self.weatherData['metar']['temperature'][0] + 273.15
+                extra['dew'] = self.weatherData['metar']['temperature'][1] + 273.15
             
-            winds = [[alt, hdg, speed, extra]] + winds
+            winds = [[talt, hdg, speed, extra]] + winds
             
         # Search current top and bottom layer:
         blayer = False
@@ -231,7 +228,7 @@ class Weather:
                     pass
                     
                 # Interpolate if whe are above
-                if blayer[0] < self.alt:
+                if blayer[0] < self.alt and blayer[0] != tlayer[0]:
                     # TODO: add metar trans
                     layer = self.interpolateWindLayer(tlayer, blayer, self.alt)
                 else:
@@ -248,16 +245,10 @@ class Weather:
         
         extra = layer[3]
         
-        # Fix metar altitude
-        if metarAlt != False:
-            alt = metarAlt
-        else:
-            alt = layer[0]
-        
         if 'dew' in extra:
-            self.msldewp.value = c.oat2msltemp(extra['dew'], alt)
+            self.msldewp.value = c.oat2msltemp(extra['dew'] - 273.15, self.alt)
         if 'temp' in extra:
-            self.msltemp.value = c.oat2msltemp(extra['temp'], alt)
+            self.msltemp.value = c.oat2msltemp(extra['temp'] - 273.15, self.alt)
     
     def setWindLayer(self, index,  wlayer):
         alt, hdg, speed, extra = wlayer
@@ -397,7 +388,7 @@ class PythonInterface:
         self.fltime = 1
         self.lastParse = 0
         
-        self.aboutlines = 16
+        self.aboutlines = 17
         
         return self.Name, self.Sig, self.Desc
     
@@ -508,7 +499,7 @@ class PythonInterface:
         y = top
         
         # ABOUT/ STATUS Sub Window
-        subw = XPCreateWidget(x+10, y-30, x2-20 + 10, y - (20 * self.aboutlines), 1, "" ,  0,window, xpWidgetClass_SubWindow)
+        subw = XPCreateWidget(x+10, y-30, x2-20 + 10, y - (19 * self.aboutlines), 1, "" ,  0,window, xpWidgetClass_SubWindow)
         # Set the style to sub window
         XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
         x += 20
@@ -533,7 +524,7 @@ class PythonInterface:
         XPSetWidgetProperty(self.downloadCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
         XPSetWidgetProperty(self.downloadCheck, xpProperty_ButtonState, self.conf.download)
         
-        y -= 40
+        y -= 30
         subw = XPCreateWidget(x-10, y, x2-20 + 10, y2 +15, 1, "" ,  0,window, xpWidgetClass_SubWindow)
         x += 10
         # Set the style to sub window
@@ -543,11 +534,12 @@ class PythonInterface:
         '(c) joan perez cauhe 2012-15',
         ]
         for label in sysinfo:
+            XPCreateWidget(x, y-10, x+40, y-20, 1, label, 0, window, xpWidgetClass_Caption)
             y -= 10
-            XPCreateWidget(x, y, x+40, y-20, 1, label, 0, window, xpWidgetClass_Caption)
             
         # Visit site Button
         x += 240
+        y += 5
         self.aboutVisit = XPCreateWidget(x, y, x+100, y-20, 1, "Visit site", 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.aboutVisit, xpProperty_ButtonType, xpPushButton)
         
@@ -593,7 +585,7 @@ class PythonInterface:
                 self.conf.download      = XPGetWidgetProperty(self.downloadCheck, xpProperty_ButtonState, None)
                 
                 buff = []
-                XPGetWidgetDescriptor(self.transAltInput, buff, 256)
+                #XPGetWidgetDescriptor(self.transAltInput, buff, 256)
                 #self.conf.transalt = c.toFloat(buff[0], 100) * 0.3048 * 100
                 #buff = []
                 #XPGetWidgetDescriptor(self.updateRateInput, buff, 256)
@@ -641,16 +633,16 @@ class PythonInterface:
             if 'info' in wdata:
                 sysinfo = [
                            'XPGFS Status:',
-                           'lat: %.2f/%.2f lon: %.2f/%.2f magnetic deviation: %2.f' % (self.latdr.value , wdata['info']['lat'], self.londr.value, wdata['info']['lon'], self.weather.mag_deviation.value),
-                           'GFS Cycle: %s' % (wdata['info']['gfs_cycle']),
-                           'WAFS Cycle: %s' % (wdata['info']['wafs_cycle']),
+                           '    LAT: %.2f/%.2f LON: %.2f/%.2f MAGNETIC DEV: %2.f' % (self.latdr.value , wdata['info']['lat'], self.londr.value, wdata['info']['lon'], self.weather.mag_deviation.value),
+                           '    GFS Cycle: %s' % (wdata['info']['gfs_cycle']),
+                           '    WAFS Cycle: %s' % (wdata['info']['wafs_cycle']),
                 ]
         
             if 'metar' in wdata and 'icao' in wdata['metar']:
                 
                 # Split metar if needed
                 splitlen = 80
-                metar = 'Metar station: %s %s' % (wdata['metar']['icao'], wdata['metar']['metar'])
+                metar = 'METAR STATION: %s %s' % (wdata['metar']['icao'], wdata['metar']['metar'])
                 
                 if len(metar) > splitlen:
                     icut = metar.rfind(' ', 0, splitlen)
@@ -659,11 +651,11 @@ class PythonInterface:
                     sysinfo += [metar]
                     
                 sysinfo += [
-                            'Airport altitude: %dft, gfs switch alt: %dft' % (wdata['metar']['elevation'] * 3.28084, (wdata['metar']['elevation'] + self.conf.metar_agl_limit) * 3.28084 ),
-                            'Temperature: %.1f, Dewpoint: %.1f, ' % (wdata['metar']['temperature'][0], wdata['metar']['temperature'][1]) +
-                            'Visibility: %d meters, ' % (wdata['metar']['visibility']) +
-                            'Pressure: %.2f inhg ' % (wdata['metar']['pressure']),
-                            'Wind:  %d %dkt, gust +%dkt' % (wdata['metar']['wind'][0], wdata['metar']['wind'][1], wdata['metar']['wind'][2])
+                            '    Airport altitude: %dft, gfs switch alt: %dft' % (wdata['metar']['elevation'] * 3.28084, (wdata['metar']['elevation'] + self.conf.metar_agl_limit) * 3.28084 ),
+                            '    Temp: %.1f, Dewpoint: %.1f, ' % (wdata['metar']['temperature'][0], wdata['metar']['temperature'][1]) +
+                            'Visibility: %d m, ' % (wdata['metar']['visibility']) +
+                            'Press: %.2f inhg ' % (wdata['metar']['pressure']),
+                            '    Wind:  %d %dkt, gust +%dkt' % (wdata['metar']['wind'][0], wdata['metar']['wind'][1], wdata['metar']['wind'][2])
                            ]
                 if 'precipitation' in wdata['metar'] and len(wdata['metar']['precipitation']):
                     precip = ''
@@ -672,45 +664,42 @@ class PythonInterface:
                 
                     sysinfo += ['Precipitation: %s' % (precip)]
                 if 'clouds' in wdata['metar']:
-                    clouds = 'Clouds: '
+                    clouds = '    Clouds: BASE|COVER    '
                     for cloud in wdata['metar']['clouds']:
                         alt, coverage, type = cloud
-                        clouds += '%d/%s%s ' % (alt * 3.28084 / 100, coverage, type)
+                        clouds += '%03d|%s%s ' % (alt * 3.28084 / 100, coverage, type)
                     sysinfo += [clouds]
                      
             if 'gfs' in wdata:          
                 if 'winds' in wdata['gfs']:
-                    sysinfo += ['Wind layers: %i FL/HDG/KT' % (len(wdata['gfs']['winds']))]
+                    sysinfo += ['GFS WIND LAYERS: %i FL|HDG|KT|TEMP' % (len(wdata['gfs']['winds']))]
                     wlayers = ''
                     i = 0
                     for layer in wdata['gfs']['winds']:
                         i += 1
-                        alt, hdg, speed = layer[0], layer[1], layer[2]
-                        wlayers += 'FL%d/%03d/%d ' % (alt * 3.28084 / 100, hdg, speed)
-                        if i > 5:
+                        alt, hdg, speed, extra = layer
+                        wlayers += '   %03d|%03d|%02dkt|%02d ' % (alt * 3.28084 / 100, hdg, speed, extra['temp'] - 273.15 )
+                        if i > 3:
                             i = 0
                             sysinfo += [wlayers]
                             wlayers = ''    
                     if i > 0:
                         sysinfo += [wlayers]
+                    
                 if 'clouds' in wdata['gfs']:
-                    clouds = 'Clouds  base/top/cover '
+                    clouds = 'GFS CLOUDS  FLTOP|FLBASE|COVER'
                     for layer in wdata['gfs']['clouds']:
                         top, bottom, cover = layer
                         if top > 0:
-                            clouds += '%d/%d/%.2f ' % (top * 3.28084/100, bottom * 3.28084/100, cover) 
-                    sysinfo += [clouds]
+                            sclouds = '   %03d|%03d|%.2f ' % (top * 3.28084/100, bottom * 3.28084/100, cover) 
+                    sysinfo += [clouds, sclouds]
             
             if 'wafs' in wdata:
                 tblayers = ''
                 for layer in wdata['wafs']:
-                    tblayers += 'FL%d/%.1f ' % (layer[0] * 3.28084 / 100, layer[1]) 
+                    tblayers += '   %03d|%.1f ' % (layer[0] * 3.28084 / 100, layer[1]) 
                 
-                sysinfo += [
-                            #'WAFS Cycle: %s' % (lastwafsgrib[0]),
-                            'Turbulence layers: %d' % (len(wdata['wafs'])),
-                            tblayers
-                            ]
+                sysinfo += ['WAFS TURBULENCE: FL|SEV %d' % (len(wdata['wafs'])), tblayers]
         
         i = 0
         for label in sysinfo:
@@ -768,8 +757,8 @@ class PythonInterface:
                 # Set metar temperature below 5000m
                 temp, dew = wdata['metar']['temperature']
             
-                self.weather.msltemp.value = c.oat2msltemp(temp + 274.15, wdata['metar']['elevation'])
-                self.weather.msldewp.value = c.oat2msltemp(temp + 274.15, wdata['metar']['elevation'])
+                self.weather.msltemp.value = c.oat2msltemp(temp + 273.15, wdata['metar']['elevation'])
+                self.weather.msldewp.value = c.oat2msltemp(temp + 273.15, wdata['metar']['elevation'])
                 tempSet = True
                 
             if'precipitation' in wdata['metar'] and len(wdata['metar']['precipitation']):

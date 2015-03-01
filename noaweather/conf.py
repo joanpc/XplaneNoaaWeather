@@ -18,7 +18,7 @@ class Conf:
     Configuration variables
     '''
     syspath, dirsep = '', os.sep
-    __VERSION__ = '2.0_beta6.1'
+    __VERSION__ = '2.0_beta6.2'
     
     def __init__(self, syspath):
         # Inits conf
