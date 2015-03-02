@@ -18,7 +18,7 @@ class Conf:
     Configuration variables
     '''
     syspath, dirsep = '', os.sep
-    __VERSION__ = '2.0_beta6.2'
+    __VERSION__ = '2.0_beta7'
     
     def __init__(self, syspath):
         # Inits conf
@@ -114,7 +114,7 @@ class Conf:
         # Transitions
         self.windTransSpeed = 0.14 # kt/s
         self.windGustTransSpeed = 0.5 # kt/s
-        self.windHdgTransSpeed = 0.5 # degrees/s
+        self.windHdgTransSpeed = 1# degrees/s
     
     def serverReloadSave(self):
         # Save server variables

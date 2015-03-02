@@ -193,8 +193,14 @@ class c:
         return new
     
     @classmethod
-    def transitionClearReferences(self, refs = False):
+    def transitionClearReferences(self, refs = False, exclude = []):
         ''' Clear transition references '''     
+        if exclude:
+            for ref in self.transrefs.keys():
+                if ref.split('-')[0] not in exclude:
+                    self.transrefs.pop(ref)
+            return
+
         if refs:
             for ref in self.transrefs.keys():
                 if ref.split('-')[0] in refs:
@@ -213,6 +219,7 @@ class c:
         current = self.transrefs[id]
         
         diff = c.shortHdg(current, float(new))
+        
         if abs(diff) < speed*elapsed:
             newval = new
         else:
@@ -225,7 +232,8 @@ class c:
                 newval += 360
             else:
                 newval %= 360
-             
+        
+        self.transrefs[id] = newval
         return newval
     
     @classmethod

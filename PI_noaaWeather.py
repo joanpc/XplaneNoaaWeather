@@ -63,6 +63,7 @@ class Weather:
     alt = 0.0
     ref_winds = {}
     lat, lon, last_lat, last_lon = 99, 99, False, False
+    
     def __init__(self, conf):
         
         self.conf = conf
@@ -189,9 +190,9 @@ class Weather:
         self.winds[2]['turbulence'].value = turb
     
     def setWinds(self, winds, elapsed, setTemp = True):
-        '''Set winds'''  
+        '''Set winds: Interpolate layers and transition new data'''  
         
-        # Add metar layer 
+        # Append metar layer
         if 'metar' in self.weatherData and 'wind' in self.weatherData['metar']:
             alt = self.weatherData['metar']['elevation']
             hdg, speed, gust = self.weatherData['metar']['wind']
@@ -201,7 +202,7 @@ class Weather:
             
             # Transition metar values
             calt, hdg, speed, extra = self.transWindLayer([alt, hdg, speed, extra], 'metar_layer', elapsed)
-            alt = c.transition(alt, 'metar_wind_alt', elapsed, 1)
+            alt = c.transition(alt, 'metar_wind_alt', elapsed, 0.3048) # 1f/s
             
             # Fix temperatures    
             if 'temperature' in self.weatherData['metar']:
@@ -216,7 +217,7 @@ class Weather:
         blayer = False
         nlayers = len(winds)
         
-        if nlayers > 1:
+        if nlayers > 0:
             for i in range(len(winds)):
                 tlayer = i
                 if winds[tlayer][0] > self.alt:
@@ -225,21 +226,21 @@ class Weather:
                     blayer = i
             
             if self.windAlts != tlayer:
-                # Layer change, reset transitions   
+                # Layer change, reset transitions
                 self.windAlts = tlayer
-                c.transitionClearReferences(['top_wind_layer', 'bottom_wind_layer'])
+                c.transitionClearReferences(exclude = [str(blayer), str(tlayer)])
             
-            twind = self.transWindLayer(winds[tlayer], 'top_wind_layer', elapsed)
+            twind = self.transWindLayer(winds[tlayer], str(tlayer), elapsed)
             
-            if blayer is not False:
-                bwind = self.transWindLayer(winds[blayer], 'bottom_wind_layer', elapsed)
-                # Between 2 layers, interpolate
+            if blayer is not False and blayer != tlayer:
+                # We are between 2 layers, interpolate
+                bwind = self.transWindLayer(winds[blayer], str(blayer), elapsed)
                 rwind = self.interpolateWindLayer(twind, bwind, self.alt)
                 
             else:
-                # We are below the first layer
+                # We are below the first layer or above the last one.
                 rwind = twind;
-            
+
         # Set layers
         self.setWindLayer(0, rwind)
         self.setWindLayer(1, rwind)
@@ -260,7 +261,7 @@ class Weather:
             self.msltemp.value = c.oat2msltemp(altLayer[3]['temp'] - 273.15, altLayer[0])
         
         if 'dew' in extra:
-            self.msldewp= c.oat2msltemp(extra['dew'] - 273.15, self.alt)
+            self.msldewp.value = c.oat2msltemp(extra['dew'] - 273.15, self.alt)
         elif altLayer and 'dew' in altLayer[3]:
             self.msldewp.value = c.oat2msltemp(altLayer[3]['dew'] - 273.15, altLayer[0])
     
@@ -771,6 +772,7 @@ class PythonInterface:
             if 'pressure' in wdata['metar'] and wdata['metar']['pressure'] is not False:
                 self.weather.setPressure(wdata['metar']['pressure'], elapsedMe)
                 pressSet = True
+            '''
             if 'temperature' in wdata['metar'] and self.weather.alt < (self.conf.metar_agl_limit + wdata['metar']['elevation']):
                 # Set metar temperature below 5000m
                 temp, dew = wdata['metar']['temperature']
@@ -780,7 +782,7 @@ class PythonInterface:
                     tempSet = True
                 if dew is not False:
                     self.weather.msldewp.value = c.oat2msltemp(temp + 273.15, wdata['metar']['elevation'])     
-                
+            '''    
             if'precipitation' in wdata['metar'] and len(wdata['metar']['precipitation']):
                 precp = wdata['metar']['precipitation']
                 if 'RA'in precp:
