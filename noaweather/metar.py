@@ -30,7 +30,7 @@ class Metar:
     RE_PRESSURE     = re.compile(r'\b(Q|QNH|SLP|A)[ ]?([0-9]{3,4})\b')
     RE_TEMPERATURE  = re.compile('(M|-)?([0-9]{1,2})/(M|-)?([0-9]{1,2})')
     RE_TEMPERATURE2 = re.compile(r'\bT(0|1)([0-9]{3})(0|1)([0-9]{3})\b')
-    RE_PRECIPITATION = re.compile('(-|\+)?(DZ|SG|IC|PL|SH|RE)?(RA|SN|TS)')
+    RE_PRECIPITATION = re.compile('(-|\+)?(DZ|SG|IC|PL|SH|RE)?(DZ|RA|SN|TS)')
     
     METAR_STATIONS_URL = 'http://www.aviationweather.gov/static/adds/metars/stations.txt'
     METAR_REPORT_URL = 'http://weather.noaa.gov/pub/data/observations/metar/cycles/%sZ.TXT'
@@ -179,8 +179,8 @@ class Metar:
                    'elevation': airport_msl,
                    'wind': [0, 0, 0], # Heading, speed, shear
                    'clouds': [0, 0, False] * 3, # Alt, coverage type
-                   'temperature': [0, 0], # Temperature, dewpoint
-                   'pressure': 0, # space c.pa2inhg(10.1325),
+                   'temperature': [False, False], # Temperature, dewpoint
+                   'pressure': False, # space c.pa2inhg(10.1325),
                    'visibility': 9998,
                    'precipitation': [],
                    }
@@ -207,7 +207,8 @@ class Metar:
                 elif unit == 'Q':
                     press = c.pa2inhg(press * 100)
             
-            weather['pressure'] = press
+            if 25 < press < 35:
+                weather['pressure'] = press
         
         m = self.RE_TEMPERATURE2.search(metar)
         if m:

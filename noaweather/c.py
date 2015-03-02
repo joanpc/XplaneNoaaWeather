@@ -193,8 +193,14 @@ class c:
         return new
     
     @classmethod
-    def transitionClearReferences(self):
-        self.transrefs = {}
+    def transitionClearReferences(self, refs = False):
+        ''' Clear transition references '''     
+        if refs:
+            for ref in self.transrefs.keys():
+                if ref.split('-')[0] in refs:
+                    self.transrefs.pop(ref)
+        else:
+            self.transrefs = {}
     
     @classmethod
     def transitionHdg(self, new, id, elapsed, speed=0.25):
@@ -291,3 +297,10 @@ class c:
         
         if type in types:
             return types[type][intensity]
+    @classmethod
+    def strFloat(self, i):
+        'Print a float or na if False'
+        if i == False:
+            return 'na'
+        else:
+            return '%.2f' % (i)

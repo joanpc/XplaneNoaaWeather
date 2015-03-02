@@ -249,7 +249,7 @@ class GFS(threading.Thread):
                 if temp and rh:
                     dew = c.dewpoint(temp, rh)
                     
-                windlevels.append((alt, hdg, c.ms2knots(vel), {'temp': temp, 'rh': rh, 'dew': dew, 'gust': 0}))
+                windlevels.append([alt, hdg, c.ms2knots(vel), {'temp': temp, 'rh': rh, 'dew': dew, 'gust': 0}])
                 #print 'alt: %i rh: %i vis: %i' % (alt, float(wind['RH']), vis) 
         
         # Convert cloud level

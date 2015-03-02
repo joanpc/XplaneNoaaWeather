@@ -66,6 +66,7 @@ class Weather:
     def __init__(self, conf):
         
         self.conf = conf
+        self.lastMetarStation = False
         
         '''
         Bind datarefs
@@ -110,7 +111,7 @@ class Weather:
         self.weatherData = False
         self.weatherClientThread = False
         
-        self.windAlts = (0, 0)
+        self.windAlts = -1
         
         # Create client socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -195,60 +196,73 @@ class Weather:
             alt = self.weatherData['metar']['elevation']
             hdg, speed, gust = self.weatherData['metar']['wind']
             extra = {'gust': gust, 'metar': True}
-
-            # Transition metar layer altitude
-            talt = c.transition(alt, 'metar_wind_alt', elapsed, 1) + self.conf.metar_agl_limit
-
-            if 'temperature' in self.weatherData['metar']:
-                extra['temp'] = self.weatherData['metar']['temperature'][0] + 273.15
-                extra['dew'] = self.weatherData['metar']['temperature'][1] + 273.15
             
-            winds = [[talt, hdg, speed, extra]] + winds
+            alt += self.conf.metar_agl_limit
+            
+            # Transition metar values
+            calt, hdg, speed, extra = self.transWindLayer([alt, hdg, speed, extra], 'metar_layer', elapsed)
+            alt = c.transition(alt, 'metar_wind_alt', elapsed, 1)
+            
+            # Fix temperatures    
+            if 'temperature' in self.weatherData['metar']:
+                if self.weatherData['metar']['temperature'][0] is not False:
+                    extra['temp'] = self.weatherData['metar']['temperature'][0] + 273.15
+                if self.weatherData['metar']['temperature'][1] is not False:
+                    extra['dew'] = self.weatherData['metar']['temperature'][1] + 273.15
+            
+            winds = [[alt, hdg, speed, extra]] + winds
             
         # Search current top and bottom layer:
         blayer = False
+        nlayers = len(winds)
         
-        if len(winds) > 1:
-            for wind in range(len(winds)):
-                tlayer = winds[wind]
-                if tlayer[0] > self.alt:
+        if nlayers > 1:
+            for i in range(len(winds)):
+                tlayer = i
+                if winds[tlayer][0] > self.alt:
                     break
                 else:
-                    blayer = tlayer
-            if blayer:
-                if self.windAlts != (tlayer[0], blayer[0]):
-                    # Layer change, don't transition     
-                    self.windAlts = (tlayer[0], blayer[0])
-                    # Reset references
-                    c.transitionClearReferences()
-                else:
-                    # Transition both layers
-                    tlayer = self.transWindLayer(tlayer, 'top_wind_layer_', elapsed)
-                    blayer = self.transWindLayer(blayer, 'bottom_wind_layer_', elapsed)
-                    pass
-                    
-                # Interpolate if whe are above
-                if blayer[0] < self.alt and blayer[0] != tlayer[0]:
-                    # TODO: add metar trans
-                    layer = self.interpolateWindLayer(tlayer, blayer, self.alt)
-                else:
-                    layer = tlayer
+                    blayer = i
+            
+            if self.windAlts != tlayer:
+                # Layer change, reset transitions   
+                self.windAlts = tlayer
+                c.transitionClearReferences(['top_wind_layer', 'bottom_wind_layer'])
+            
+            twind = self.transWindLayer(winds[tlayer], 'top_wind_layer', elapsed)
+            
+            if blayer is not False:
+                bwind = self.transWindLayer(winds[blayer], 'bottom_wind_layer', elapsed)
+                # Between 2 layers, interpolate
+                rwind = self.interpolateWindLayer(twind, bwind, self.alt)
                 
             else:
-                tlayer = self.transWindLayer(tlayer, 'top_wind_layer_', elapsed)
-                layer = tlayer;
+                # We are below the first layer
+                rwind = twind;
             
         # Set layers
-        self.setWindLayer(0, layer)
-        self.setWindLayer(1, layer)
-        self.setWindLayer(2, layer)
+        self.setWindLayer(0, rwind)
+        self.setWindLayer(1, rwind)
+        self.setWindLayer(2, rwind)
+  
+        '''Set temperature and dewpoint.
+        Use next layer if the data is not available'''
         
-        extra = layer[3]
+        extra = rwind[3]
+        if nlayers > tlayer + 1:
+            altLayer = winds[tlayer + 1]
+        else:
+            altLayer = False
         
-        if 'dew' in extra:
-            self.msldewp.value = c.oat2msltemp(extra['dew'] - 273.15, self.alt)
         if 'temp' in extra:
             self.msltemp.value = c.oat2msltemp(extra['temp'] - 273.15, self.alt)
+        elif altLayer and 'temp' in altLayer[3]:
+            self.msltemp.value = c.oat2msltemp(altLayer[3]['temp'] - 273.15, altLayer[0])
+        
+        if 'dew' in extra:
+            self.msldewp= c.oat2msltemp(extra['dew'] - 273.15, self.alt)
+        elif altLayer and 'dew' in altLayer[3]:
+            self.msldewp.value = c.oat2msltemp(altLayer[3]['dew'] - 273.15, altLayer[0])
     
     def setWindLayer(self, index,  wlayer):
         alt, hdg, speed, extra = wlayer
@@ -263,13 +277,13 @@ class Weather:
         ''' Transition wind layer values'''
         alt, hdg, speed, extra = wlayer
         
-        hdg = c.transitionHdg(hdg, id + '_hdg', elapsed, self.conf.windHdgTransSpeed)
-        speed = c.transition(speed, id + '_speed', elapsed, self.conf.windHdgTransSpeed)
+        hdg = c.transitionHdg(hdg, id + '-hdg', elapsed, self.conf.windHdgTransSpeed)
+        speed = c.transition(speed, id + '-speed', elapsed, self.conf.windHdgTransSpeed)
         
         # Extra vars
         for var in ['gust', 'rh', 'dew']:
             if var in extra:
-                extra[var] = c.transition(extra[var], id + '_' + var , elapsed, self.conf.windGustTransSpeed)
+                extra[var] = c.transition(extra[var], id + '-' + var , elapsed, self.conf.windGustTransSpeed)
         
         # Special cases
         if 'gust_hdg' in extra:
@@ -281,6 +295,9 @@ class Weather:
     def interpolateWindLayer(self, wlayer1, wlayer2, current_altitude):
         ''' Interpolates 2 wind layers 
         layer array: [alt, hdg, speed, extra] '''
+        
+        if wlayer1[0] == wlayer2[0]:
+            return wlayer1
   
         layer = [0, 0, 0, {}]
         
@@ -290,10 +307,12 @@ class Weather:
         
         # Interpolate extras
         for key in wlayer1[3]:
-            if key in wlayer2[3]:
+            if key in wlayer2[3] and wlayer2[3][key] is not False:
                 layer[3][key] = c.interpolate(wlayer1[3][key], wlayer2[3][key], wlayer1[0], wlayer2[0], current_altitude)
             else:
-                layer[3][key] = wlayer1[3][key]
+                # Leave null temp and dew if we can't interpolate
+                if key not in ('temp', 'dew'):
+                    layer[3][key] = wlayer1[3][key]
             
         return layer              
     
@@ -603,10 +622,9 @@ class PythonInterface:
                 #    self.weather.winds[0]['alt'].value = self.conf.transalt   
                 
                 self.conf.save()
-                
                 self.weather.startWeatherClient()
-                
                 self.aboutWindowUpdate()
+                c.transitionClearReferences()
                 return 1
         return 0
     
@@ -652,9 +670,9 @@ class PythonInterface:
                     
                 sysinfo += [
                             '    Airport altitude: %dft, gfs switch alt: %dft' % (wdata['metar']['elevation'] * 3.28084, (wdata['metar']['elevation'] + self.conf.metar_agl_limit) * 3.28084 ),
-                            '    Temp: %.1f, Dewpoint: %.1f, ' % (wdata['metar']['temperature'][0], wdata['metar']['temperature'][1]) +
+                            '    Temp: %s, Dewpoint: %s, ' % (c.strFloat(wdata['metar']['temperature'][0]), c.strFloat(wdata['metar']['temperature'][1])) +
                             'Visibility: %d m, ' % (wdata['metar']['visibility']) +
-                            'Press: %.2f inhg ' % (wdata['metar']['pressure']),
+                            'Press: %s inhg ' % (c.strFloat(wdata['metar']['pressure'])),
                             '    Wind:  %d %dkt, gust +%dkt' % (wdata['metar']['wind'][0], wdata['metar']['wind'][1], wdata['metar']['wind'][2])
                            ]
                 if 'precipitation' in wdata['metar'] and len(wdata['metar']['precipitation']):
@@ -750,16 +768,18 @@ class PythonInterface:
         if 'metar' in wdata:
             if 'visibility' in wdata['metar']:
                 self.weather.visibility.value =  c.limit(wdata['metar']['visibility'], self.conf.max_visibility)
-            if 'pressure' in wdata['metar']:
+            if 'pressure' in wdata['metar'] and wdata['metar']['pressure'] is not False:
                 self.weather.setPressure(wdata['metar']['pressure'], elapsedMe)
                 pressSet = True
             if 'temperature' in wdata['metar'] and self.weather.alt < (self.conf.metar_agl_limit + wdata['metar']['elevation']):
                 # Set metar temperature below 5000m
                 temp, dew = wdata['metar']['temperature']
-            
-                self.weather.msltemp.value = c.oat2msltemp(temp + 273.15, wdata['metar']['elevation'])
-                self.weather.msldewp.value = c.oat2msltemp(temp + 273.15, wdata['metar']['elevation'])
-                tempSet = True
+                
+                if temp is not False:
+                    self.weather.msltemp.value = c.oat2msltemp(temp + 273.15, wdata['metar']['elevation'])
+                    tempSet = True
+                if dew is not False:
+                    self.weather.msldewp.value = c.oat2msltemp(temp + 273.15, wdata['metar']['elevation'])     
                 
             if'precipitation' in wdata['metar'] and len(wdata['metar']['precipitation']):
                 precp = wdata['metar']['precipitation']
@@ -814,3 +834,4 @@ class PythonInterface:
     def XPluginReceiveMessage(self, inFromWho, inMessage, inParam):
         if (inParam == XPLM_PLUGIN_XPLANE and inMessage == XPLM_MSG_AIRPORT_LOADED):
             self.weather.startWeatherClient()
+            c.transitionClearReferences()
