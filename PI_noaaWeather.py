@@ -199,9 +199,6 @@ class Weather:
             extra = {'gust': gust, 'metar': True}
             
             alt += self.conf.metar_agl_limit
-            
-            # Transition metar values
-            calt, hdg, speed, extra = self.transWindLayer([alt, hdg, speed, extra], 'metar_layer', elapsed)
             alt = c.transition(alt, 'metar_wind_alt', elapsed, 0.3048) # 1f/s
             
             # Fix temperatures    
@@ -707,6 +704,7 @@ class PythonInterface:
                     
                 if 'clouds' in wdata['gfs']:
                     clouds = 'GFS CLOUDS  FLTOP|FLBASE|COVER'
+                    sclouds = ''
                     for layer in wdata['gfs']['clouds']:
                         top, bottom, cover = layer
                         if top > 0:

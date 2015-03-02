@@ -193,7 +193,7 @@ class c:
         return new
     
     @classmethod
-    def transitionClearReferences(self, refs = False, exclude = []):
+    def transitionClearReferences(self, refs = False, exclude = False):
         ''' Clear transition references '''     
         if exclude:
             for ref in self.transrefs.keys():
@@ -201,7 +201,7 @@ class c:
                     self.transrefs.pop(ref)
             return
 
-        if refs:
+        elif refs:
             for ref in self.transrefs.keys():
                 if ref.split('-')[0] in refs:
                     self.transrefs.pop(ref)
@@ -305,10 +305,11 @@ class c:
         
         if type in types:
             return types[type][intensity]
+    
     @classmethod
     def strFloat(self, i):
         'Print a float or na if False'
-        if i == False:
+        if i is False:
             return 'na'
         else:
             return '%.2f' % (i)
