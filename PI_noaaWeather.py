@@ -53,6 +53,7 @@ import socket
 import threading
 import subprocess
 import os
+from datetime import datetime
 
 from noaweather import EasyDref, Conf, c
         
@@ -542,6 +543,12 @@ class PythonInterface:
         XPSetWidgetProperty(self.downloadCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
         XPSetWidgetProperty(self.downloadCheck, xpProperty_ButtonState, self.conf.download)
         
+        # DumpLog Button
+        self.dumpLogButton = XPCreateWidget(x+160, y, x+260, y-20, 1, "DumpLog", 0, window, xpWidgetClass_Button)
+        XPSetWidgetProperty(self.dumpLogButton, xpProperty_ButtonType, xpPushButton)
+        
+        self.dumpLabel = XPCreateWidget(x+270, y, x+380, y-20, 1, '', 0, window, xpWidgetClass_Caption)
+        
         y -= 30
         subw = XPCreateWidget(x-10, y, x2-20 + 10, y2 +15, 1, "" ,  0,window, xpWidgetClass_SubWindow)
         x += 10
@@ -563,7 +570,7 @@ class PythonInterface:
         
         # Donate Button
         self.donate = XPCreateWidget(x+130, y, x+230, y-20, 1, "Donate", 0, window, xpWidgetClass_Button)
-        XPSetWidgetProperty(self.aboutVisit, xpProperty_ButtonType, xpPushButton)
+        XPSetWidgetProperty(self.donate, xpProperty_ButtonType, xpPushButton)
             
         # Register our widget handler
         self.aboutWindowHandlerCB = self.aboutWindowHandler
@@ -620,6 +627,9 @@ class PythonInterface:
                 self.aboutWindowUpdate()
                 c.transitionClearReferences()
                 return 1
+            elif inParam1 == self.dumpLogButton:
+                dumpfile = self.dumpLog()
+                XPSetWidgetDescriptor(self.dumpLabel, os.sep.join(dumpfile.split(os.sep)[-3:]))
         return 0
     
     def aboutWindowUpdate(self):
@@ -627,15 +637,27 @@ class PythonInterface:
         XPSetWidgetProperty(self.windsCheck, xpProperty_ButtonState, self.conf.set_wind)
         XPSetWidgetProperty(self.cloudsCheck, xpProperty_ButtonState, self.conf.set_clouds)
         XPSetWidgetProperty(self.tempCheck, xpProperty_ButtonState, self.conf.set_temp)
-        XPSetWidgetProperty(self.metarCheck, xpProperty_ButtonState, self.conf.use_metar)
+        #XPSetWidgetProperty(self.metarCheck, xpProperty_ButtonState, self.conf.use_metar)
         XPSetWidgetProperty(self.vatsimCheck, xpProperty_ButtonState, self.conf.vatsim)
         
         self.updateStatus()
-        
+    
+    
     def updateStatus(self):
-        '''
-        Update Status window
-        '''
+        '''Updates status window'''
+        
+        sysinfo = self.weatherInfo()
+        
+        i = 0
+        for label in sysinfo:
+            XPSetWidgetDescriptor(self.statusBuff[i], label)
+            i +=1
+            if i > self.aboutlines -1:
+                break
+    
+    def weatherInfo(self):
+        '''Return an array of strings with formated weather data'''
+        
         sysinfo = []
         
         if not self.weather.weatherData:
@@ -644,7 +666,7 @@ class PythonInterface:
             wdata = self.weather.weatherData
             if 'info' in wdata:
                 sysinfo = [
-                           'XPGFS Status:',
+                           'XPNoaaWeather %s Status:' % self.conf.__VERSION__,
                            '    LAT: %.2f/%.2f LON: %.2f/%.2f MAGNETIC DEV: %2.f' % (self.latdr.value , wdata['info']['lat'], self.londr.value, wdata['info']['lon'], self.weather.mag_deviation.value),
                            '    GFS Cycle: %s' % (wdata['info']['gfs_cycle']),
                            '    WAFS Cycle: %s' % (wdata['info']['wafs_cycle']),
@@ -714,12 +736,42 @@ class PythonInterface:
                 
                 sysinfo += ['WAFS TURBULENCE: FL|SEV %d' % (len(wdata['wafs'])), tblayers]
         
-        i = 0
-        for label in sysinfo:
-            XPSetWidgetDescriptor(self.statusBuff[i], label)
-            i +=1
-            if i > self.aboutlines -1:
-                break
+        return sysinfo
+    
+    def dumpLog(self):
+        ''' Dumps all the information to a file to report bugs'''
+        
+        dumpath = os.sep.join([self.conf.cachepath, 'dumplogs'])
+        
+        if not os.path.exists(dumpath):
+            os.makedirs(dumpath)
+        
+        dumplog = os.sep.join([dumpath, datetime.utcnow().strftime('%Y%m%d_%H%M%SZdump.txt')])
+         
+        f = open(dumplog, 'w')
+        
+        import platform
+        from pprint import pprint
+        
+        output = ['\n---\nPlatform Info\n---\n\n',
+                  '%s\n' % (platform.platform()),
+                  'Python version: %s\n' % (platform.python_version()),
+                  '\n---\nWeather info\n---\n\n'
+                  ]
+        
+        for line in self.weatherInfo():
+            output.append('%s\n' % line)
+    
+        output += ['\n---\nWeather Data\n---\n\n']
+        
+        for line in output:
+            f.write(line)
+        
+        pprint(self.weather.weatherData, f, width=160)
+        
+        f.close()
+        
+        return dumplog
 
     def floopCallback(self, elapsedMe, elapsedSim, counter, refcon):
         '''
