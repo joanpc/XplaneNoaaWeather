@@ -33,6 +33,7 @@ class Metar:
     RE_PRECIPITATION = re.compile('(-|\+)?(DZ|SG|IC|PL|SH|RE)?(DZ|RA|SN|TS)')
     
     METAR_STATIONS_URL = 'http://www.aviationweather.gov/static/adds/metars/stations.txt'
+    VATSIM_METAR_STATIONS_URL = 'http://metar.vatsim.net/metar.php?id=all'
     METAR_REPORT_URL = 'http://weather.noaa.gov/pub/data/observations/metar/cycles/%sZ.TXT'
     
     UPDATE_RATE = 20 # Redownload metar data every # minutes
@@ -114,30 +115,44 @@ class Metar:
     def updateMetar(self, db, path):
         ''' Updates metar table from Metar file'''
         f = open(path, 'r')
-        new, updated = 0, 0
+        updated = 0
         timestamp = 0
         cursor = db.cursor()
         i = 0
         inserts = []
         INSBUF = 128
         for line in f.readlines():
-            
             if line[0].isalpha():
                 i += 1
-                icao, mtime, metar = line[0:4], int(line[5:11]) , re.sub(r'[^\x00-\x7F]+',' ', line[5:-1])
+                icao, mtime, metar = line[0:4], line[5:11] , re.sub(r'[^\x00-\x7F]+',' ', line[5:-1])
+                
+                # Create timestamp for VATSIM metars
+                if timestamp == 0:
+                    timestamp = int(datetime.utcnow().strftime('%Y%m') + mtime)
+                
                 inserts.append((timestamp, metar, icao, timestamp))
+                updated += 1
                   
                 if (i % INSBUF) == 0:
                     sys.stdout.flush()
                     cursor.executemany('UPDATE airports SET timestamp = ?, metar = ? WHERE icao = ? AND timestamp < ?', inserts)
-                    inserts = []
+                    inserts = []            
             elif len(line) > 15:
                 timestamp = int(line[0:4] + line[5:7] + line[8:10] + line[11:13] + line[14:16])
         
         if len(inserts):
+            updated += len(inserts)
             cursor.executemany('UPDATE airports SET timestamp = ?, metar = ? WHERE icao = ? AND timestamp < ?', inserts)
         db.commit()
-        return (new, updated)  
+        
+        return updated
+    
+    def clearMetarReports(self, db):
+        '''Clears all metar reports from the db'''
+        cursor = db.cursor()
+        cursor.execute('UPDATE airports SET metar = NULL')
+        db.commit()
+        
         
     def getClosestStation(self, db, lat, lon, limit = 1):
         ''' Return closest airport with a metar report'''
@@ -275,10 +290,6 @@ class Metar:
             
         weather['precipitation'] = precipitation
         
-        #if temp and dew:
-        #    weather['RH'] = c.dewpoint2rh(temp, dew)
-        #    weather['rh_visibility'] = c.rh2visibility(weather['RH'])
-        
         # Extended visibility
         if weather['visibility'] > 9998:
             weather['mt_visibility'] = weather['visibility']
@@ -302,8 +313,10 @@ class Metar:
                 metarfile = self.download.q.get()
                 
                 if metarfile:
-                    self.updateMetar(self.th_db, os.sep.join([self.conf.cachepath, metarfile]))
+                    print 'Updating metar reports.'
+                    nrep = self.updateMetar(self.th_db, os.sep.join([self.conf.cachepath, metarfile]))
                     self.reparse = True
+                    print '%d metar reports updated.' % (nrep)
                 else:
                     # No file downloaded
                     pass
@@ -317,8 +330,10 @@ class Metar:
                 
         # Update stations table if required
         if self.ms_download and not self.ms_download.q.empty():
-            self.updateStations(self.th_db, os.sep.join([self.conf.cachepath, self.ms_download.q.get()]))
+            print 'Updating metar stations.'
+            nstations = self.updateStations(self.th_db, os.sep.join([self.conf.cachepath, self.ms_download.q.get()]))
             self.ms_download = False
+            print '%d metar stations updated.' % nstations
             
     def downloadCycle(self, cycle, timestamp):
         self.downloading = True
@@ -327,8 +342,13 @@ class Metar:
         if not os.path.exists(cachepath):
             os.makedirs(cachepath)
         
-        cachefile = os.sep.join(['metar', '%d_%sZ.txt' % (timestamp, cycle)])
-        url = self.METAR_REPORT_URL % (cycle)
+        if self.conf.vatsim:
+            url = self.VATSIM_METAR_STATIONS_URL
+            cachefile = os.sep.join(['metar', 'VATSIM_%d_%sZ.txt' % (timestamp, cycle)])
+        else:
+            url = self.METAR_REPORT_URL % (cycle)
+            cachefile = os.sep.join(['metar', '%d_%sZ.txt' % (timestamp, cycle)])
+            
         self.download = AsyncDownload(self.conf, url, cachefile)
         
     def die(self):

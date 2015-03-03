@@ -18,20 +18,23 @@ class Conf:
     Configuration variables
     '''
     syspath, dirsep = '', os.sep
-    __VERSION__ = '2.0_beta7'
+    __VERSION__ = '2.0_beta7.1'
     
     def __init__(self, syspath):
         # Inits conf
         self.syspath      = syspath
         self.respath      = os.sep.join([self.syspath, 'Resources', 'plugins', 'PythonScripts', 'noaweather'])
         self.settingsfile = os.sep.join([self.respath, 'settings.pkl'])
+        self.serverSettingsFile = os.sep.join([self.respath, 'weatherServer.pkl'])
         
         self.cachepath    = os.sep.join([self.respath, 'cache'])
         if not os.path.exists(self.cachepath):
             os.makedirs(self.cachepath)
         
         self.setDefautls()
-        self.load()
+        self.pluginLoad()
+        self.serverLoad()
+        
         # Override config
         self.parserate = 1
         
@@ -115,18 +118,30 @@ class Conf:
         self.windTransSpeed = 0.14 # kt/s
         self.windGustTransSpeed = 0.5 # kt/s
         self.windHdgTransSpeed = 1# degrees/s
+        
+    def saveSettings(self, filepath, settings):
+        f = open(filepath, 'w')
+        cPickle.dump(settings, f)
+        f.close()
     
-    def serverReloadSave(self):
-        # Save server variables
-        server_conf = {
-                       'lastgrib': self.lastgrib,
-                       'lastwafsgrib': self.lastwafsgrib,
-                       'ms_update' : self.ms_update
-                       }
-        self.load(server_conf)
-        self.save(server_conf)
-           
-    def save(self, append = {}):
+    def loadSettings(self, filepath, ignore = []):
+        if os.path.exists(filepath):
+            f = open(filepath, 'r')
+            try:
+                conf = cPickle.load(f)
+                f.close()
+            except:
+                # Corrupted settings, remove file
+                os.remove(filepath)
+                return
+            
+            # may be "dangerous" if someone messes our config file
+            for var in conf:
+                if var in self.__dict__ and not (var in ignore):
+                    self.__dict__[var] = conf[var]
+     
+    def pluginSave(self):
+        '''Save plugin settings'''
         conf = {
                 'version'   : self.__VERSION__,
                 'set_temp'  : self.set_temp,
@@ -141,25 +156,20 @@ class Conf:
                 'vatsim'    : self.vatsim,
                 'download'  : self.download,
                 }
-        
-        conf = dict(conf.items() + append.items())
-        
-        f = open(self.settingsfile, 'w')
-        cPickle.dump(conf, f)
-        f.close()
+        self.saveSettings(self.settingsfile, conf)
     
-    def load(self, ignore={}):
-        if os.path.exists(self.settingsfile):
-            f = open(self.settingsfile, 'r')
-            try:
-                conf = cPickle.load(f)
-                f.close()
-            except:
-                # Corrupted settings, remove file
-                os.remove(self.settingsfile)
-                return
-            
-            # may be "dangerous" if someone messes our config file
-            for var in conf:
-                if var in self.__dict__ and not (var in ignore):
-                    self.__dict__[var] = conf[var]
+    def pluginLoad(self):
+        self.loadSettings(self.settingsfile, ['lastgrib', 'lastwafsgrib', 'ms_update'])
+        
+    def serverSave(self):
+        '''Save weather server settings'''
+        server_conf = {
+                       'lastgrib': self.lastgrib,
+                       'lastwafsgrib': self.lastwafsgrib,
+                       'ms_update' : self.ms_update
+                       }
+        self.saveSettings(self.serverSettingsFile, server_conf)
+    
+    def serverLoad(self):
+        self.pluginLoad()
+        self.loadSettings(self.serverSettingsFile)

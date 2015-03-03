@@ -87,10 +87,15 @@ class clientHandler(SocketServer.BaseRequestHandler):
                         response = [False]
                     
             elif data == '!shutdown':
+                conf.serverSave()
                 self.shutdown()
                 response = '!bye'
             elif data == '!reload':
-                conf.serverReloadSave()
+                conf.pluginLoad()
+            elif data == '!resetMetar':
+                # Clear database and force redownload
+                gfs.metar.clearMetarReports(gfs.metar.connection)
+                gfs.metar.last_timestamp = 0
             else:
                 return
         
@@ -136,7 +141,7 @@ if __name__ == "__main__":
     
     # Close gfs worker and save config
     gfs.die.set()
-    conf.serverReloadSave()
+    conf.serverSave()
     print 'Server stoped.'
     if not conf.win32:
         logfile.close()

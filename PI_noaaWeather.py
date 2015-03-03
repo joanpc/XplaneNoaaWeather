@@ -146,6 +146,10 @@ class Weather:
             if self.die.is_set():
                 return
     
+    def weatherClientSend(self, msg):
+        if self.weatherClientThread:
+            self.sock.sendto(msg,('127.0.0.1', self.conf.server_port))
+    
     def startWeatherServer(self):
         DETACHED_PROCESS = 0x00000008
         args = [self.conf.pythonpath, os.sep.join([self.conf.respath, 'weatherServer.py']), self.conf.syspath]
@@ -155,13 +159,10 @@ class Weather:
         else:
             subprocess.Popen(args, close_fds=True)
     
-    def shutdownWeatherServer(self):
-        self.sock.sendto("!shutdown", ('127.0.0.1', self.conf.server_port))
-    
     def shutdown(self):
         # Shutdown client and server
         self.die.set()
-        self.shutdownWeatherServer()
+        self.weatherClientSend('!shutdown')
         self.weatherClientThread.join()
         self.weatherClientThread = False
      
@@ -189,7 +190,7 @@ class Weather:
         self.winds[1]['turbulence'].value = turb
         self.winds[2]['turbulence'].value = turb
     
-    def setWinds(self, winds, elapsed, setTemp = True):
+    def setWinds(self, winds, elapsed):
         '''Set winds: Interpolate layers and transition new data'''  
         
         # Append metar layer
@@ -487,12 +488,12 @@ class PythonInterface:
         x -=5
         
         # VATSIM Compatible
-        #XPCreateWidget(x, y-40, x+20, y-60, 1, 'VATSIM compat', 0, window, xpWidgetClass_Caption)
-        #self.vatsimCheck = XPCreateWidget(x+110, y-40, x+120, y-60, 1, '', 0, window, xpWidgetClass_Button)
-        #XPSetWidgetProperty(self.vatsimCheck, xpProperty_ButtonType, xpRadioButton)
-        #XPSetWidgetProperty(self.vatsimCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
-        #XPSetWidgetProperty(self.vatsimCheck, xpProperty_ButtonState, self.conf.vatsim)
-        #y -= 20
+        XPCreateWidget(x, y-40, x+20, y-60, 1, 'Use VATSIM METAR', 0, window, xpWidgetClass_Caption)
+        self.vatsimCheck = XPCreateWidget(x+110, y-40, x+120, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        XPSetWidgetProperty(self.vatsimCheck, xpProperty_ButtonType, xpRadioButton)
+        XPSetWidgetProperty(self.vatsimCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
+        XPSetWidgetProperty(self.vatsimCheck, xpProperty_ButtonState, self.conf.vatsim)
+        y -= 20
         
         # trans altitude
         #XPCreateWidget(x, y-40, x+80, y-60, 1, 'Switch to METAR', 0, window, xpWidgetClass_Caption)
@@ -598,8 +599,15 @@ class PythonInterface:
                 self.conf.set_pressure  = XPGetWidgetProperty(self.pressureCheck, xpProperty_ButtonState, None)
                 self.conf.set_turb      = XPGetWidgetProperty(self.turbCheck, xpProperty_ButtonState, None)
                 #self.conf.use_metar     = XPGetWidgetProperty(self.metarCheck, xpProperty_ButtonState, None)
-                #self.conf.vatsim        = XPGetWidgetProperty(self.vatsimCheck, xpProperty_ButtonState, None)
+                prev_vatsim = self.conf.vatsim
+                self.conf.vatsim        = XPGetWidgetProperty(self.vatsimCheck, xpProperty_ButtonState, None)
                 self.conf.download      = XPGetWidgetProperty(self.downloadCheck, xpProperty_ButtonState, None)
+                
+                self.conf.pluginSave()
+                self.weather.weatherClientSend('!reload')
+                
+                if self.conf.vatsim != prev_vatsim:
+                    self.weather.weatherClientSend('!resetMetar')
                 
                 buff = []
                 #XPGetWidgetDescriptor(self.transAltInput, buff, 256)
@@ -607,19 +615,7 @@ class PythonInterface:
                 #buff = []
                 #XPGetWidgetDescriptor(self.updateRateInput, buff, 256)
                 #self.conf.updaterate = c.toFloat(buff[0], 1)
-                
-                #if self.conf.vatsim: 
-                #     self.conf.set_clouds = False
-                #    self.conf.set_temp   = False
-                #    self.conf.use_metar  = False
-                #    self.weather.winds[0]['alt'].value = self.conf.transalt
-                
-                #if not self.conf.use_metar:
-                #    self.weather.xpWeatherOn.value = 0
-                #else:
-                #    self.weather.winds[0]['alt'].value = self.conf.transalt   
-                
-                self.conf.save()
+            
                 self.weather.startWeatherClient()
                 self.aboutWindowUpdate()
                 c.transitionClearReferences()
@@ -741,8 +737,7 @@ class PythonInterface:
             if (lat, lon) != (self.weather.last_lat, self.weather.last_lon) or (self.fltime - self.lastParse) > 60:
                 self.weather.last_lat, self.weather.last_lon = lat, lon
                 
-                self.weather.sock.sendto("?%.2f|%.2f\n" % (lat, lon),
-                                        ('127.0.0.1', self.conf.server_port))
+                self.weather.weatherClientSend("?%.2f|%.2f\n" % (lat, lon))
                 
                 self.flcounter = 0
                 self.lastParse = self.fltime
@@ -759,7 +754,6 @@ class PythonInterface:
         wdata = self.weather.weatherData
         
         pressSet = False
-        tempSet = False
         
         rain, ts = 0, 0
         
@@ -770,17 +764,6 @@ class PythonInterface:
             if 'pressure' in wdata['metar'] and wdata['metar']['pressure'] is not False:
                 self.weather.setPressure(wdata['metar']['pressure'], elapsedMe)
                 pressSet = True
-            '''
-            if 'temperature' in wdata['metar'] and self.weather.alt < (self.conf.metar_agl_limit + wdata['metar']['elevation']):
-                # Set metar temperature below 5000m
-                temp, dew = wdata['metar']['temperature']
-                
-                if temp is not False:
-                    self.weather.msltemp.value = c.oat2msltemp(temp + 273.15, wdata['metar']['elevation'])
-                    tempSet = True
-                if dew is not False:
-                    self.weather.msldewp.value = c.oat2msltemp(temp + 273.15, wdata['metar']['elevation'])     
-            '''    
             if'precipitation' in wdata['metar'] and len(wdata['metar']['precipitation']):
                 precp = wdata['metar']['precipitation']
                 if 'RA'in precp:
@@ -800,7 +783,7 @@ class PythonInterface:
         if 'gfs' in wdata:    
             # Set winds and clouds
             if self.conf.set_wind and 'winds' in wdata['gfs']:
-                self.weather.setWinds(wdata['gfs']['winds'], elapsedMe, not tempSet)
+                self.weather.setWinds(wdata['gfs']['winds'], elapsedMe)
             if self.conf.set_clouds and 'clouds' in wdata['gfs']:
                 self.weather.setClouds(wdata['gfs']['clouds'])
             # Set pressure
@@ -823,7 +806,7 @@ class PythonInterface:
         self.weather.shutdown()
         
         XPLMDestroyMenu(self, self.mMain)
-        self.conf.save()
+        self.conf.pluginSave()
         
     def XPluginEnable(self):
         return 1
