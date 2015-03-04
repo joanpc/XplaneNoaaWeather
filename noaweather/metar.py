@@ -200,6 +200,8 @@ class Metar:
                    'precipitation': [],
                    }
         
+        metar = metar.split('TEMPO')[0]
+        
         clouds = []
         
         for cloud in self.RE_CLOUD.findall(metar):

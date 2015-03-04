@@ -13,6 +13,7 @@ of the License, or any later version.
 import socket
 import cPickle
 import sys
+from pprint import pprint
 
 # tests requests
 tests = [
@@ -34,4 +35,5 @@ for request in tests:
     sock.sendto(request, (HOST, PORT))
     received = sock.recv(1024*8)
 
-    print "Request: %s \nResponse: %s" % (request, cPickle.loads(received))
+    print "Request: %s \nResponse:" % (request)
+    pprint(cPickle.loads(received), width=160)
