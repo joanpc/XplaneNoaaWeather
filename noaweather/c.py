@@ -95,6 +95,15 @@ class c:
         return val
     
     @classmethod
+    def toInt(self, string, default = 0):
+        # try to convert to float or return default
+        try: 
+            val = int(string)
+        except ValueError:
+            val = default
+        return val
+    
+    @classmethod
     def rh2visibility(self, rh):
         # http://journals.ametsoc.org/doi/pdf/10.1175/2009JAMC1927.1
         return 1000*(-5.19*10**-10*rh**5.44+40.10) 
@@ -269,9 +278,9 @@ class c:
     
     @classmethod
     def limit(self, value, max = None, min = None):
-        if max != False and value > max:
+        if max is not False and value > max:
             return max
-        elif min != False and value < min:
+        elif min is not False and value < min:
             return min
         else:
             return value
@@ -307,9 +316,61 @@ class c:
             return types[type][intensity]
     
     @classmethod
-    def strFloat(self, i):
+    def strFloat(self, i, false_label = 'na'):
         'Print a float or na if False'
         if i is False:
-            return 'na'
+            return false_label
         else:
             return '%.2f' % (i)
+    @classmethod
+    def m2ft(cls, n):
+        if n is False: return False
+        return n * 3.280839895013123
+
+    @classmethod
+    def f2m(cls, n):
+        if n is False: return False
+        return n * 0.3048
+ 
+    @classmethod
+    def sm2m(cls, n):
+        if n is False: return False
+        return n * 1609.344
+    
+    @classmethod
+    def m2sm(self, n):
+        if n is False: return False
+        return n * 0.0006213711922373339
+    
+    @classmethod
+    def convertForInput(self, value, conversion, toFloat = False, false_str = 'none'):
+        # Make conversion and transform to int
+        if value is False:
+            value = False
+        else:
+            convert = getattr(self, conversion)
+            value = convert(value)
+        
+        if value is False:
+            return false_str
+        
+        elif not toFloat:
+            value = int(value)
+        return str(value)
+    
+    @classmethod
+    def convertFromInput(self, string, conversion, default = False, toFloat = False):
+        # Convert from str and convert
+        value = self.toFloat(string, default)
+        
+        if value is False:
+            return False
+        
+        convert = getattr(self, conversion)
+        value = convert(value)
+        
+        if toFloat: 
+            return value
+        else:
+            return int(round(value))
+    

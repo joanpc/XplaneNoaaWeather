@@ -18,7 +18,7 @@ class Conf:
     Configuration variables
     '''
     syspath, dirsep = '', os.sep
-    __VERSION__ = '2.0_beta8'
+    __VERSION__ = '2.0rc0'
     
     def __init__(self, syspath):
         # Inits conf
@@ -90,9 +90,9 @@ class Conf:
         self.set_visibility = False
         self.set_turb       = True
         self.set_pressure   = True
-        self.transalt       = 32808.399000000005
         
-        self.metar_agl_limit = 900 # Below that level metar values are used. In meters.
+        # From this AGL level METAR values are interpolated to GFS ones.
+        self.metar_agl_limit = 900 # In meters
         
         self.use_metar      = False
         self.parserate      = 1
@@ -101,8 +101,8 @@ class Conf:
         self.download       = True
         
         # Performance tweaks
-        self.max_visibility = False # in meters
-        self.max_cloud_thickness = False # in meters
+        self.max_visibility = False # in SM
+        self.max_cloud_height = False # in feet
         
         # Weather server configuration
         self.server_updaterate = 10 # Run the weather loop each #seconds
@@ -119,12 +119,14 @@ class Conf:
         self.windGustTransSpeed = 0.5 # kt/s
         self.windHdgTransSpeed = 1# degrees/s
         
+        self.metar_source = 'NOAA'
+        
     def saveSettings(self, filepath, settings):
         f = open(filepath, 'w')
         cPickle.dump(settings, f)
         f.close()
     
-    def loadSettings(self, filepath, ignore = []):
+    def loadSettings(self, filepath):
         if os.path.exists(filepath):
             f = open(filepath, 'r')
             try:
@@ -137,7 +139,7 @@ class Conf:
             
             # may be "dangerous" if someone messes our config file
             for var in conf:
-                if var in self.__dict__ and not (var in ignore):
+                if var in self.__dict__:
                     self.__dict__[var] = conf[var]
      
     def pluginSave(self):
@@ -149,17 +151,19 @@ class Conf:
                 'set_wind'  : self.set_wind,
                 'set_turb'  : self.set_turb,
                 'set_pressure' : self.set_pressure,
-                'transalt'  : self.transalt,
                 'use_metar' : self.use_metar,
                 'enabled'   : self.enabled,
                 'updaterate': self.updaterate,
-                'vatsim'    : self.vatsim,
+                'metar_source': self.metar_source,
                 'download'  : self.download,
+                'metar_agl_limit': self.metar_agl_limit,
+                'max_visibility': self.max_visibility,
+                'max_cloud_height': self.max_cloud_height,
                 }
         self.saveSettings(self.settingsfile, conf)
     
     def pluginLoad(self):
-        self.loadSettings(self.settingsfile, ['lastgrib', 'lastwafsgrib', 'ms_update'])
+        self.loadSettings(self.settingsfile)
         
     def serverSave(self):
         '''Save weather server settings'''

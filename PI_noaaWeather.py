@@ -161,7 +161,7 @@ class Weather:
     
     def shutdown(self):
         # Shutdown client and server
-        self.die.set()
+        #self.die.set()
         self.weatherClientSend('!shutdown')
         self.weatherClientThread.join()
         self.weatherClientThread = False
@@ -200,7 +200,7 @@ class Weather:
             extra = {'gust': gust, 'metar': True}
             
             alt += self.conf.metar_agl_limit
-            alt = c.transition(alt, 'metar_wind_alt', elapsed, 0.3048) # 1f/s
+            alt = c.transition(alt, '0-metar_wind_alt', elapsed, 0.3048) # 1f/s
             
             # Fix temperatures    
             if 'temperature' in self.weatherData['metar']:
@@ -346,12 +346,12 @@ class Weather:
             for cloud in clouds:
                 # Search in gfs for a top level
                 base, cover, type = cloud
-                top = base + xpClouds[cover][1]
+                top = base + c.limit(xpClouds[cover][1], self.conf.max_cloud_height)
                 
                 for gfscloud in cloudsr:
                     gfsBase, gfsTop, gfsCover = gfscloud
                     if base < (gfsTop + 500) and base > (gfsBase - 500):
-                        top = base + gfsBase - gfsTop
+                        top = base + c.limit(gfsBase - gfsTop, self.conf.max_cloud_height)
                         break
                     else:
                         continue
@@ -384,7 +384,7 @@ class Weather:
                         if int(cl[i]['bottom'].value) != int(clayer[0]) and cl[i]['coverage'].value != clayer[2]:
                             base, top, cover = clayer
                             self.setDrefIfDiff(self.clouds[i]['bottom'],  base, 100)
-                            self.setDrefIfDiff(self.clouds[i]['top'],  top, 100)
+                            self.setDrefIfDiff(self.clouds[i]['top'], base + c.limit(top - base, self.conf.max_cloud_height), 100)
                             self.setDrefIfDiff(self.clouds[i]['coverage'], cover)
     
     def setPressure(self, pressure, elapsed):
@@ -454,7 +454,7 @@ class PythonInterface:
     def CreateAboutWindow(self, x, y):
         x2 = x + 780
         y2 = y - 85 - 20 * 15
-        Buffer = "X-Plane NOAA GFS Weather - %s" % (self.conf.__VERSION__)
+        Buffer = "X-Plane NOAA GFS Weather - %s  -- Thanks to all betatesters! --" % (self.conf.__VERSION__)
         top = y
             
         # Create the Main Widget window
@@ -517,28 +517,52 @@ class PythonInterface:
         y -= 30
         x -=5
         
-        # VATSIM Compatible
-        XPCreateWidget(x, y-40, x+20, y-60, 1, 'Use VATSIM METAR', 0, window, xpWidgetClass_Caption)
-        self.vatsimCheck = XPCreateWidget(x+110, y-40, x+120, y-60, 1, '', 0, window, xpWidgetClass_Button)
-        XPSetWidgetProperty(self.vatsimCheck, xpProperty_ButtonType, xpRadioButton)
-        XPSetWidgetProperty(self.vatsimCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
-        XPSetWidgetProperty(self.vatsimCheck, xpProperty_ButtonState, self.conf.vatsim)
+        x1 = x+5
+
+        # Metar source radios        
+        XPCreateWidget(x, y-40, x+20, y-60, 1, 'METAR SOURCE', 0, window, xpWidgetClass_Caption)
         y -= 20
+        XPCreateWidget(x1, y-40, x1+20, y-60, 1, 'NOAA', 0, window, xpWidgetClass_Caption)
+        mtNoaCheck = XPCreateWidget(x1+40, y-40, x1+45, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        x1 += 52
+        XPCreateWidget(x1, y-40, x1+20, y-60, 1, 'IVAO', 0, window, xpWidgetClass_Caption)
+        mtIvaoCheck = XPCreateWidget(x1+35, y-40, x1+45, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        x1 += 50     
+        XPCreateWidget(x1, y-40, x1+20, y-60, 1, 'VATSIM', 0, window, xpWidgetClass_Caption)
+        mtVatsimCheck = XPCreateWidget(x1+45, y-40, x1+60, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        x1 += 52
         
-        # trans altitude
-        #XPCreateWidget(x, y-40, x+80, y-60, 1, 'Switch to METAR', 0, window, xpWidgetClass_Caption)
-        #self.metarCheck = XPCreateWidget(x+110, y-40, x+120, y-60, 1, '', 0, window, xpWidgetClass_Button)
-        #XPSetWidgetProperty(self.metarCheck, xpProperty_ButtonType, xpRadioButton)
-        #XPSetWidgetProperty(self.metarCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
-        #XPSetWidgetProperty(self.metarCheck, xpProperty_ButtonState, self.conf.use_metar)
+        self.mtSourceChecks = {mtNoaCheck: 'NOAA',
+                               mtIvaoCheck: 'IVAO',
+                               mtVatsimCheck: 'VATSIM'
+                               }
         
-        #y -= 20
-        #XPCreateWidget(x+20, y-40, x+80, y-60, 1, 'Below FL', 0, window, xpWidgetClass_Caption)
-        #self.transAltInput = XPCreateWidget(x+100, y-40, x+140, y-62, 1, '%i' % (self.conf.transalt*3.2808399/100), 0, window, xpWidgetClass_TextField)
-        #XPSetWidgetProperty(self.transAltInput, xpProperty_TextFieldType, xpTextEntryField)
-        #XPSetWidgetProperty(self.transAltInput, xpProperty_Enabled, 1)
+        for check in self.mtSourceChecks:
+            XPSetWidgetProperty(check, xpProperty_ButtonType, xpRadioButton)
+            XPSetWidgetProperty(check, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
+            XPSetWidgetProperty(check, xpProperty_ButtonState, int(self.conf.metar_source == self.mtSourceChecks[check]))
+            
+            
+        y -= 30
+        XPCreateWidget(x, y-40, x+80, y-60, 1, 'Metar AGL limit (ft)', 0, window, xpWidgetClass_Caption)
+        self.transAltInput = XPCreateWidget(x+110, y-40, x+160, y-62, 1, c.convertForInput(self.conf.metar_agl_limit, 'm2ft'), 0, window, xpWidgetClass_TextField)
+        XPSetWidgetProperty(self.transAltInput, xpProperty_TextFieldType, xpTextEntryField)
+        XPSetWidgetProperty(self.transAltInput, xpProperty_Enabled, 1)
         
-        y -= 35
+        y -= 30
+        XPCreateWidget(x, y-40, x+80, y-60, 1, 'Performance Tweaks', 0, window, xpWidgetClass_Caption)
+        y -= 20
+        XPCreateWidget(x+5, y-40, x+80, y-60, 1, 'Max Visibility (sm)', 0, window, xpWidgetClass_Caption)
+        self.maxVisInput = XPCreateWidget(x+119, y-40, x+160, y-62, 1, c.convertForInput(self.conf.max_visibility, 'm2sm'), 0, window, xpWidgetClass_TextField)
+        XPSetWidgetProperty(self.maxVisInput, xpProperty_TextFieldType, xpTextEntryField)
+        XPSetWidgetProperty(self.maxVisInput, xpProperty_Enabled, 1)
+        y -= 20
+        XPCreateWidget(x+5, y-40, x+80, y-60, 1, 'Max cloud height (ft)', 0, window, xpWidgetClass_Caption)
+        self.maxCloudHeightInput = XPCreateWidget(x+119, y-40, x+160, y-62, 1, c.convertForInput(self.conf.max_cloud_height, 'm2ft'), 0, window, xpWidgetClass_TextField)
+        XPSetWidgetProperty(self.maxCloudHeightInput, xpProperty_TextFieldType, xpTextEntryField)
+        XPSetWidgetProperty(self.maxCloudHeightInput, xpProperty_Enabled, 1)
+        
+        y -= 50
         # Save
         self.saveButton = XPCreateWidget(x+25, y-20, x+125, y-60, 1, "Apply & Save", 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.saveButton, xpProperty_ButtonType, xpPushButton)
@@ -585,16 +609,16 @@ class PythonInterface:
         XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
         sysinfo = [
         'X-Plane NOAA Weather: %s' % self.conf.__VERSION__,
-        '(c) joan perez cauhe 2012-15',
+        '(c) joan perez i cauhe 2012-15',
         ]
         for label in sysinfo:
-            XPCreateWidget(x, y-10, x+40, y-20, 1, label, 0, window, xpWidgetClass_Caption)
-            y -= 10
+            XPCreateWidget(x, y-5, x+120, y-20, 1, label, 0, window, xpWidgetClass_Caption)
+            y -= 15
             
         # Visit site Button
         x += 240
-        y += 5
-        self.aboutVisit = XPCreateWidget(x, y, x+100, y-20, 1, "Visit site", 0, window, xpWidgetClass_Button)
+        y += 15
+        self.aboutVisit = XPCreateWidget(x, y, x+100, y-20, 1, "Official site", 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.aboutVisit, xpProperty_ButtonType, xpPushButton)
         
         # Donate Button
@@ -614,6 +638,15 @@ class PythonInterface:
                 XPDestroyWidget(self, self.aboutWindowWidget, 1)
                 self.aboutWindow = False
             return 1
+        
+        if inMessage == xpMsg_ButtonStateChanged and inParam1 in self.mtSourceChecks:
+            if inParam2:
+                for i in self.mtSourceChecks:
+                    if i != inParam1:
+                        XPSetWidgetProperty(i, xpProperty_ButtonState, 0)
+            else:
+                XPSetWidgetProperty(inParam1, xpProperty_ButtonState, 1)
+            return 1
 
         # Handle any button pushes
         if (inMessage == xpMsg_PushButtonPressed):
@@ -622,11 +655,11 @@ class PythonInterface:
                 from webbrowser import open_new
                 open_new('http://x-plane.joanpc.com/');
                 return 1
-            elif (inParam1 == self.donate):
+            if (inParam1 == self.donate):
                 from webbrowser import open_new
                 open_new('https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=ZQL6V9YLKRFEJ&lc=US&item_name=joan%20x%2dplane%20developer&item_number=XP%20NOAA%20Weather&currency_code=EUR&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted');
                 return 1
-            elif inParam1 == self.saveButton:
+            if inParam1 == self.saveButton:
                 # Save configuration
                 self.conf.enabled       = XPGetWidgetProperty(self.enableCheck, xpProperty_ButtonState, None)
                 self.conf.set_wind      = XPGetWidgetProperty(self.windsCheck, xpProperty_ButtonState, None)
@@ -634,31 +667,43 @@ class PythonInterface:
                 self.conf.set_temp      = XPGetWidgetProperty(self.tempCheck, xpProperty_ButtonState, None)
                 self.conf.set_pressure  = XPGetWidgetProperty(self.pressureCheck, xpProperty_ButtonState, None)
                 self.conf.set_turb      = XPGetWidgetProperty(self.turbCheck, xpProperty_ButtonState, None)
-                #self.conf.use_metar     = XPGetWidgetProperty(self.metarCheck, xpProperty_ButtonState, None)
-                prev_vatsim = self.conf.vatsim
-                self.conf.vatsim        = XPGetWidgetProperty(self.vatsimCheck, xpProperty_ButtonState, None)
+                
                 self.conf.download      = XPGetWidgetProperty(self.downloadCheck, xpProperty_ButtonState, None)
                 
+                buff = []
+                XPGetWidgetDescriptor(self.transAltInput, buff, 256)
+                self.conf.metar_agl_limit = c.convertFromInput(buff[0], 'f2m', 900)
+
+                buff = []
+                XPGetWidgetDescriptor(self.maxCloudHeightInput, buff, 256)
+                self.conf.max_cloud_height = c.convertFromInput(buff[0], 'f2m')
+                
+                buff = []
+                XPGetWidgetDescriptor(self.maxVisInput, buff, 256)
+                self.conf.max_visibility = c.convertFromInput(buff[0], 'sm2m')
+                
+                # Check metar source
+                prev_metar_source = self.conf.metar_source
+                for check in self.mtSourceChecks:
+                    if XPGetWidgetProperty(check, xpProperty_ButtonState, None):
+                        self.conf.metar_source = self.mtSourceChecks[check]
+                
+                # Save config and tell server to reload it
                 self.conf.pluginSave()
                 self.weather.weatherClientSend('!reload')
                 
-                if self.conf.vatsim != prev_vatsim:
+                # If metar source has changed tell server to reinit metar database
+                if self.conf.metar_source != prev_metar_source:
                     self.weather.weatherClientSend('!resetMetar')
-                
-                buff = []
-                #XPGetWidgetDescriptor(self.transAltInput, buff, 256)
-                #self.conf.transalt = c.toFloat(buff[0], 100) * 0.3048 * 100
-                #buff = []
-                #XPGetWidgetDescriptor(self.updateRateInput, buff, 256)
-                #self.conf.updaterate = c.toFloat(buff[0], 1)
-            
+   
                 self.weather.startWeatherClient()
                 self.aboutWindowUpdate()
                 c.transitionClearReferences()
                 return 1
-            elif inParam1 == self.dumpLogButton:
+            if inParam1 == self.dumpLogButton:
                 dumpfile = self.dumpLog()
                 XPSetWidgetDescriptor(self.dumpLabel, os.sep.join(dumpfile.split(os.sep)[-3:]))
+                return 1
         return 0
     
     def aboutWindowUpdate(self):
@@ -666,12 +711,19 @@ class PythonInterface:
         XPSetWidgetProperty(self.windsCheck, xpProperty_ButtonState, self.conf.set_wind)
         XPSetWidgetProperty(self.cloudsCheck, xpProperty_ButtonState, self.conf.set_clouds)
         XPSetWidgetProperty(self.tempCheck, xpProperty_ButtonState, self.conf.set_temp)
-        #XPSetWidgetProperty(self.metarCheck, xpProperty_ButtonState, self.conf.use_metar)
-        XPSetWidgetProperty(self.vatsimCheck, xpProperty_ButtonState, self.conf.vatsim)
         
+        XPSetWidgetDescriptor(self.transAltInput, c.convertForInput(self.conf.metar_alg_limit, 'm2f'))
+        XPSetWidgetDescriptor(self.maxVisInput, c.convertForInput(self.conf.max_visibility, 'm2sm'))
+        XPSetWidgetDescriptor(self.maxCloudHeightInput, c.convertForInput(self.conf.max_cloud_height, 'm2ft'))
+        
+        #for check in self.mtSourceChecks:
+        #    if check == self.conf.metar_source:
+        #        XPSetWidgetProperty(check, xpProperty_ButtonState, 1)
+        #    else:
+        #        XPSetWidgetProperty(check, xpProperty_ButtonState, 0)
+
         self.updateStatus()
-    
-    
+        
     def updateStatus(self):
         '''Updates status window'''
         

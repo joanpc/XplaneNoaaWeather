@@ -34,6 +34,7 @@ class Metar:
     
     METAR_STATIONS_URL = 'http://www.aviationweather.gov/static/adds/metars/stations.txt'
     VATSIM_METAR_STATIONS_URL = 'http://metar.vatsim.net/metar.php?id=all'
+    IVAO_METAR_STATIONS_URL = 'http://wx.ivao.aero/metar.php'
     METAR_REPORT_URL = 'http://weather.noaa.gov/pub/data/observations/metar/cycles/%sZ.TXT'
     
     UPDATE_RATE = 20 # Redownload metar data every # minutes
@@ -344,12 +345,15 @@ class Metar:
         if not os.path.exists(cachepath):
             os.makedirs(cachepath)
         
-        if self.conf.vatsim:
+        if self.conf.metar_source == 'NOAA':
+            url = self.METAR_REPORT_URL % (cycle)
+            cachefile = os.sep.join(['metar', 'NOAA_%d_%sZ.txt' % (timestamp, cycle)])
+        elif self.conf.metar_source == 'VATSIM':
             url = self.VATSIM_METAR_STATIONS_URL
             cachefile = os.sep.join(['metar', 'VATSIM_%d_%sZ.txt' % (timestamp, cycle)])
-        else:
-            url = self.METAR_REPORT_URL % (cycle)
-            cachefile = os.sep.join(['metar', '%d_%sZ.txt' % (timestamp, cycle)])
+        elif self.conf.metar_source == 'IVAO':
+            url = self.IVAO_METAR_STATIONS_URL
+            cachefile = os.sep.join(['metar', 'IVAO_%d_%sZ.txt' % (timestamp, cycle)])
             
         self.download = AsyncDownload(self.conf, url, cachefile)
         
