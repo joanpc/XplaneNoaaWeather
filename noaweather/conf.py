@@ -18,7 +18,7 @@ class Conf:
     Configuration variables
     '''
     syspath, dirsep = '', os.sep
-    __VERSION__ = '2.0rc0'
+    __VERSION__ = '2.0rc1'
     
     def __init__(self, syspath):
         # Inits conf
@@ -93,6 +93,8 @@ class Conf:
         
         # From this AGL level METAR values are interpolated to GFS ones.
         self.metar_agl_limit = 900 # In meters
+        # From this distance from the airport gfs data is used for temp, dew, pressure and clouds
+        self.metar_distance_limit = 100000 # In meters
         
         self.use_metar      = False
         self.parserate      = 1
@@ -157,6 +159,7 @@ class Conf:
                 'metar_source': self.metar_source,
                 'download'  : self.download,
                 'metar_agl_limit': self.metar_agl_limit,
+                'metar_distance_limit': self.metar_distance_limit,
                 'max_visibility': self.max_visibility,
                 'max_cloud_height': self.max_cloud_height,
                 }

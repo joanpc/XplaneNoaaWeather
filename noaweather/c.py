@@ -8,7 +8,7 @@ as published by the Free Software Foundation; either version 2
 of the License, or any later version.
 '''
 
-from math import hypot, atan2, degrees, exp, log
+from math import hypot, atan2, degrees, exp, log, radians, sin, cos, sqrt
 
 class c:
     '''
@@ -55,6 +55,23 @@ class c:
             return oat + 71.5
         return oat + 0.0065 * alt
     
+    @classmethod
+    def greatCircleDistance(self, latlong_a, latlong_b):
+        '''Return the great circle distance of 2 coordinatee pairs'''
+        EARTH_RADIUS = 6378137
+        
+        lat1, lon1 = latlong_a
+        lat2, lon2 = latlong_b
+         
+        dLat = radians(lat2 - lat1)
+        dLon = radians(lon2 - lon1)
+        a = (sin(dLat / 2) * sin(dLat / 2) +
+        cos(radians(lat1)) * cos(radians(lat2)) *
+        sin(dLon / 2) * sin(dLon / 2))
+        c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        d = EARTH_RADIUS * c
+        return d
+
     @classmethod
     def interpolate(self, t1, t2, alt1, alt2, alt):
         if (alt2 - alt1) == 0:

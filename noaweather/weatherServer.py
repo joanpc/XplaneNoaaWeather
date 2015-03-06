@@ -14,6 +14,7 @@ of the License, or any later version.
 
 from conf import Conf
 from gfs import  GFS
+from c import c
 
 import SocketServer
 import cPickle
@@ -56,6 +57,9 @@ class clientHandler(SocketServer.BaseRequestHandler):
         apt = gfs.metar.getClosestStation(gfs.metar.connection, lat, lon)
         if apt and len(apt) > 4:
             response['metar'] = gfs.metar.parseMetar(apt[0], apt[5], apt[3])
+            response['metar']['latlon'] = (apt[1], apt[2])
+            response['metar']['distance'] = c.greatCircleDistance((lat, lon), (apt[1], apt[2]))
+            
         
         return response
     
