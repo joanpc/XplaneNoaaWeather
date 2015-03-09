@@ -147,8 +147,7 @@ if __name__ == "__main__":
     gfs.die.set()
     conf.serverSave()
     print 'Server stoped.'
-    if not conf.win32:
-        logfile.close()
+    logfile.close()
     
     
     

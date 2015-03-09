@@ -38,7 +38,7 @@ class WAFS:
         # Use last grib stored in config if still avaliable
         if self.conf.lastwafsgrib and os.path.exists(os.sep.join([self.conf.cachepath, self.conf.lastwafsgrib])):
             self.lastgrib = self.conf.lastwafsgrib
-            self.current_datecycle = self.conf.lastwafsgrib.split(os.sep)[0]
+            self.current_datecycle = self.conf.lastwafsgrib.split(os.sep)[1][:10]
         
     def run(self, lat, lon, rate):
         # Worker thread
@@ -52,9 +52,11 @@ class WAFS:
                 
                 self.downloading = False
                 if lastgrib:
+                    if not self.conf.keepOldFiles and self.conf.lastwafsgrib:
+                        os.remove(os.sep.join([self.conf.cachepath, self.lastgrib]))
                     self.lastgrib = lastgrib
                     self.conf.lastwafsgrib = lastgrib
-                    self.current_datecycle = self.conf.lastwafsgrib.split(os.sep)[0]
+                    self.current_datecycle = self.conf.lastwafsgrib.split(os.sep)[1][:10]
                 else:
                     # Download fail
                     self.downloadWait = 60
@@ -131,17 +133,17 @@ class WAFS:
         
         turbulence = []
         for key, value in cat.iteritems():
-            turbulence.append([key, value/6])
+            turbulence.append([key, value/6.0])
         turbulence.sort()
         
         return turbulence
 
     def downloadCycle(self, datecycle, cycle, forecast):
         self.downloading = True
-        filename = "WAFS_blended_%sf%02d.grib2" % (datecycle, forecast )
+        filename = "WAFS_blended_%sf%02d.grib2" % (datecycle, forecast)
         url =  "%s/gfs.%s/%s" % (self.baseurl, datecycle, filename)
-        cachefile = os.sep.join([datecycle, filename]) 
-        path = self.conf.cachepath + '/' + datecycle
+        cachefile = os.sep.join(['wafs', '%s_%s' % (datecycle, filename)]) 
+        path = os.sep.join([self.conf.cachepath, 'wafs'])
         if not os.path.exists(path):
             os.makedirs(path)
         #print cachefile, url

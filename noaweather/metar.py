@@ -25,19 +25,19 @@ class Metar:
     '''
     # Metar parse regex
     RE_CLOUD        = re.compile(r'\b(FEW|BKN|SCT|OVC|VV)([0-9]+)([A-Z][A-Z][A-Z]?)?\b')
-    RE_WIND         = re.compile(r'\b([0-9]{3})([0-9]{2,3})(G[0-9]{2,3})?(MPH|KT?|MPS)\b')
-    RE_VISIBILITY   = re.compile(r'\b(CAVOK|[PM]?([0-9]{4})|([0-9] )?([0-9]{1,2})(/[0-9])?(SM))\b')
+    RE_WIND         = re.compile(r'\b([0-9]{3})([0-9]{2,3})(G[0-9]{2,3})?(MPH|KT?|MPS|KMH)\b')
+    RE_VISIBILITY   = re.compile(r'\b(CAVOK|[PM]?([0-9]{4})|([0-9] )?([0-9]{1,2})(/[0-9])?(SM|KM))\b')
     RE_PRESSURE     = re.compile(r'\b(Q|QNH|SLP|A)[ ]?([0-9]{3,4})\b')
     RE_TEMPERATURE  = re.compile('(M|-)?([0-9]{1,2})/(M|-)?([0-9]{1,2})')
     RE_TEMPERATURE2 = re.compile(r'\bT(0|1)([0-9]{3})(0|1)([0-9]{3})\b')
-    RE_PRECIPITATION = re.compile('(-|\+)?(DZ|SG|IC|PL|SH|RE)?(DZ|RA|SN|TS)')
+    RE_PRECIPITATION = re.compile('(-|\+)?(DZ|SG|IC|PL|SH|RE)?(DZ|RA|SN|TS)(NO)?')
     
     METAR_STATIONS_URL = 'http://www.aviationweather.gov/static/adds/metars/stations.txt'
     VATSIM_METAR_STATIONS_URL = 'http://metar.vatsim.net/metar.php?id=all'
     IVAO_METAR_STATIONS_URL = 'http://wx.ivao.aero/metar.php'
     METAR_REPORT_URL = 'http://weather.noaa.gov/pub/data/observations/metar/cycles/%sZ.TXT'
     
-    UPDATE_RATE = 20 # Redownload metar data every # minutes
+    UPDATE_RATE = 10 # Redownload metar data every # minutes
     
     STATION_UPDATE_RATE = 30 # In days
     
@@ -60,6 +60,12 @@ class Metar:
         # Download flags
         self.ms_download = False
         self.downloading = False
+        
+        # Refresh rate
+        self.updateRate = self.UPDATE_RATE
+        
+        # Flag to trigger a complete download from NOAA cycles
+        self.firstrun = True
         
         # Main db connection, create db if doens't exist
         createdb = True
@@ -146,6 +152,9 @@ class Metar:
             cursor.executemany('UPDATE airports SET timestamp = ?, metar = ? WHERE icao = ? AND timestamp < ?', inserts)
         db.commit()
         
+        if not self.conf.keepOldFiles:
+            os.remove(path)
+        
         return updated
     
     def clearMetarReports(self, db):
@@ -182,9 +191,15 @@ class Metar:
     def getCycle(self):
         now = datetime.utcnow()
         # Cycle is updated until the houre has arrived (ex: 01 cycle updates until 1am)
-        cnow = now - timedelta(hours=0, minutes=15)
+        if self.firstrun:
+            cnow = now - timedelta(hours=0, minutes=30)
+            self.firstrun = False
+            timestamp = -1
+        else:
+            cnow = now + timedelta(hours=0, minutes=5)
+            timestamp = int(time.time())/60/self.UPDATE_RATE
         # Get last cycle
-        return ('%02d' % cnow.hour, int(time.time())/60/self.UPDATE_RATE)
+        return ('%02d' % cnow.hour, timestamp)
     
     def parseMetar(self, icao, metar, airport_msl = 0):
         ''' Parse metar'''
@@ -283,13 +298,18 @@ class Metar:
                 if unit == 'MPH':
                     speed /= 60
                     gust  /= 60
+            if unit == 'KMH':
+                speed = c.m2kn(speed / 1000.0)
+                gust = c.m2kn(gust / 1000.0)
+                
                                 
             weather['wind'] = [heading, speed, gust]
             
         precipitation = {}
         for precp in self.RE_PRECIPITATION.findall(metar):
-            intensity, mod, type = precp
-            precipitation[type] = {'int': intensity ,'mod': mod}
+            intensity, mod, type, bool = precp
+            if not bool:
+                precipitation[type] = {'int': intensity ,'mod': mod}
             
         weather['precipitation'] = precipitation
         

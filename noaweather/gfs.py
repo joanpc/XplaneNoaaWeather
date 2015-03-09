@@ -143,8 +143,8 @@ class GFS(threading.Thread):
         
         filename = 'gfs.t%02dz.pgrb2full.0p50.f0%02d' % (cycle, forecast)
         
-        path = os.sep.join([self.conf.cachepath, datecycle]) 
-        cachefile = os.sep.join([datecycle, filename])  + '.grib2'
+        path = os.sep.join([self.conf.cachepath, 'gfs'])
+        cachefile = os.sep.join(['gfs', '%s_%s.grib2' % (datecycle, filename)])
         
         if cachefile == self.lastgrib:
             # No need to download
@@ -161,6 +161,8 @@ class GFS(threading.Thread):
                 
                 # Dowload success
                 if lastgrib:
+                    if not self.conf.keepOldFiles and self.conf.lastgrib:
+                        os.remove(os.sep.join([self.conf.cachepath, self.lastgrib]))
                     self.lastgrib = lastgrib
                     self.conf.lastgrib = self.lastgrib
                     self.newGrib = True
@@ -272,7 +274,7 @@ class GFS(threading.Thread):
                 #print "XPGFS: top: %.0fmbar %.0fm, bottom: %.0fmbar %.0fm %d%%" % (top * 0.01, c.mb2alt(top * 0.01), bottom * 0.01, c.mb2alt(bottom * 0.01), cover)
                 
                 #if bottom > 1 and alt > 1:
-                cloudlevels.append((c.mb2alt(bottom * 0.01) * 0.3048, c.mb2alt(top * 0.01) * 0.3048, int(c.cc2xp(cover))))
+                cloudlevels.append([c.mb2alt(bottom * 0.01) * 0.3048, c.mb2alt(top * 0.01) * 0.3048, cover])
                 #XP10 
                 #cloudlevels.append((c.mb2alt(bottom * 0.01) * 0.3048, c.mb2alt(top * 0.01) * 0.3048, cover/10))
     
