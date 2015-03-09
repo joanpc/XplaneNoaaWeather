@@ -56,7 +56,10 @@ class WAFS:
                         os.remove(os.sep.join([self.conf.cachepath, self.lastgrib]))
                     self.lastgrib = lastgrib
                     self.conf.lastwafsgrib = lastgrib
-                    self.current_datecycle = self.conf.lastwafsgrib.split(os.sep)[1][:10]
+                    if len(self.conf.lastwafsgrib.split(os.sep)) > 0:
+                        self.current_datecycle = self.conf.lastwafsgrib.split(os.sep)[1][:10]
+                    else:
+                        self.lastgrib = False
                 else:
                     # Download fail
                     self.downloadWait = 60

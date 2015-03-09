@@ -116,6 +116,7 @@ class Metar:
                                    (icao.strip('"'), lat, lon, elevation))
                 n += 1
         
+        f.close()
         db.commit()
         return n
         
@@ -152,6 +153,7 @@ class Metar:
             cursor.executemany('UPDATE airports SET timestamp = ?, metar = ? WHERE icao = ? AND timestamp < ?', inserts)
         db.commit()
         
+        f.close()
         if not self.conf.keepOldFiles:
             os.remove(path)
         
@@ -194,7 +196,7 @@ class Metar:
         if self.firstrun:
             cnow = now - timedelta(hours=0, minutes=30)
             self.firstrun = False
-            timestamp = -1
+            timestamp = 0
         else:
             cnow = now + timedelta(hours=0, minutes=5)
             timestamp = int(time.time())/60/self.UPDATE_RATE

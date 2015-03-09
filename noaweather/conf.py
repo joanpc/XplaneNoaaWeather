@@ -18,7 +18,7 @@ class Conf:
     Configuration variables
     '''
     syspath, dirsep = '', os.sep
-    __VERSION__ = '2.0rc2b'
+    __VERSION__ = '2.0rc2c'
     
     def __init__(self, syspath):
         # Inits conf
@@ -141,6 +141,10 @@ class Conf:
                 os.remove(filepath)
                 return
             
+            # Reset settings on different versions.
+            if not 'version' in conf or conf['version'] != self.__VERSION__:
+                return
+            
             # may be "dangerous" if someone messes our config file
             for var in conf:
                 if var in self.__dict__:
@@ -172,6 +176,7 @@ class Conf:
     def serverSave(self):
         '''Save weather server settings'''
         server_conf = {
+                       'version'   : self.__VERSION__,
                        'lastgrib': self.lastgrib,
                        'lastwafsgrib': self.lastwafsgrib,
                        'ms_update' : self.ms_update
