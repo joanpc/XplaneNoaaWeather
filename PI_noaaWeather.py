@@ -483,6 +483,8 @@ class PythonInterface:
         self.fltime = 1
         self.lastParse = 0
         
+        self.newAptLoaded = False
+        
         self.aboutlines = 17
         
         return self.Name, self.Sig, self.Desc
@@ -905,7 +907,7 @@ class PythonInterface:
         # Query output
         self.metarQueryOutput = XPCreateWidget(x+5, y, x+450, y-20, 1, "", 0, self.metarWindowWidget, xpWidgetClass_TextField)
         XPSetWidgetProperty(self.metarQueryOutput, xpProperty_TextFieldType, xpTextEntryField)
-        XPSetWidgetProperty(self.metarQueryOutput, xpProperty_Enabled, 0)
+        XPSetWidgetProperty(self.metarQueryOutput, xpProperty_Enabled, 1)
         
         # Register our widget handler
         self.metarWindowHandlerCB = self.metarWindowHandler
@@ -927,6 +929,7 @@ class PythonInterface:
                 else:
                     XPSetWidgetDescriptor(self.metarQueryOutput, 'Please insert a valid ICAO code.')
                 return 1
+        
         return 0
     
     def metarQueryCallback(self, msg):
@@ -1023,8 +1026,22 @@ class PythonInterface:
         '''
         Floop Callback
         '''
+                
+        # Update status window
+        if self.aboutWindow and XPIsWidgetVisible(self.aboutWindowWidget):
+            self.updateStatus()
         
-        # Request data from the weather server
+        # Handle server misc requests
+        if len(self.weather.queryResponses):
+            msg = self.weather.queryResponses.pop()
+            if 'metar' in msg:
+                self.metarQueryCallback(msg)
+        
+        ''' Return if the plugin is disabled '''
+        if not self.conf.enabled:
+            return -1
+        
+        ''' Request new data from the weather server (if required)'''
         self.flcounter += elapsedMe
         self.fltime += elapsedMe
         if self.flcounter > self.conf.parserate and self.weather.weatherClientThread:
@@ -1040,33 +1057,29 @@ class PythonInterface:
                 self.flcounter = 0
                 self.lastParse = self.fltime
         
-        if self.aboutWindow and XPIsWidgetVisible(self.aboutWindowWidget):
-            self.updateStatus()
-            
-        if len(self.weather.queryResponses):
-            msg = self.weather.queryResponses.pop()
-            if 'metar' in msg:
-                self.metarQueryCallback(msg)
-        
-        if not self.conf.enabled or not self.weather.weatherData:
-            return -1
-        
         # Store altitude
         self.weather.alt = self.altdr.value
-        
         wdata = self.weather.weatherData
         
-        rain, ts, temp = 0, 0, 15
+        ''' Return if there's no weather data'''
+        if not self.weather.weatherData:
+            return -1
+        
+        ''' Data set on new weather Data '''
         
         if self.weather.newData:
             pressSet = False
+            rain, ts, temp = 0, 0, 15
+            
+            # Clrear transitions on airport load
+            if self.newAptLoaded:
+                c.transitionClearReferences()
+                self.newAptLoaded = False
+                
             # Set metar values
             if 'metar' in wdata:
                 if 'visibility' in wdata['metar']:
                     self.weather.visibility.value =  c.limit(wdata['metar']['visibility'], self.conf.max_visibility)
-                if 'pressure' in wdata['metar'] and wdata['metar']['pressure'] is not False:
-                    self.weather.setPressure(wdata['metar']['pressure'], elapsedMe)
-                    pressSet = True
                 if'precipitation' in wdata['metar'] and len(wdata['metar']['precipitation']):
                     precp = wdata['metar']['precipitation']
                     if 'RA'in precp:
@@ -1081,14 +1094,11 @@ class PythonInterface:
                             ts = 1
                 if 'temperature' in wdata['metar']:
                     temp, dew = wdata['metar']['temperature']
-            
-            # Set gfs pressure
-            if not pressSet and 'gfs' in wdata and self.conf.set_pressure and 'pressure' in wdata['gfs']:
-                self.weather.setPressure(wdata['gfs']['pressure'], elapsedMe)              
-            
+                                        
             self.weather.thunderstorm.value = ts
             self.weather.precipitation.value = rain
             
+            # Change runway friction based on precipitation/temperature
             frict = 0
             if rain or ts:
                 frict = 1
@@ -1096,19 +1106,29 @@ class PythonInterface:
                     frict = 2
             
             self.weather.runwayFriction.value = frict
+            self.weather.newData = False
         
-        if 'gfs' in wdata:    
-            # Set winds and clouds
+        
+        ''' Data enforced/interpolated/transitioned on each cycle '''
+            
+        if self.conf.set_pressure:
+            # Set METAR or GFS pressure
+            if 'metar' in wdata and 'pressure' in wdata['metar'] and wdata['metar']['pressure'] is not False:
+                self.weather.setPressure(wdata['metar']['pressure'], elapsedMe)
+            elif 'gfs' in wdata and self.conf.set_pressure and 'pressure' in wdata['gfs']:
+                    self.weather.setPressure(wdata['gfs']['pressure'], elapsedMe)
+        
+        # Set winds and clouds
+        if 'gfs' in wdata:
             if self.conf.set_wind and 'winds' in wdata['gfs']:
                 self.weather.setWinds(wdata['gfs']['winds'], elapsedMe)
             if self.weather.newData and self.conf.set_clouds and 'clouds' in wdata['gfs']:
                 self.weather.setClouds(wdata['gfs']['clouds'])
         
+        # Set turbulence
         if self.conf.set_turb and 'wafs' in wdata:
             self.weather.setTurbulence(wdata['wafs'])
-            
-        self.weather.newData = False
-            
+    
         return -1
     
     def XPluginStop(self):
@@ -1135,4 +1155,4 @@ class PythonInterface:
     def XPluginReceiveMessage(self, inFromWho, inMessage, inParam):
         if (inParam == XPLM_PLUGIN_XPLANE and inMessage == XPLM_MSG_AIRPORT_LOADED):
             self.weather.startWeatherClient()
-            c.transitionClearReferences()
+            self.newAptLoaded = True
