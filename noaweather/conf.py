@@ -18,7 +18,7 @@ class Conf:
     Configuration variables
     '''
     syspath, dirsep = '', os.sep
-    __VERSION__ = '2.0rc1'
+    __VERSION__ = '2.0rc2'
     
     def __init__(self, syspath):
         # Inits conf
@@ -35,8 +35,9 @@ class Conf:
         self.pluginLoad()
         self.serverLoad()
         
-        # Override config
+        # Config Overrides
         self.parserate = 1
+        self.metar_agl_limit = 10
         
         if self.lastgrib and not os.path.exists(os.sep.join([self.cachepath, self.lastgrib])):
             self.lastgrib = False
@@ -83,6 +84,8 @@ class Conf:
 
     def setDefautls(self):
         # Default and storable settings
+        
+        # User settings
         self.enabled        = True
         self.set_wind       = True
         self.set_clouds     = True
@@ -92,15 +95,14 @@ class Conf:
         self.set_pressure   = True
         
         # From this AGL level METAR values are interpolated to GFS ones.
-        self.metar_agl_limit = 900 # In meters
+        self.metar_agl_limit = 10 # In meters
         # From this distance from the airport gfs data is used for temp, dew, pressure and clouds
         self.metar_distance_limit = 100000 # In meters
         
-        self.use_metar      = False
         self.parserate      = 1
         self.updaterate     = 1
-        self.vatsim         = False
         self.download       = True
+        self.keepOldFiles   = False
         
         # Performance tweaks
         self.max_visibility = False # in SM
@@ -153,7 +155,6 @@ class Conf:
                 'set_wind'  : self.set_wind,
                 'set_turb'  : self.set_turb,
                 'set_pressure' : self.set_pressure,
-                'use_metar' : self.use_metar,
                 'enabled'   : self.enabled,
                 'updaterate': self.updaterate,
                 'metar_source': self.metar_source,
