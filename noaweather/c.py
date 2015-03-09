@@ -84,7 +84,7 @@ class c:
     def expoCosineInterpolate(self, t1, t2, alt1, alt2, alt, expo = 3):
         if alt1 == alt2: return t1
         x = (alt - alt1) / float(alt2 - alt1)
-        return t1 + (t2 - t1) * (0.5-cos(pi*x**expo)/2)
+        return t1 + (t2 - t1) * x**expo
     
     @classmethod
     def expoCosineInterpolateHeading(self, hdg1, hdg2, alt1, alt2, alt):

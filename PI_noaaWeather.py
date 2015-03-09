@@ -1013,6 +1013,7 @@ class PythonInterface:
                 f.write('\n--- %s ---\n\n' % logfile)
                 for line in lf.readlines():
                     f.write(line.strip('\r'))
+                lf.close()
                 
         f.close()
         
@@ -1055,11 +1056,10 @@ class PythonInterface:
         
         wdata = self.weather.weatherData
         
-        pressSet = False
-        
         rain, ts, temp = 0, 0, 15
         
         if self.weather.newData:
+            pressSet = False
             # Set metar values
             if 'metar' in wdata:
                 if 'visibility' in wdata['metar']:
@@ -1081,7 +1081,10 @@ class PythonInterface:
                             ts = 1
                 if 'temperature' in wdata['metar']:
                     temp, dew = wdata['metar']['temperature']
-                    
+            
+            # Set gfs pressure
+            if not pressSet and 'gfs' in wdata and self.conf.set_pressure and 'pressure' in wdata['gfs']:
+                self.weather.setPressure(wdata['gfs']['pressure'], elapsedMe)              
             
             self.weather.thunderstorm.value = ts
             self.weather.precipitation.value = rain
@@ -1100,9 +1103,6 @@ class PythonInterface:
                 self.weather.setWinds(wdata['gfs']['winds'], elapsedMe)
             if self.weather.newData and self.conf.set_clouds and 'clouds' in wdata['gfs']:
                 self.weather.setClouds(wdata['gfs']['clouds'])
-            # Set pressure
-            if not pressSet and self.conf.set_pressure and 'pressure' in wdata['gfs']:
-                self.weather.setPressure(wdata['gfs']['pressure'], elapsedMe)
         
         if self.conf.set_turb and 'wafs' in wdata:
             self.weather.setTurbulence(wdata['wafs'])
