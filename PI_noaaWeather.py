@@ -141,7 +141,7 @@ class Weather:
         '''
         
         # Send something for windows to bind
-        self.sock.sendto("?%.2f|%.2f\n" % (99, 99), ('127.0.0.1', self.conf.server_port))
+        self.weatherClientSend('!ping')
         
         while True:
             received = self.sock.recv(1024*8)
@@ -853,12 +853,11 @@ class PythonInterface:
                     
                 if 'clouds' in wdata['gfs']:
                     clouds = 'GFS CLOUDS  FLBASE|FLTOP|COVER'
-                    sclouds = ''
                     for layer in wdata['gfs']['clouds']:
                         top, bottom, cover = layer
                         if top > 0:
-                            sclouds += '   %03d|%03d|%.2f ' % (top * 3.28084/100, bottom * 3.28084/100, cover) 
-                    sysinfo += [clouds, sclouds]
+                            clouds += '   %03d|%03d|%d%% ' % (top * 3.28084/100, bottom * 3.28084/100, cover) 
+                    sysinfo += [clouds]
             
             if 'wafs' in wdata:
                 tblayers = ''

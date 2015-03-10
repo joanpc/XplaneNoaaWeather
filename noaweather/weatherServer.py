@@ -100,6 +100,8 @@ class clientHandler(SocketServer.BaseRequestHandler):
                 # Clear database and force redownload
                 gfs.metar.clearMetarReports(gfs.metar.connection)
                 gfs.metar.last_timestamp = 0
+            elif data == '!ping':
+                response = '!pong'
             else:
                 return
         
