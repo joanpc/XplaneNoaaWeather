@@ -53,6 +53,7 @@ import socket
 import threading
 import subprocess
 import os
+import signal
 from datetime import datetime
 
 from noaweather import EasyDref, Conf, c
@@ -164,9 +165,11 @@ class Weather:
         args = [self.conf.pythonpath, os.sep.join([self.conf.respath, 'weatherServer.py']), self.conf.syspath]
         
         if self.conf.spinfo:
-            subprocess.Popen(args, startupinfo=self.conf.spinfo, close_fds=True, creationflags=DETACHED_PROCESS)
+            p = subprocess.Popen(args, startupinfo=self.conf.spinfo, close_fds=True, creationflags=DETACHED_PROCESS)
         else:
-            subprocess.Popen(args, close_fds=True)
+            p = subprocess.Popen(args, close_fds=True)
+        
+        self.conf.weatherServerPid = p.pid
     
     def shutdown(self):
         # Shutdown client and server
@@ -174,6 +177,9 @@ class Weather:
         self.weatherClientSend('!shutdown')
         self.weatherClientThread.join()
         self.weatherClientThread = False
+        
+        #if self.conf.weatherServerPid:
+        #    os.kill(self.conf.weatherServerPid, signal.SIGINT)
      
     def setTurbulence(self, turbulence):
         '''
@@ -357,8 +363,13 @@ class Weather:
             
         return layer              
     
-    def setClouds(self, cloudsr):
-        
+    def setClouds(self):
+            
+        if 'clouds' in self.weatherData['gfs']:
+            gfsclouds = self.weatherData['gfs']['clouds']
+        else:
+            gfsclouds = []
+            
         # X-Plane cloud limits
         minCloud = c.f2m(2000)
         maxCloud = c.f2m(c.limit(40000, self.conf.max_cloud_height)) 
@@ -372,11 +383,16 @@ class Weather:
                     }
         
         lastBase = 0
+        lastTop = 0
+        gfsCloudLimit = c.f2m(5600)
+        
         setClouds = []
         
-        if self.weatherData and 'metar' in self.weatherData and self.weatherData['metar']['distance'] < self.conf.metar_distance_limit and 'clouds' in self.weatherData['metar']:
+        if self.weatherData and 'distance' in self.weatherData['metar'] and self.weatherData['metar']['distance'] < self.conf.metar_distance_limit and 'clouds' in self.weatherData['metar']:
             
             clouds =  self.weatherData['metar']['clouds'][:]
+            
+            gfsCloudLimit += self.weatherData['metar']['elevation']
             
             for cloud in reversed(clouds):
                 # Search in gfs for a top level
@@ -386,10 +402,10 @@ class Weather:
                 if cover == 'FEW':
                     top = minCloud
                 else:
-                    for gfscloud in cloudsr:
+                    for gfscloud in gfsclouds:
                         gfsBase, gfsTop, gfsCover = gfscloud
                         
-                        if gfsBase> 0 and abs(gfsBase - base) < 1000:
+                        if gfsBase > 0 and abs(gfsBase - base) < 1000:
                             top = base + c.limit(gfsTop - gfsBase, maxCloud, minCloud)
                             break
                         else:
@@ -399,10 +415,26 @@ class Weather:
             
                 setClouds.append([base, top, xpClouds[cover][0]])
                 lastBase = base
-                    
+                lastTop = max(top, lastTop)
+            
+            # add gfs clouds
+            for cloud in gfsclouds:
+                base, top, cover = cloud
+                
+                if len(setClouds) < 3 and base > gfsCloudLimit and base > lastTop:
+                    cover = c.cc2xp(cover)
+                    if cover < 3:
+                        if (top - base) < c.f2m(4000):
+                            # Make cirrus
+                            cover = 1             
+                        top = base + minCloud
+                    else:
+                        top = base + c.limit(top - base, maxCloud, minCloud)
+                    setClouds.append([base, top, cover])
+                         
         else:
             # GFS-only clouds
-            for cloud in reversed(cloudsr):
+            for cloud in reversed(gfsclouds):
                 base, top, cover = cloud
                 cover = c.cc2xp(cover)
                 
@@ -422,15 +454,15 @@ class Weather:
         
         for cloud in reversed(setClouds):
             base, top, cover = cloud
-            
-            redraw += self.setDrefIfDiff(self.clouds[i]['bottom'], base, 300)
-            redraw += self.setDrefIfDiff(self.clouds[i]['top'], top, 300)
+                        
+            redraw += self.setDrefIfDiff(self.clouds[i]['bottom'], base, 500)
+            redraw += self.setDrefIfDiff(self.clouds[i]['top'], top, 500)
             redraw += self.setDrefIfDiff(self.clouds[i]['coverage'], cover, 0.5)
 
             i += 1
         # Set to 0 remaining layers
         for l in range(i, 3):
-            redraw += self.setDrefIfDiff(self.clouds[l]['coverage'],  0)
+            redraw += self.setDrefIfDiff(self.clouds[l]['coverage'], 0)
     
     def setPressure(self, pressure, elapsed):
         c.datarefTransition(self.pressure, pressure, elapsed, 0.005)
@@ -754,7 +786,11 @@ class PythonInterface:
    
                 self.weather.startWeatherClient()
                 self.aboutWindowUpdate()
-                c.transitionClearReferences()
+                
+                # Reset things
+                self.weather.newData = True
+                self.newAptLoaded = True
+                
                 return 1
             if inParam1 == self.dumpLogButton:
                 dumpfile = self.dumpLog()
@@ -789,7 +825,7 @@ class PythonInterface:
     def weatherInfo(self):
         '''Return an array of strings with formated weather data'''
         
-        sysinfo = []
+        sysinfo = ['--'] * self.aboutlines
         
         if not self.weather.weatherData:
             sysinfo = ['Data not ready. Please wait.']
@@ -1006,12 +1042,18 @@ class PythonInterface:
         pprint(vars, f, width=160)
         
         # Append tail of PythonInterface log files
-        pythonScriptsPath = os.sep.join([self.conf.syspath, 'Resources', 'plugins', 'PythonScripts'])
-        for logfile in ('PythonInterfaceLog.txt', 'PythonInterfaceOutput.txt'):
-            filepath = os.sep.join([pythonScriptsPath, logfile])
+        logfiles = ['PythonInterfaceLog.txt', 
+                    'PythonInterfaceOutput.txt', 
+                    os.path.join('noaweather', 'weatherServerLog.txt'),
+                    ]
+        
+        for logfile in logfiles:
+            filepath = os.sep.join([self.conf.syspath, 'Resources', 'plugins', 'PythonScripts', logfile])
             if os.path.exists(filepath):
+                
+                lfsize = os.path.getsize(filepath)
                 lf = open(filepath, 'r')
-                lf.seek(-1024 * 8, 2)
+                lf.seek(c.limit(1024 * 6, lfsize) * -1 , 2)
                 f.write('\n--- %s ---\n\n' % logfile)
                 for line in lf.readlines():
                     f.write(line.strip('\r'))
@@ -1076,23 +1118,22 @@ class PythonInterface:
                 self.newAptLoaded = False
                 
             # Set metar values
-            if 'metar' in wdata:
-                if 'visibility' in wdata['metar']:
-                    self.weather.visibility.value =  c.limit(wdata['metar']['visibility'], self.conf.max_visibility)
-                if'precipitation' in wdata['metar'] and len(wdata['metar']['precipitation']):
-                    precp = wdata['metar']['precipitation']
-                    if 'RA'in precp:
-                        rain = c.metar2xpprecipitation('RA', precp['RA']['int'], precp['RA']['mod'])
-                    if 'SN'in precp:
-                        rain = c.metar2xpprecipitation('RA', precp['SN']['int'], precp['SN']['mod'])
-                    if 'TS' in precp:
-                        ts = 0.5
-                        if  precp['TS']['int'] == '-':
-                            ts = 0.25
-                        elif precp['TS']['int'] == '+':
-                            ts = 1
-                if 'temperature' in wdata['metar']:
-                    temp, dew = wdata['metar']['temperature']
+            if 'visibility' in wdata['metar']:
+                self.weather.visibility.value =  c.limit(wdata['metar']['visibility'], self.conf.max_visibility)
+            if'precipitation' in wdata['metar'] and len(wdata['metar']['precipitation']):
+                precp = wdata['metar']['precipitation']
+                if 'RA'in precp:
+                    rain = c.metar2xpprecipitation('RA', precp['RA']['int'], precp['RA']['mod'])
+                if 'SN'in precp:
+                    rain = c.metar2xpprecipitation('RA', precp['SN']['int'], precp['SN']['mod'])
+                if 'TS' in precp:
+                    ts = 0.5
+                    if  precp['TS']['int'] == '-':
+                        ts = 0.25
+                    elif precp['TS']['int'] == '+':
+                        ts = 1
+            if 'temperature' in wdata['metar']:
+                temp, dew = wdata['metar']['temperature']
                                         
             self.weather.thunderstorm.value = ts
             self.weather.precipitation.value = rain
@@ -1106,26 +1147,26 @@ class PythonInterface:
             
             self.weather.runwayFriction.value = frict
             self.weather.newData = False
+            
+            # Set clouds
+            self.weather.setClouds()
         
         
         ''' Data enforced/interpolated/transitioned on each cycle '''
             
         if self.conf.set_pressure:
             # Set METAR or GFS pressure
-            if 'metar' in wdata and 'pressure' in wdata['metar'] and wdata['metar']['pressure'] is not False:
+            if 'pressure' in wdata['metar'] and wdata['metar']['pressure'] is not False:
                 self.weather.setPressure(wdata['metar']['pressure'], elapsedMe)
-            elif 'gfs' in wdata and self.conf.set_pressure and 'pressure' in wdata['gfs']:
+            elif self.conf.set_pressure and 'pressure' in wdata['gfs']:
                     self.weather.setPressure(wdata['gfs']['pressure'], elapsedMe)
         
         # Set winds and clouds
-        if 'gfs' in wdata:
-            if self.conf.set_wind and 'winds' in wdata['gfs']:
-                self.weather.setWinds(wdata['gfs']['winds'], elapsedMe)
-            if self.weather.newData and self.conf.set_clouds and 'clouds' in wdata['gfs']:
-                self.weather.setClouds(wdata['gfs']['clouds'])
+        if self.conf.set_wind and 'winds' in wdata['gfs']:
+            self.weather.setWinds(wdata['gfs']['winds'], elapsedMe)
         
         # Set turbulence
-        if self.conf.set_turb and 'wafs' in wdata:
+        if self.conf.set_turb:
             self.weather.setTurbulence(wdata['wafs'])
     
         return -1
@@ -1152,6 +1193,10 @@ class PythonInterface:
         pass
     
     def XPluginReceiveMessage(self, inFromWho, inMessage, inParam):
-        if (inParam == XPLM_PLUGIN_XPLANE and inMessage == XPLM_MSG_AIRPORT_LOADED):
+        if inParam == XPLM_PLUGIN_XPLANE and inMessage == XPLM_MSG_AIRPORT_LOADED:
             self.weather.startWeatherClient()
             self.newAptLoaded = True
+        if inFromWho == XPLM_NO_PLUGIN_ID and inMessage == (0x8000000 | 8090)  and inParam == 1:
+            # inSimUpdater whants to shutdown
+            self.XPluginStop()
+            

@@ -18,7 +18,7 @@ class Conf:
     Configuration variables
     '''
     syspath, dirsep = '', os.sep
-    __VERSION__ = '2.0rc2e'
+    __VERSION__ = '2.0rc3'
     
     def __init__(self, syspath):
         # Inits conf
@@ -117,6 +117,8 @@ class Conf:
         self.lastgrib       = False
         self.lastwafsgrib   = False
         self.ms_update      = 0
+
+        self.weatherServerPid = False
         
         # Transitions
         self.windTransSpeed = 0.14 # kt/s

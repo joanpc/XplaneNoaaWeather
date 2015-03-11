@@ -312,17 +312,16 @@ class c:
     
     @classmethod
     def cc2xp(self, cover):
-        # Percent cover to XP
-        if cover < 1:
+        # GFS Percent cover to XP
+        if cover < 5:
             return 0
-        if 1 > cover < 25:
-            return 2#'FEW'
-        if cover < 50:
-            return 3#'SCT'
-        if cover < 85:
-            return 4 #OVC
-        else:
-            return 4 #'OVC'
+        if cover < 30:
+            return 1 #'FEW'
+        if cover < 55:
+            return 2 #'SCT'
+        if cover < 90:
+            return 3 #'BKN'
+        return 4 #'OVC'
             
     
     @classmethod

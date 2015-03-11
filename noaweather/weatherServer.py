@@ -95,6 +95,7 @@ class clientHandler(SocketServer.BaseRequestHandler):
                 self.shutdown()
                 response = '!bye'
             elif data == '!reload':
+                conf.serverSave()
                 conf.pluginLoad()
             elif data == '!resetMetar':
                 # Clear database and force redownload
