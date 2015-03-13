@@ -366,24 +366,26 @@ class Weather:
     def setClouds(self):
             
         if 'clouds' in self.weatherData['gfs']:
-            gfsclouds = self.weatherData['gfs']['clouds']
+            gfsClouds = self.weatherData['gfs']['clouds']
         else:
-            gfsclouds = []
+            gfsClouds = []
             
         # X-Plane cloud limits
         minCloud = c.f2m(2000)
-        maxCloud = c.f2m(c.limit(40000, self.conf.max_cloud_height)) 
+        maxCloud = c.f2m(c.limit(40000, self.conf.max_cloud_height))
+        
+        minRedraw = c.f2m(4000) + self.alt / 10
         
         xpClouds = { 
                     'FEW': [1, c.f2m(2000)],
                     'SCT': [2, c.f2m(4000)],
-                    'BKN': [3, c.f2m(10000)],
-                    'OVC': [4, c.f2m(10000)],
-                    'VV': [4, c.f2m(10000)]
+                    'BKN': [3, c.f2m(4000)],
+                    'OVC': [4, c.f2m(4000)],
+                    'VV': [4, c.f2m(6000)]
                     }
         
         lastBase = 0
-        lastTop = 0
+        maxTop = 0
         gfsCloudLimit = c.f2m(5600)
         
         setClouds = []
@@ -395,46 +397,42 @@ class Weather:
             gfsCloudLimit += self.weatherData['metar']['elevation']
             
             for cloud in reversed(clouds):
-                # Search in gfs for a top level
-                base, cover, type = cloud
-                top = base + c.limit(xpClouds[cover][1], self.conf.max_cloud_height)
+                base, cover, extra = cloud
+                top = minCloud
                 
-                if cover == 'FEW':
-                    top = minCloud
-                else:
-                    for gfscloud in gfsclouds:
-                        gfsBase, gfsTop, gfsCover = gfscloud
-                        
-                        if gfsBase > 0 and abs(gfsBase - base) < 1000:
-                            top = base + c.limit(gfsTop - gfsBase, maxCloud, minCloud)
-                            break
-                        else:
-                            continue
+                if cover in xpClouds:
+                    top = base + xpClouds[cover][1]
+                    cover = xpClouds[cover][0]
                 
-                if lastBase > top: top = lastBase 
-            
-                setClouds.append([base, top, xpClouds[cover][0]])
+                # Search for gfs equivalent layer
+                for gfsCloud in gfsClouds:
+                    gfsBase, gfsTop, gfsCover = gfsCloud
+                    
+                    if gfsBase > 0 and gfsBase - 1500 < base < gfsTop:
+                        top = base + c.limit(gfsTop - gfsBase, maxCloud, minCloud)
+                        break
+               
+                if lastBase and top > lastBase: top = lastBase
                 lastBase = base
-                lastTop = max(top, lastTop)
             
+                setClouds.append([base, top, cover])
+                
+                if not maxTop: 
+                    maxTop = top
+                        
             # add gfs clouds
-            for cloud in gfsclouds:
+            for cloud in gfsClouds:
                 base, top, cover = cloud
                 
-                if len(setClouds) < 3 and base > gfsCloudLimit and base > lastTop:
+                if len(setClouds) < 3 and base > max(gfsCloudLimit, maxTop):
                     cover = c.cc2xp(cover)
-                    if cover < 3:
-                        if (top - base) < c.f2m(4000):
-                            # Make cirrus
-                            cover = 1             
-                        top = base + minCloud
-                    else:
-                        top = base + c.limit(top - base, maxCloud, minCloud)
+                    
+                    top = base + c.limit(top - base, maxCloud, minCloud)
                     setClouds.append([base, top, cover])
                          
         else:
             # GFS-only clouds
-            for cloud in reversed(gfsclouds):
+            for cloud in reversed(gfsClouds):
                 base, top, cover = cloud
                 cover = c.cc2xp(cover)
                 
@@ -448,21 +446,28 @@ class Weather:
                     setClouds.append([base, top, cover])
                     lastBase = base
                 
-        # Set the Cloud to Datarefs
-        i = 0
+        # Set the Cloud to Datarefs   
         redraw = 0
+        nClouds = len(setClouds)
+        setClouds = list(reversed(setClouds))
         
-        for cloud in reversed(setClouds):
-            base, top, cover = cloud
-                        
-            redraw += self.setDrefIfDiff(self.clouds[i]['bottom'], base, 500)
-            redraw += self.setDrefIfDiff(self.clouds[i]['top'], top, 500)
-            redraw += self.setDrefIfDiff(self.clouds[i]['coverage'], cover, 0.5)
-
-            i += 1
-        # Set to 0 remaining layers
-        for l in range(i, 3):
-            redraw += self.setDrefIfDiff(self.clouds[l]['coverage'], 0)
+        # Push up gfs clouds to prevent redraws
+        if nClouds:
+            if nClouds < 3 and setClouds[0][0] > gfsCloudLimit:
+                setClouds = [[0, minCloud, 0]] + setClouds
+            if 1 < len(setClouds) < 3 and setClouds[1][2] > gfsCloudLimit:
+                setClouds = [setClouds[0], [setClouds[0][2], setClouds[0][2] + minCloud, 0 ] , setClouds[1]] 
+        
+        nClouds = len(setClouds)
+                      
+        for i in range(3):
+            if nClouds > i:
+                base, top, cover = setClouds[i]
+                redraw += self.setDrefIfDiff(self.clouds[i]['bottom'], base, minRedraw)
+                redraw += self.setDrefIfDiff(self.clouds[i]['top'], top, minRedraw)
+                redraw += self.setDrefIfDiff(self.clouds[i]['coverage'], cover, 0.5)  
+            else:
+                redraw += self.setDrefIfDiff(self.clouds[i]['coverage'], 0)
     
     def setPressure(self, pressure, elapsed):
         c.datarefTransition(self.pressure, pressure, elapsed, 0.005)
@@ -861,6 +866,8 @@ class PythonInterface:
                 if 'precipitation' in wdata['metar'] and len(wdata['metar']['precipitation']):
                     precip = ''
                     for type in wdata['metar']['precipitation']:
+                        if wdata['metar']['precipitation'][type]['recent']:
+                            precip += wdata['metar']['precipitation'][type]['recent']
                         precip += '%s%s ' % (wdata['metar']['precipitation'][type]['int'], type)
                 
                     sysinfo += ['Precipitation: %s' % (precip)]
@@ -1109,8 +1116,7 @@ class PythonInterface:
         ''' Data set on new weather Data '''
         
         if self.weather.newData:
-            pressSet = False
-            rain, ts, temp = 0, 0, 15
+            rain, ts, friction = 0, 0, 0
             
             # Clrear transitions on airport load
             if self.newAptLoaded:
@@ -1121,31 +1127,27 @@ class PythonInterface:
             if 'visibility' in wdata['metar']:
                 self.weather.visibility.value =  c.limit(wdata['metar']['visibility'], self.conf.max_visibility)
             if'precipitation' in wdata['metar'] and len(wdata['metar']['precipitation']):
-                precp = wdata['metar']['precipitation']
-                if 'RA'in precp:
-                    rain = c.metar2xpprecipitation('RA', precp['RA']['int'], precp['RA']['mod'])
-                if 'SN'in precp:
-                    rain = c.metar2xpprecipitation('RA', precp['SN']['int'], precp['SN']['mod'])
+                
+                p = wdata['metar']['precipitation']
+                for precp in p:
+                    precip, wet = c.metar2xpprecipitation(precp, p[precp]['int'], p[precp]['int'], p[precp]['recent'] )
+                    
+                    if precip is not False:
+                        rain = precip
+                    if wet is not False:
+                        friction = wet
+                        
                 if 'TS' in precp:
                     ts = 0.5
                     if  precp['TS']['int'] == '-':
                         ts = 0.25
                     elif precp['TS']['int'] == '+':
                         ts = 1
-            if 'temperature' in wdata['metar']:
-                temp, dew = wdata['metar']['temperature']
-                                        
+            
             self.weather.thunderstorm.value = ts
             self.weather.precipitation.value = rain
             
-            # Change runway friction based on precipitation/temperature
-            frict = 0
-            if rain or ts:
-                frict = 1
-                if temp < 0:
-                    frict = 2
-            
-            self.weather.runwayFriction.value = frict
+            self.weather.runwayFriction.value = friction
             self.weather.newData = False
             
             # Set clouds
