@@ -238,7 +238,7 @@ class Metar:
                 if unit == 'A':
                     press = press/100
                 elif unit == 'SLP':
-                    press = unit / 10 + 1000 
+                    press = c.pa2inhg((press / 10 + 1000) * 100) 
                 elif unit == 'Q':
                     press = c.pa2inhg(press * 100)
             
