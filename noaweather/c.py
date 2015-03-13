@@ -313,7 +313,7 @@ class c:
     @classmethod
     def cc2xp(self, cover):
         # GFS Percent cover to XP
-        if cover < 5:
+        if cover < 1:
             return 0
         if cover < 30:
             return 1 #'FEW'
@@ -325,24 +325,39 @@ class c:
             
     
     @classmethod
-    def metar2xpprecipitation(self, type, int, mod):
+    def metar2xpprecipitation(self, kind, intensity, mod, recent):
         ''' Return intensity of a metar precipitation '''
         
         ints = {'-': 0, '': 1, '+': 2} 
-        intensity = ints[int]
-            
-        types = {
+        intensity = ints[intensity]
+        
+        precipitation, friction = False, False
+          
+        precip = {
          'DZ': [0.1, 0.2 , 0.3],
          'RA': [0.3 ,0.5, 0.8],
          'SN': [0.25 ,0.5, 0.8], # Snow
          'SH': [0.7, 0.8,  1]
          }
         
-        if mod in ('SH', 'RE'):
-            type = 'SH'
+        wet = {
+         'DZ': 1,
+         'RA': 1,
+         'SN': 2, # Snow
+         'SH': 1,
+         }
         
-        if type in types:
-            return types[type][intensity]
+        if mod == 'SH':
+            kind = 'SH'
+        
+        if kind in precip:
+            precipitation = precip[kind][intensity]
+        if recent:
+            precipitation = 0
+        if kind in wet:
+            friction = wet[kind]
+        
+        return precipitation, friction
     
     @classmethod
     def strFloat(self, i, false_label = 'na'):

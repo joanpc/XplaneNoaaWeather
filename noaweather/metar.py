@@ -30,7 +30,7 @@ class Metar:
     RE_PRESSURE     = re.compile(r'\b(Q|QNH|SLP|A)[ ]?([0-9]{3,4})\b')
     RE_TEMPERATURE  = re.compile(r'\b(M|-)?([0-9]{1,2})/(M|-)?([0-9]{1,2})\b')
     RE_TEMPERATURE2 = re.compile(r'\bT(0|1)([0-9]{3})(0|1)([0-9]{3})\b')
-    RE_PRECIPITATION = re.compile('(-|\+)?(DZ|SG|IC|PL|SH|RE)?(DZ|RA|SN|TS)(NO)?')
+    RE_PRECIPITATION = re.compile('(-|\+)?(RE)?(DZ|SG|IC|PL|SH)?(DZ|RA|SN|TS)(NO)?')
     
     METAR_STATIONS_URL = 'http://www.aviationweather.gov/static/adds/metars/stations.txt'
     VATSIM_METAR_STATIONS_URL = 'http://metar.vatsim.net/metar.php?id=all'
@@ -309,9 +309,9 @@ class Metar:
             
         precipitation = {}
         for precp in self.RE_PRECIPITATION.findall(metar):
-            intensity, mod, type, bool = precp
+            intensity, recent, mod, type, bool = precp
             if not bool:
-                precipitation[type] = {'int': intensity ,'mod': mod}
+                precipitation[type] = {'int': intensity ,'mod': mod, 'recent': recent}
             
         weather['precipitation'] = precipitation
         
