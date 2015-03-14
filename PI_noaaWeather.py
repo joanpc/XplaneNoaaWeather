@@ -260,35 +260,35 @@ class Weather:
             else:
                 # We are below the first layer or above the last one.
                 rwind = twind;
-
-        # Set layers
-        self.setWindLayer(0, rwind)
-        self.setWindLayer(1, rwind)
-        self.setWindLayer(2, rwind)
-  
-        '''Set temperature and dewpoint.
-        Use next layer if the data is not available'''
         
-        extra = rwind[3]
-        if nlayers > tlayer + 1:
-            altLayer = winds[tlayer + 1]
-        else:
-            altLayer = False
-        
-        if 'temp' in extra:
-            self.msltemp.value = c.oat2msltemp(extra['temp'] - 273.15, self.alt)
-        elif altLayer and 'temp' in altLayer[3]:
-            self.msltemp.value = c.oat2msltemp(altLayer[3]['temp'] - 273.15, altLayer[0])
-        
-        if 'dew' in extra:
-            self.msldewp.value = c.oat2msltemp(extra['dew'] - 273.15, self.alt)
-        elif altLayer and 'dew' in altLayer[3]:
-            self.msldewp.value = c.oat2msltemp(altLayer[3]['dew'] - 273.15, altLayer[0])
+            # Set layers
+            self.setWindLayer(0, rwind)
+            self.setWindLayer(1, rwind)
+            self.setWindLayer(2, rwind)
+      
+            '''Set temperature and dewpoint.
+            Use next layer if the data is not available'''
             
-        # Force shear direction 0
-        self.winds[0]['gust_hdg'].value = 0
-        self.winds[1]['gust_hdg'].value = 0
-        self.winds[2]['gust_hdg'].value = 0
+            extra = rwind[3]
+            if nlayers > tlayer + 1:
+                altLayer = winds[tlayer + 1]
+            else:
+                altLayer = False
+            
+            if 'temp' in extra:
+                self.msltemp.value = c.oat2msltemp(extra['temp'] - 273.15, self.alt)
+            elif altLayer and 'temp' in altLayer[3]:
+                self.msltemp.value = c.oat2msltemp(altLayer[3]['temp'] - 273.15, altLayer[0])
+            
+            if 'dew' in extra:
+                self.msldewp.value = c.oat2msltemp(extra['dew'] - 273.15, self.alt)
+            elif altLayer and 'dew' in altLayer[3]:
+                self.msldewp.value = c.oat2msltemp(altLayer[3]['dew'] - 273.15, altLayer[0])
+                
+            # Force shear direction 0
+            self.winds[0]['gust_hdg'].value = 0
+            self.winds[1]['gust_hdg'].value = 0
+            self.winds[2]['gust_hdg'].value = 0
     
     def setWindLayer(self, index,  wlayer):
         alt, hdg, speed, extra = wlayer
@@ -1164,7 +1164,7 @@ class PythonInterface:
                     self.weather.setPressure(wdata['gfs']['pressure'], elapsedMe)
         
         # Set winds and clouds
-        if self.conf.set_wind and 'winds' in wdata['gfs']:
+        if self.conf.set_wind and 'winds' in wdata['gfs'] and len(wdata['gfs']['winds']):
             self.weather.setWinds(wdata['gfs']['winds'], elapsedMe)
         
         # Set turbulence
