@@ -1199,7 +1199,7 @@ class PythonInterface:
         if inParam == XPLM_PLUGIN_XPLANE and inMessage == XPLM_MSG_AIRPORT_LOADED:
             self.weather.startWeatherClient()
             self.newAptLoaded = True
-        if inFromWho == XPLM_NO_PLUGIN_ID and inMessage == (0x8000000 | 8090)  and inParam == 1:
+        if inMessage == (0x8000000 | 8090)  and inParam == 1:
             # inSimUpdater whants to shutdown
             self.XPluginStop()
             
