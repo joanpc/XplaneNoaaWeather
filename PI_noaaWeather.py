@@ -374,7 +374,8 @@ class Weather:
         minCloud = c.f2m(2000)
         maxCloud = c.f2m(c.limit(40000, self.conf.max_cloud_height))
         
-        minRedraw = c.f2m(4000) + self.alt / 10
+        # Minimum redraw difference per layer
+        minRedraw = [c.f2m(500), c.f2m(5000), c.f2m(10000)]
         
         xpClouds = { 
                     'FEW': [1, c.f2m(2000)],
@@ -428,7 +429,7 @@ class Weather:
                     cover = c.cc2xp(cover)
                     
                     top = base + c.limit(top - base, maxCloud, minCloud)
-                    setClouds.append([base, top, cover])
+                    setClouds = [[base, top, cover]] + setClouds
                          
         else:
             # GFS-only clouds
@@ -463,9 +464,9 @@ class Weather:
         for i in range(3):
             if nClouds > i:
                 base, top, cover = setClouds[i]
-                redraw += self.setDrefIfDiff(self.clouds[i]['bottom'], base, minRedraw)
-                redraw += self.setDrefIfDiff(self.clouds[i]['top'], top, minRedraw)
-                redraw += self.setDrefIfDiff(self.clouds[i]['coverage'], cover, 0.5)  
+                redraw += self.setDrefIfDiff(self.clouds[i]['bottom'], base, minRedraw[i] + self.alt/10)
+                redraw += self.setDrefIfDiff(self.clouds[i]['top'], top, minRedraw[i] + self.alt/10)
+                redraw += self.setDrefIfDiff(self.clouds[i]['coverage'], cover, 1)
             else:
                 redraw += self.setDrefIfDiff(self.clouds[i]['coverage'], 0)
     
