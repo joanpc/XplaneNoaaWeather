@@ -154,6 +154,7 @@ class Metar:
         db.commit()
         
         f.close()
+        
         if not self.conf.keepOldFiles:
             os.remove(path)
         
@@ -194,12 +195,13 @@ class Metar:
         now = datetime.utcnow()
         # Cycle is updated until the houre has arrived (ex: 01 cycle updates until 1am)
         if self.firstrun:
-            cnow = now - timedelta(hours=0, minutes=30)
+            # Cold start
+            cnow = now - timedelta(hours=1, minutes=5)
             self.firstrun = False
-            timestamp = 0
+            timestamp = int(time.time()) - self.UPDATE_RATE * 60 + 20
         else:
             cnow = now + timedelta(hours=0, minutes=5)
-            timestamp = int(time.time())/60/self.UPDATE_RATE
+            timestamp = int(time.time())
         # Get last cycle
         return ('%02d' % cnow.hour, timestamp)
     
@@ -352,7 +354,7 @@ class Metar:
         else:
             # Download new data if required
             cycle, timestamp = self.getCycle()
-            if self.last_timestamp != timestamp:
+            if (timestamp - self.last_timestamp) > self.UPDATE_RATE * 60:
                 self.last_timestamp = timestamp
                 self.downloadCycle(cycle, timestamp)
                 
