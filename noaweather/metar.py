@@ -217,7 +217,7 @@ class Metar:
                    'temperature': [False, False], # Temperature, dewpoint
                    'pressure': False, # space c.pa2inhg(10.1325),
                    'visibility': 9998,
-                   'precipitation': [],
+                   'precipitation': {},
                    }
         
         metar = metar.split('TEMPO')[0]
@@ -314,9 +314,9 @@ class Metar:
             
         precipitation = {}
         for precp in self.RE_PRECIPITATION.findall(metar):
-            intensity, recent, mod, type, bool = precp
-            if not bool:
-                precipitation[type] = {'int': intensity ,'mod': mod, 'recent': recent}
+            intensity, recent, mod, kind, neg = precp
+            if not neg:
+                precipitation[kind] = {'int': intensity ,'mod': mod, 'recent': recent}
             
         weather['precipitation'] = precipitation
         
