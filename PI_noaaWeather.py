@@ -770,7 +770,7 @@ class PythonInterface:
 
                 buff = []
                 XPGetWidgetDescriptor(self.maxCloudHeightInput, buff, 256)
-                self.conf.max_cloud_height = c.convertFromInput(buff[0], 'f2m')
+                self.conf.max_cloud_height = c.convertFromInput(buff[0], 'f2m', min = c.f2m(2000))
                 
                 buff = []
                 XPGetWidgetDescriptor(self.maxVisInput, buff, 256)
@@ -1119,7 +1119,7 @@ class PythonInterface:
         if self.weather.newData:
             rain, ts, friction = 0, 0, 0
             
-            # Clrear transitions on airport load
+            # Clear transitions on airport load
             if self.newAptLoaded:
                 c.transitionClearReferences()
                 self.newAptLoaded = False

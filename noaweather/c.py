@@ -407,7 +407,7 @@ class c:
         return str(value)
     
     @classmethod
-    def convertFromInput(self, string, conversion, default = False, toFloat = False):
+    def convertFromInput(self, string, conversion, default = False, toFloat = False, max = False, min = False):
         # Convert from str and convert
         value = self.toFloat(string, default)
         
@@ -415,7 +415,7 @@ class c:
             return False
         
         convert = getattr(self, conversion)
-        value = convert(value)
+        value = self.limit(convert(value), max, min)
         
         if toFloat: 
             return value
