@@ -1140,9 +1140,9 @@ class PythonInterface:
                         
                 if 'TS' in p:
                     ts = 0.5
-                    if  precp['TS']['int'] == '-':
+                    if  p['TS']['int'] == '-':
                         ts = 0.25
-                    elif precp['TS']['int'] == '+':
+                    elif p['TS']['int'] == '+':
                         ts = 1
             
             self.weather.thunderstorm.value = ts
