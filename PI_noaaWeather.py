@@ -1126,9 +1126,9 @@ class PythonInterface:
                 
             # Set metar values
             if 'visibility' in wdata['metar']:
-                self.weather.visibility.value =  c.limit(wdata['metar']['visibility'], self.conf.max_visibility)
-            if'precipitation' in wdata['metar'] and len(wdata['metar']['precipitation']):
-                
+                self.weather.visibility.value = c.limit(wdata['metar']['visibility'], self.conf.max_visibility)
+            
+            if 'precipitation' in wdata['metar']:
                 p = wdata['metar']['precipitation']
                 for precp in p:
                     precip, wet = c.metar2xpprecipitation(precp, p[precp]['int'], p[precp]['int'], p[precp]['recent'] )
@@ -1138,7 +1138,7 @@ class PythonInterface:
                     if wet is not False:
                         friction = wet
                         
-                if 'TS' in precp:
+                if 'TS' in p:
                     ts = 0.5
                     if  precp['TS']['int'] == '-':
                         ts = 0.25
@@ -1153,7 +1153,6 @@ class PythonInterface:
             
             # Set clouds
             self.weather.setClouds()
-        
         
         ''' Data enforced/interpolated/transitioned on each cycle '''
             
