@@ -19,7 +19,9 @@ from c import c
 import SocketServer
 import cPickle
 import threading
-import os, sys
+import os, sys, signal
+import socket
+import time
 
 class clientHandler(SocketServer.BaseRequestHandler):
 
@@ -111,10 +113,10 @@ class clientHandler(SocketServer.BaseRequestHandler):
         
         if response:
             response = cPickle.dumps(response)
-            socket.sendto(response, self.client_address)   
+            socket.sendto(response + "\n", self.client_address)   
             nbytes = sys.getsizeof(response)
             
-        print '%s:%s : %d bytes sent.' % (self.client_address[0], data, nbytes)
+        print '%s:%s: %d bytes sent.' % (self.client_address[0], data, nbytes)
 
 if __name__ == "__main__":
     # Get the X-Plane path from the arguments
@@ -133,13 +135,29 @@ if __name__ == "__main__":
     sys.stderr = logfile
     sys.stdout = logfile
     
+    print '---------------'
+    print 'Starting server'
+    print '---------------'
+    print sys.argv
+        
+    try:
+        server = SocketServer.UDPServer(("localhost", conf.server_port), clientHandler)
+    except socket.error:
+        print "Can't bind address: %s, port: %d." % ("localhost", conf.server_port)
+        print 'Killing old server with pid %d' % conf.weatherServerPid
+        os.kill(conf.weatherServerPid, signal.SIGTERM)
+        time.sleep(2)
+        server = SocketServer.UDPServer(("localhost", conf.server_port), clientHandler)
+    
+    # Save pid
+    conf.weatherServerPid = os.getpid()
+    conf.serverSave()
+    
     gfs = GFS(conf)
     gfs.start()
     
-    server = SocketServer.UDPServer(("localhost", conf.server_port), clientHandler)
+    print 'Server started.'
     
-    print 'Server started. argv: %d' % (len(sys.argv))
-    print sys.argv
     # Server loop
     try:
         server.serve_forever()

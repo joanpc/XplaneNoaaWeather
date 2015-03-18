@@ -181,7 +181,8 @@ class Conf:
                        'version'   : self.__VERSION__,
                        'lastgrib': self.lastgrib,
                        'lastwafsgrib': self.lastwafsgrib,
-                       'ms_update' : self.ms_update
+                       'ms_update' : self.ms_update,
+                       'weatherServerPid': self.weatherServerPid,
                        }
         self.saveSettings(self.serverSettingsFile, server_conf)
     
