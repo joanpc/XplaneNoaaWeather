@@ -147,6 +147,7 @@ if __name__ == "__main__":
         print 'Killing old server with pid %d' % conf.weatherServerPid
         os.kill(conf.weatherServerPid, signal.SIGTERM)
         time.sleep(2)
+        conf.serverLoad()
         server = SocketServer.UDPServer(("localhost", conf.server_port), clientHandler)
     
     # Save pid

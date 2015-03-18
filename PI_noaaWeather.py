@@ -168,18 +168,12 @@ class Weather:
             p = subprocess.Popen(args, startupinfo=self.conf.spinfo, close_fds=True, creationflags=DETACHED_PROCESS)
         else:
             p = subprocess.Popen(args, close_fds=True)
-        
-        self.conf.weatherServerPid = p.pid
     
     def shutdown(self):
         # Shutdown client and server
-        #self.die.set()
         self.weatherClientSend('!shutdown')
-        self.weatherClientThread.join()
         self.weatherClientThread = False
         
-        #if self.conf.weatherServerPid:
-        #    os.kill(self.conf.weatherServerPid, signal.SIGINT)
      
     def setTurbulence(self, turbulence):
         '''
@@ -700,7 +694,7 @@ class PythonInterface:
         subw = XPCreateWidget(x-10, y, x2-20 + 10, y2 +15, 1, "" ,  0,window, xpWidgetClass_SubWindow)
         x += 10
         # Set the style to sub window
-        XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
+        
         sysinfo = [
         'X-Plane NOAA Weather: %s' % self.conf.__VERSION__,
         '(c) joan perez i cauhe 2012-15',
@@ -710,13 +704,16 @@ class PythonInterface:
             y -= 15
             
         # Visit site Button
-        x += 240
+        x += 190
         y += 15
         self.aboutVisit = XPCreateWidget(x, y, x+100, y-20, 1, "Official site", 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.aboutVisit, xpProperty_ButtonType, xpPushButton)
         
+        self.aboutForum = XPCreateWidget(x+120, y, x+220, y-20, 1, "Support", 0, window, xpWidgetClass_Button)
+        XPSetWidgetProperty(self.aboutForum, xpProperty_ButtonType, xpPushButton)
+        
         # Donate Button
-        self.donate = XPCreateWidget(x+130, y, x+230, y-20, 1, "Donate", 0, window, xpWidgetClass_Button)
+        self.donate = XPCreateWidget(x+240, y, x+340, y-20, 1, "Donate", 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.donate, xpProperty_ButtonType, xpPushButton)
             
         # Register our widget handler
@@ -752,6 +749,10 @@ class PythonInterface:
             if (inParam1 == self.donate):
                 from webbrowser import open_new
                 open_new('https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=ZQL6V9YLKRFEJ&lc=US&item_name=joan%20x%2dplane%20developer&item_number=XP%20NOAA%20Weather&currency_code=EUR&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted');
+                return 1
+            if (inParam1 == self.aboutForum):
+                from webbrowser import open_new
+                open_new('http://forums.x-plane.org/index.php?showtopic=72313&view=getnewpost');
                 return 1
             if inParam1 == self.saveButton:
                 # Save configuration
@@ -1111,11 +1112,10 @@ class PythonInterface:
         wdata = self.weather.weatherData
         
         ''' Return if there's no weather data'''
-        if not self.weather.weatherData:
+        if self.weather.weatherData is False:
             return -1
         
         ''' Data set on new weather Data '''
-        
         if self.weather.newData:
             rain, ts, friction = 0, 0, 0
             
@@ -1155,7 +1155,6 @@ class PythonInterface:
             self.weather.setClouds()
         
         ''' Data enforced/interpolated/transitioned on each cycle '''
-            
         if self.conf.set_pressure:
             # Set METAR or GFS pressure
             if 'pressure' in wdata['metar'] and wdata['metar']['pressure'] is not False:
@@ -1198,7 +1197,7 @@ class PythonInterface:
         if inParam == XPLM_PLUGIN_XPLANE and inMessage == XPLM_MSG_AIRPORT_LOADED:
             self.weather.startWeatherClient()
             self.newAptLoaded = True
-        if inMessage == (0x8000000 | 8090)  and inParam == 1:
+        elif inMessage == (0x8000000 | 8090)  and inParam == 1:
             # inSimUpdater whants to shutdown
             self.XPluginStop()
             
