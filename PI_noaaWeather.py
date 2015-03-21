@@ -221,11 +221,11 @@ class Weather:
                     extra['dew'] = self.weatherData['metar']['temperature'][1] + 273.15
             
             # remove first wind layer if is too close (for high altitude airports)
+            # TODO: This can break transitions in some cases.
             if len(winds) > 1 and winds[0][0] < alt+ self.conf.metar_agl_limit:
                 winds.pop(0)
             
             winds = [[alt, hdg, speed, extra]] + winds
-            
             
         # Search current top and bottom layer:
         blayer = False
@@ -761,7 +761,11 @@ class PythonInterface:
                 self.conf.set_clouds    = XPGetWidgetProperty(self.cloudsCheck, xpProperty_ButtonState, None)
                 self.conf.set_temp      = XPGetWidgetProperty(self.tempCheck, xpProperty_ButtonState, None)
                 self.conf.set_pressure  = XPGetWidgetProperty(self.pressureCheck, xpProperty_ButtonState, None)
+                
+                # Zero turbulence data if disabled
                 self.conf.set_turb      = XPGetWidgetProperty(self.turbCheck, xpProperty_ButtonState, None)
+                if not self.conf.set_turb:
+                    for i in range(3): self.weather.winds[i]['turbulence'].value = 0
                 
                 self.conf.download      = XPGetWidgetProperty(self.downloadCheck, xpProperty_ButtonState, None)
                 

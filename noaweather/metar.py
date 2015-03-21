@@ -351,7 +351,7 @@ class Metar:
                     # No file downloaded
                     pass
         
-        else:
+        elif self.conf.download:
             # Download new data if required
             cycle, timestamp = self.getCycle()
             if (timestamp - self.last_timestamp) > self.UPDATE_RATE * 60:
