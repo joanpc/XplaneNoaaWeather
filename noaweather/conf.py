@@ -144,7 +144,7 @@ class Conf:
                 return
             
             # Reset settings on different versions.
-            if not 'version' in conf or conf['version'] < '2.0rc2c':
+            if not 'version' in conf or conf['version'] < '2.0':
                 return
             
             # may be "dangerous" if someone messes our config file
