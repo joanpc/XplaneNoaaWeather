@@ -197,6 +197,7 @@ class Weather:
                 turb = clayer[1]
                 
         # set turbulence
+        turb *= self.conf.turbulence_probability
         turb = c.randPattern('turbulence', turb, elapsed, 20, min_time = 1)
         
         self.winds[0]['turbulence'].value = turb
@@ -618,7 +619,7 @@ class PythonInterface:
         XPSetWidgetProperty(self.turbCheck, xpProperty_ButtonType, xpRadioButton)
         XPSetWidgetProperty(self.turbCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
         XPSetWidgetProperty(self.turbCheck, xpProperty_ButtonState, self.conf.set_turb)
-        y -= 30
+        y -= 28
         x -=5
         
         x1 = x+5
@@ -647,13 +648,18 @@ class PythonInterface:
             XPSetWidgetProperty(check, xpProperty_ButtonState, int(self.conf.metar_source == self.mtSourceChecks[check]))
             
             
-        y -= 30
-        #XPCreateWidget(x, y-40, x+80, y-60, 1, 'Metar AGL limit (ft)', 0, window, xpWidgetClass_Caption)
-        #self.transAltInput = XPCreateWidget(x+110, y-40, x+160, y-62, 1, c.convertForInput(self.conf.metar_agl_limit, 'm2ft'), 0, window, xpWidgetClass_TextField)
-        #XPSetWidgetProperty(self.transAltInput, xpProperty_TextFieldType, xpTextEntryField)
-        #XPSetWidgetProperty(self.transAltInput, xpProperty_Enabled, 0)
+        y -= 25
+        self.turbulenceCaption = XPCreateWidget(x, y-40, x+80, y-60, 1, 'Turbulence probability %d%%' % (self.conf.turbulence_probability * 100), 0, window, xpWidgetClass_Caption)
+        y -= 20
+        self.turbulenceSlider = XPCreateWidget(x+5, y-40, x+160, y-60, 1, '', 0, window, xpWidgetClass_ScrollBar)
+        XPSetWidgetProperty(self.turbulenceSlider, xpProperty_ScrollBarType, xpScrollBarTypeSlider)
+        XPSetWidgetProperty(self.turbulenceSlider, xpProperty_ScrollBarMin, 10)
+        XPSetWidgetProperty(self.turbulenceSlider, xpProperty_ScrollBarMax, 1000)
+        XPSetWidgetProperty(self.turbulenceSlider, xpProperty_ScrollBarPageAmount, 1)
         
-        y -= 30
+        XPSetWidgetProperty(self.turbulenceSlider, xpProperty_ScrollBarSliderPosition, int(self.conf.turbulence_probability * 1000))
+        
+        y -= 25
         XPCreateWidget(x, y-40, x+80, y-60, 1, 'Performance Tweaks', 0, window, xpWidgetClass_Caption)
         y -= 20
         XPCreateWidget(x+5, y-40, x+80, y-60, 1, 'Max Visibility (sm)', 0, window, xpWidgetClass_Caption)
@@ -666,7 +672,7 @@ class PythonInterface:
         XPSetWidgetProperty(self.maxCloudHeightInput, xpProperty_TextFieldType, xpTextEntryField)
         XPSetWidgetProperty(self.maxCloudHeightInput, xpProperty_Enabled, 1)
         
-        y -= 50
+        y -= 40
         # Save
         self.saveButton = XPCreateWidget(x+25, y-20, x+125, y-60, 1, "Apply & Save", 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.saveButton, xpProperty_ButtonType, xpPushButton)
@@ -754,6 +760,11 @@ class PythonInterface:
             else:
                 XPSetWidgetProperty(inParam1, xpProperty_ButtonState, 1)
             return 1
+        
+        if inMessage == xpMsg_ScrollBarSliderPositionChanged and inParam1 == self.turbulenceSlider:
+            val = XPGetWidgetProperty(self.turbulenceSlider, xpProperty_ScrollBarSliderPosition, None)
+            XPSetWidgetDescriptor(self.turbulenceCaption, 'Turbulence probability %d%%' % (val/10))
+            return 1
 
         # Handle any button pushes
         if (inMessage == xpMsg_PushButtonPressed):
@@ -777,6 +788,7 @@ class PythonInterface:
                 self.conf.set_clouds    = XPGetWidgetProperty(self.cloudsCheck, xpProperty_ButtonState, None)
                 self.conf.set_temp      = XPGetWidgetProperty(self.tempCheck, xpProperty_ButtonState, None)
                 self.conf.set_pressure  = XPGetWidgetProperty(self.pressureCheck, xpProperty_ButtonState, None)
+                self.conf.turbulence_probability = XPGetWidgetProperty(self.turbulenceSlider, xpProperty_ScrollBarSliderPosition, None) / 1000.0
                 
                 # Zero turbulence data if disabled
                 self.conf.set_turb      = XPGetWidgetProperty(self.turbCheck, xpProperty_ButtonState, None)

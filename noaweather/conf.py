@@ -93,6 +93,7 @@ class Conf:
         self.set_visibility = False
         self.set_turb       = True
         self.set_pressure   = True
+        self.turbulence_probability = 1
         
         # From this AGL level METAR values are interpolated to GFS ones.
         self.metar_agl_limit = 10 # In meters
@@ -169,6 +170,7 @@ class Conf:
                 'metar_distance_limit': self.metar_distance_limit,
                 'max_visibility': self.max_visibility,
                 'max_cloud_height': self.max_cloud_height,
+                'turbulence_probability': self.turbulence_probability,
                 }
         self.saveSettings(self.settingsfile, conf)
     
