@@ -25,7 +25,8 @@ class Metar:
     '''
     # Metar parse regex
     RE_CLOUD        = re.compile(r'\b(FEW|BKN|SCT|OVC|VV)([0-9]+)([A-Z][A-Z][A-Z]?)?\b')
-    RE_WIND         = re.compile(r'\b([0-9]{3})([0-9]{2,3})(G[0-9]{2,3})?(MPH|KT?|MPS|KMH)\b')
+    RE_WIND         = re.compile(r'\b(VRB|[0-9]{3})([0-9]{2,3})(G[0-9]{2,3})?(MPH|KT?|MPS|KMH)\b')
+    RE_VARIABLE_WIND = re.compile(r'\b([0-9]{3})V([0-9]{3})\b')
     RE_VISIBILITY   = re.compile(r'\b(CAVOK|[PM]?([0-9]{4})|([0-9] )?([0-9]{1,2})(/[0-9])?(SM|KM))\b')
     RE_PRESSURE     = re.compile(r'\b(Q|QNH|SLP|A)[ ]?([0-9]{3,4})\b')
     RE_TEMPERATURE  = re.compile(r'\b(M|-)?([0-9]{1,2})/(M|-)?([0-9]{1,2})\b')
@@ -213,6 +214,7 @@ class Metar:
                    'metar': metar,
                    'elevation': airport_msl,
                    'wind': [0, 0, 0], # Heading, speed, shear
+                   'variable_wind': False,
                    'clouds': [0, 0, False] * 3, # Alt, coverage type
                    'temperature': [False, False], # Temperature, dewpoint
                    'pressure': False, # space c.pa2inhg(10.1325),
@@ -292,7 +294,12 @@ class Metar:
         m = self.RE_WIND.search(metar)
         if m:
             heading, speed, gust, unit = m.groups()
-            heading = int(heading)
+            if heading == 'VRB':
+                heading = 0
+                weather['variable_wind'] = [0, 360]
+            else:
+                heading = int(heading)
+            
             speed = int(speed)
             if not gust: 
                 gust = 0
@@ -308,9 +315,13 @@ class Metar:
             if unit == 'KMH':
                 speed = c.m2kn(speed / 1000.0)
                 gust = c.m2kn(gust / 1000.0)
-                
                                 
             weather['wind'] = [heading, speed, gust]
+        
+        m = self.RE_VARIABLE_WIND.search(metar)
+        if m:
+            h1, h2 = m.groups()
+            weather['variable_wind'] = [h1, h2]
             
         precipitation = {}
         for precp in self.RE_PRECIPITATION.findall(metar):
