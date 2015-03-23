@@ -321,7 +321,7 @@ class Metar:
         m = self.RE_VARIABLE_WIND.search(metar)
         if m:
             h1, h2 = m.groups()
-            weather['variable_wind'] = [h1, h2]
+            weather['variable_wind'] = [int(h1), int(h2)]
             
         precipitation = {}
         for precp in self.RE_PRECIPITATION.findall(metar):
