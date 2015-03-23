@@ -9,6 +9,7 @@ of the License, or any later version.
 '''
 
 from math import hypot, atan2, degrees, exp, log, radians, sin, cos, sqrt, pi
+from random import random
 
 class c:
     '''
@@ -16,6 +17,8 @@ class c:
     '''
     #transition references
     transrefs = {}
+    
+    randRefs = {}
     
     @classmethod
     def ms2knots(self, val):
@@ -85,6 +88,26 @@ class c:
         if alt1 == alt2: return t1
         x = (alt - alt1) / float(alt2 - alt1)
         return t1 + (t2 - t1) * x**expo
+    
+    @classmethod
+    def cosineInterpolate(self, t1, t2, alt1, alt2, alt):
+        if alt1 == alt2: return t1
+        x = (alt - alt1) / float(alt2 - alt1)
+        return t1 + (t2 - t1) * (0.5-cos(pi*x)/2)
+
+    @classmethod
+    def cosineInterpolateHeading(self, hdg1, hdg2, alt1, alt2, alt):
+        
+        if alt1 == alt2: return hdg1
+        
+        t2 = self.shortHdg(hdg1, hdg2)
+        t2 = self.cosineInterpolate(0, t2, alt1, alt2, alt)
+        t2 += hdg1
+        
+        if t2 < 0:
+            return t2 + 360
+        else:
+            return t2 % 360
     
     @classmethod
     def expoCosineInterpolateHeading(self, hdg1, hdg2, alt1, alt2, alt):
@@ -421,4 +444,34 @@ class c:
             return value
         else:
             return int(round(value))
+    
+    @classmethod
+    def randPattern(self, id, max_val, elapsed, max_time = 1, min_val = 0, min_time = 1, heading = False):
+        ''' Creates random cosine interpolated "patterns" '''
+            
+        if id in self.randRefs:
+            x1, x2, startime, endtime, time = self.randRefs[id]
+        else:
+            x1, x2, startime, endtime, time = min_val, 0, 0, 0, 0
+        
+        if heading and (max_val - min_val) >= 360:
+            ret =  self.cosineInterpolateHeading(x1, x2, startime, endtime, time)
+        else:
+            ret =  self.cosineInterpolate(x1, x2, startime, endtime, time)
+        
+        time += elapsed
+        
+        if time >= endtime:
+            # Init randomness
+            x2 = min_val + random() * (max_val - min_val)
+            t2 = min_time + random() * (max_time - min_time)
+            
+            x1 = ret
+            startime =  time
+            endtime = time + t2
+
+        self.randRefs[id] = x1, x2, startime, endtime, time
+        
+        return ret
+        
     

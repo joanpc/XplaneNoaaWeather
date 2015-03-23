@@ -55,6 +55,7 @@ import subprocess
 import os
 import signal
 from datetime import datetime
+from random import random
 
 from noaweather import EasyDref, Conf, c
         
@@ -111,7 +112,8 @@ class Weather:
         
         self.mag_deviation = EasyDref('sim/flightmodel/position/magnetic_variation', 'float')
         
-        
+        self.acf_vy = EasyDref('sim/flightmodel/position/local_vy', 'float')
+              
         # Data
         self.weatherData = False
         self.weatherClientThread = False
@@ -175,7 +177,7 @@ class Weather:
         self.weatherClientThread = False
         
      
-    def setTurbulence(self, turbulence):
+    def setTurbulence(self, turbulence, elapsed):
         '''
         Set turbulence for all wind layers with our own interpolation
         '''
@@ -195,6 +197,8 @@ class Weather:
                 turb = clayer[1]
                 
         # set turbulence
+        turb = c.randPattern('turbulence', turb, elapsed, 20, min_time = 1)
+        
         self.winds[0]['turbulence'].value = turb
         self.winds[1]['turbulence'].value = turb
         self.winds[2]['turbulence'].value = turb
@@ -209,6 +213,10 @@ class Weather:
             alt = self.weatherData['metar']['elevation']
             hdg, speed, gust = self.weatherData['metar']['wind']
             extra = {'gust': gust, 'metar': True}
+            
+            if 'variable_wind' in self.weatherData['metar'] and self.weatherData['metar']['variable_wind']:
+                h1, h2 = self.weatherData['metar']['variable_wind']
+                extra['variation'] = hdg - c.randPattern('metar_wind_hdg', h1, elapsed, min_val = h2, min_time = 6, max_time = 30, heading = True)
             
             alt += self.conf.metar_agl_limit
             alt = c.transition(alt, '0-metar_wind_alt', elapsed, 0.3048) # 1f/s
@@ -256,9 +264,9 @@ class Weather:
                 rwind = twind;
         
             # Set layers
-            self.setWindLayer(0, rwind)
-            self.setWindLayer(1, rwind)
-            self.setWindLayer(2, rwind)
+            self.setWindLayer(0, rwind, elapsed)
+            self.setWindLayer(1, rwind, elapsed)
+            self.setWindLayer(2, rwind, elapsed)
       
             '''Set temperature and dewpoint.
             Use next layer if the data is not available'''
@@ -284,10 +292,14 @@ class Weather:
             self.winds[1]['gust_hdg'].value = 0
             self.winds[2]['gust_hdg'].value = 0
     
-    def setWindLayer(self, index,  wlayer):
+    def setWindLayer(self, index,  wlayer, elapsed):
         alt, hdg, speed, extra = wlayer
         
         wind = self.winds[index]
+        
+        if 'variation' in extra:
+            hdg += extra['variation']
+           
         wind['hdg'].value, wind['speed'].value = hdg, speed
         
         if 'gust' in extra:
@@ -308,7 +320,7 @@ class Weather:
         # Special cases
         if 'gust_hdg' in extra:
             extra['gust_hdg'] = 0
-        
+            
         return alt, hdg, speed, extra
     
     def setDrefIfDiff(self, dref, value, max_diff = False):
@@ -342,6 +354,10 @@ class Weather:
             # First layer
             layer[1] = c.expoCosineInterpolateHeading(wlayer1[1], wlayer2[1], wlayer1[0], wlayer2[0], current_altitude)
             layer[2] = c.expoCosineInterpolate(wlayer1[2], wlayer2[2], wlayer1[0], wlayer2[0], current_altitude)
+        
+        
+        if not 'variation' in wlayer1[3]:
+            wlayer1[3]['variation'] = 0
         
         # Interpolate extras
         for key in wlayer1[3]:
@@ -1172,7 +1188,7 @@ class PythonInterface:
         
         # Set turbulence
         if self.conf.set_turb:
-            self.weather.setTurbulence(wdata['wafs'])
+            self.weather.setTurbulence(wdata['wafs'], elapsedMe)
     
         return -1
     
