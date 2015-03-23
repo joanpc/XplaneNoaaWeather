@@ -216,7 +216,7 @@ class Weather:
             
             if 'variable_wind' in self.weatherData['metar'] and self.weatherData['metar']['variable_wind']:
                 h1, h2 = self.weatherData['metar']['variable_wind']
-                extra['variation'] = hdg - c.randPattern('metar_wind_hdg', h1, elapsed, min_val = h2, min_time = 6, max_time = 30, heading = True)
+                extra['variation'] = hdg - c.randPattern('metar_wind_hdg', h1, elapsed, min_val = h2, min_time = 20, max_time = 120, heading = True)
             
             alt += self.conf.metar_agl_limit
             alt = c.transition(alt, '0-metar_wind_alt', elapsed, 0.3048) # 1f/s
