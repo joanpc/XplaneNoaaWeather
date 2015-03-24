@@ -554,6 +554,7 @@ class PythonInterface:
                 self.createMetarWindow()
             elif not XPIsWidgetVisible(self.metarWindowWidget):
                 XPShowWidget(self.metarWindowWidget)
+                XPSetKeyboardFocus(self.metarQueryInput)
                 
 
     def CreateAboutWindow(self, x, y):
@@ -864,8 +865,6 @@ class PythonInterface:
     def weatherInfo(self):
         '''Return an array of strings with formated weather data'''
         
-        sysinfo = ['--'] * self.aboutlines
-        
         if not self.weather.weatherData:
             sysinfo = ['Data not ready. Please wait.']
         else:
@@ -894,9 +893,14 @@ class PythonInterface:
                             '    Apt altitude: %dft, Apt distance: %.1fkm' % (wdata['metar']['elevation'] * 3.28084, wdata['metar']['distance']/1000),
                             '    Temp: %s, Dewpoint: %s, ' % (c.strFloat(wdata['metar']['temperature'][0]), c.strFloat(wdata['metar']['temperature'][1])) +
                             'Visibility: %d m, ' % (wdata['metar']['visibility']) +
-                            'Press: %s inhg ' % (c.strFloat(wdata['metar']['pressure'])),
-                            '    Wind:  %d %dkt, gust +%dkt' % (wdata['metar']['wind'][0], wdata['metar']['wind'][1], wdata['metar']['wind'][2])
-                           ]
+                            'Press: %s inhg ' % (c.strFloat(wdata['metar']['pressure']))
+                            ]
+                            
+                wind = '    Wind:  %d %dkt, gust +%dkt' % (wdata['metar']['wind'][0], wdata['metar']['wind'][1], wdata['metar']['wind'][2])
+                if 'variable_wind' in wdata['metar'] and wdata['metar']['variable_wind']:
+                    wind += '   Variable: %d-%d' % (wdata['metar']['variable_wind'][0], wdata['metar']['variable_wind'][1])
+                
+                sysinfo += [wind]
                 if 'precipitation' in wdata['metar'] and len(wdata['metar']['precipitation']):
                     precip = ''
                     for type in wdata['metar']['precipitation']:
@@ -943,6 +947,8 @@ class PythonInterface:
                 
                 sysinfo += ['WAFS TURBULENCE: FL|SEV %d' % (len(wdata['wafs'])), tblayers]
         
+        sysinfo += ['--'] * (len(sysinfo) - self.aboutlines)
+        
         return sysinfo
     
     def createMetarWindow(self):
@@ -957,38 +963,48 @@ class PythonInterface:
         # Create the Main Widget window
         self.metarWindow = True
         self.metarWindowWidget = XPCreateWidget(x, y, x2, y2, 1, windowTitle, 1, 0, xpWidgetClass_MainWindow)
+        XPSetWidgetProperty(self.metarWindowWidget, xpProperty_MainWindowType,  xpMainWindowStyle_Translucent)
         
         # Config Sub Window, style
-        subw = XPCreateWidget(x+10, y-30, x2-20 + 10, y2+40 -25, 1, "" ,  0,self.metarWindowWidget , xpWidgetClass_SubWindow)
-        XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
+        #subw = XPCreateWidget(x+10, y-30, x2-20 + 10, y2+40 -25, 1, "" ,  0,self.metarWindowWidget , xpWidgetClass_SubWindow)
+        #XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
         XPSetWidgetProperty(self.metarWindowWidget, xpProperty_MainWindowHasCloseBoxes, 1)
         x += 20
         y -= 40
         
-        XPCreateWidget(x, y, x+40, y-20, 1, 'Airport ICAO code:', 0, self.metarWindowWidget, xpWidgetClass_Caption)
+        cap = XPCreateWidget(x, y, x+40, y-20, 1, 'Airport ICAO code:', 0, self.metarWindowWidget, xpWidgetClass_Caption)
+        XPSetWidgetProperty(cap, xpProperty_CaptionLit, 1)
+        
         
         y -= 20
         # Airport input
         self.metarQueryInput = XPCreateWidget(x+5, y, x+120, y-20, 1, "", 0, self.metarWindowWidget, xpWidgetClass_TextField)
         XPSetWidgetProperty(self.metarQueryInput, xpProperty_TextFieldType, xpTextEntryField)
         XPSetWidgetProperty(self.metarQueryInput, xpProperty_Enabled, 1)
+        XPSetWidgetProperty(self.metarQueryInput, xpProperty_TextFieldType, xpTextTranslucent)
         
-        self.metarQueryButton = XPCreateWidget(x+140, y, x+240, y-20, 1, "Request", 0, self.metarWindowWidget, xpWidgetClass_Button)
+        self.metarQueryButton = XPCreateWidget(x+140, y, x+210, y-20, 1, "Request", 0, self.metarWindowWidget, xpWidgetClass_Button)
+        XPSetWidgetProperty(self.metarQueryButton, xpProperty_ButtonType, xpPushButton)
+        XPSetWidgetProperty(self.metarQueryButton, xpProperty_Enabled, 1)
         
         y -= 20
         # Help caption
-        XPCreateWidget(x, y, x+300, y-20, 1, "METAR:", 0, self.metarWindowWidget, xpWidgetClass_Caption)
+        cap = XPCreateWidget(x, y, x+300, y-20, 1, "METAR:", 0, self.metarWindowWidget, xpWidgetClass_Caption)
+        XPSetWidgetProperty(cap, xpProperty_CaptionLit, 1)
         
         y -= 20
         # Query output
         self.metarQueryOutput = XPCreateWidget(x+5, y, x+450, y-20, 1, "", 0, self.metarWindowWidget, xpWidgetClass_TextField)
         XPSetWidgetProperty(self.metarQueryOutput, xpProperty_TextFieldType, xpTextEntryField)
         XPSetWidgetProperty(self.metarQueryOutput, xpProperty_Enabled, 1)
+        XPSetWidgetProperty(self.metarQueryOutput, xpProperty_TextFieldType, xpTextTranslucent)
         
         # Register our widget handler
         self.metarWindowHandlerCB = self.metarWindowHandler
         XPAddWidgetCallback(self, self.metarWindowWidget, self.metarWindowHandlerCB)
-        pass
+        
+        
+        XPSetKeyboardFocus(self.metarQueryInput)
     
     def metarWindowHandler(self, inMessage, inWidget, inParam1, inParam2):
         if inMessage == xpMessage_CloseButtonPushed:
@@ -1005,7 +1021,6 @@ class PythonInterface:
                 else:
                     XPSetWidgetDescriptor(self.metarQueryOutput, 'Please insert a valid ICAO code.')
                 return 1
-        
         return 0
     
     def metarQueryCallback(self, msg):
