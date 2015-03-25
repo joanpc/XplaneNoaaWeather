@@ -473,5 +473,12 @@ class c:
         self.randRefs[id] = x1, x2, startime, endtime, time
         
         return ret
+    
+    @classmethod
+    def middleHeading(cls, hd1, hd2):
+        if hd2 > hd1:
+            return hd1 + (hd2 - hd1)/2
+        else:
+            return hd2 + (360 + hd1 - hd2)/2
         
     
