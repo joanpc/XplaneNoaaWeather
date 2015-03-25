@@ -156,8 +156,13 @@ class Metar:
         
         f.close()
         
-        if not self.conf.keepOldFiles:
-            os.remove(path)
+        xpmetar = os.path.join([self.conf.syspath, 'METAR.rwx'])
+        try:
+            if os.path.exists(xpmetar):
+                os.remove(xpmetar)
+            os.rename(path, xpmetar)
+        except:
+            print "Can't override METAR.rwx."
         
         return updated
     
