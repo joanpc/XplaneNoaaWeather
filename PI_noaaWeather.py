@@ -57,7 +57,7 @@ import signal
 from datetime import datetime
 from random import random
 
-from noaweather import EasyDref, Conf, c
+from noaweather import EasyDref, Conf, c, EasyCommand
         
 class Weather:
     '''
@@ -527,6 +527,9 @@ class PythonInterface:
         XPLMAppendMenuItem(self.mMain, 'Configuration', 1, 1)
         XPLMAppendMenuItem(self.mMain, 'Metar Query', 2, 1)
         
+        # Register commands
+        EasyCommand(self, 'metar_query_window_toggle',self.metarQueryWindowToggle, description="Toggle METAR query window.")
+        
         # Flightloop counters
         self.flcounter = 0
         self.fltime = 1
@@ -953,9 +956,9 @@ class PythonInterface:
     
     def createMetarWindow(self):
         x = 100
-        w = 500
+        w = 480
         y = 600
-        h = 150
+        h = 120
         x2 = x + w
         y2 = y - h
         windowTitle = "METAR Request"
@@ -969,8 +972,8 @@ class PythonInterface:
         #subw = XPCreateWidget(x+10, y-30, x2-20 + 10, y2+40 -25, 1, "" ,  0,self.metarWindowWidget , xpWidgetClass_SubWindow)
         #XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
         XPSetWidgetProperty(self.metarWindowWidget, xpProperty_MainWindowHasCloseBoxes, 1)
-        x += 20
-        y -= 40
+        x += 10
+        y -= 20
         
         cap = XPCreateWidget(x, y, x+40, y-20, 1, 'Airport ICAO code:', 0, self.metarWindowWidget, xpWidgetClass_Caption)
         XPSetWidgetProperty(cap, xpProperty_CaptionLit, 1)
@@ -1029,7 +1032,16 @@ class PythonInterface:
         if self.metarWindow and XPIsWidgetVisible(self.metarWindowWidget):
             XPSetWidgetDescriptor(self.metarQueryOutput, '%s %s' % (msg['metar']['icao'], msg['metar']['metar']))
             
-    
+    def metarQueryWindowToggle(self):
+        ''' Metar window toggle command '''
+        if self.metarWindow:
+            if XPIsWidgetVisible(self.metarWindowWidget):
+                XPHideWidget(self.metarWindowWidget)
+            else:
+                XPShowWidget(self.metarWindowWidget)
+        else:
+            self.createMetarWindow()
+
     def dumpLog(self):
         ''' Dumps all the information to a file to report bugs'''
         

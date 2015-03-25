@@ -95,5 +95,32 @@ class EasyDref:
         if name == 'value':
             self.set(value)
         else:
-            self.__dict__[name] = value   
+            self.__dict__[name] = value
+            
+class EasyCommand:
+    '''
+    Creates a command with an assigned callback with arguments
+    '''
+    def __init__(self, plugin, command, function, args = False, description =''):
+        command = 'xjpc/XPNoaaWeather/' + command
+        self.command = XPLMCreateCommand(command, description)
+        self.commandCH = self.commandCHandler
+        XPLMRegisterCommandHandler(plugin, self.command, self.commandCH, 1, 0)
+
+        self.function = function
+        self.args = args        
+        self.plugin = plugin
+        # Command handlers
+    def commandCHandler(self, inCommand, inPhase, inRefcon):
+        if inPhase == 0:
+            if self.args:
+                if type(self.args).__name__ == 'tuple':
+                    self.function(*self.args)
+                else:
+                    self.function(self.args)
+            else:
+                self.function()
+        return 0
+    def destroy(self):
+        XPLMUnregisterCommandHandler(self.plugin, self.command, self.commandCH, 1, 0)
             
