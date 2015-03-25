@@ -528,7 +528,7 @@ class PythonInterface:
         XPLMAppendMenuItem(self.mMain, 'Metar Query', 2, 1)
         
         # Register commands
-        EasyCommand(self, 'metar_query_window_toggle',self.metarQueryWindowToggle, description="Toggle METAR query window.")
+        self.metarWindowCMD = EasyCommand(self, 'metar_query_window_toggle',self.metarQueryWindowToggle, description="Toggle METAR query window.")
         
         # Flightloop counters
         self.flcounter = 0
@@ -1237,6 +1237,8 @@ class PythonInterface:
             XPDestroyWidget(self, self.aboutWindowWidget, 1)
         if self.metarWindow:
             XPDestroyWidget(self, self.metarWindowWidget, 1)
+            
+        self.metarWindowCMD.destroy()
         
         XPLMUnregisterFlightLoopCallback(self, self.floop, 0)
         
