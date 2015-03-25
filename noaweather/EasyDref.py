@@ -1,4 +1,5 @@
 from XPLMDataAccess import *
+from XPLMUtilities  import *
 
 class EasyDref:    
     '''
