@@ -950,7 +950,7 @@ class PythonInterface:
                 
                 sysinfo += ['WAFS TURBULENCE: FL|SEV %d' % (len(wdata['wafs'])), tblayers]
         
-        sysinfo += ['--'] * (len(sysinfo) - self.aboutlines)
+        sysinfo += ['--'] * (self.aboutlines - len(sysinfo))
         
         return sysinfo
     
