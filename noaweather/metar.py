@@ -13,6 +13,7 @@ import os
 import sqlite3
 import math
 import sys
+import shutil
 from datetime import datetime, timedelta
 import time
 
@@ -156,13 +157,15 @@ class Metar:
         
         f.close()
         
-        xpmetar = os.path.join([self.conf.syspath, 'METAR.rwx'])
+        xpmetar = os.sep.join([self.conf.syspath, 'METAR.rwx'])
+        
         try:
-            if os.path.exists(xpmetar):
-                os.remove(xpmetar)
-            os.rename(path, xpmetar)
+            shutil.copyfile(path, xpmetar)
         except:
-            print "Can't override METAR.rwx."
+            print "Can't override %s" % (xpmetar)
+        
+        if not self.conf.keepOldFiles:
+            os.remove(path)
         
         return updated
     
