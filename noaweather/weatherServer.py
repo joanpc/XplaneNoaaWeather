@@ -87,10 +87,11 @@ class clientHandler(SocketServer.BaseRequestHandler):
                     # Icao
                     response = {}
                     apt = gfs.metar.getMetar(gfs.metar.connection, data[1:])
-                    if len(apt) > 4:
+                    if len(apt) and apt[5]:
                         response['metar'] = gfs.metar.parseMetar(apt[0], apt[5], apt[3])
                     else:
-                        response = [False]
+                        response['metar'] = {'icao': 'METAR STATION',
+                                             'metar': 'NOT AVAILABLE'}
                     
             elif data == '!shutdown':
                 conf.serverSave()

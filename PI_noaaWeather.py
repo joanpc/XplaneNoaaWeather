@@ -1021,6 +1021,7 @@ class PythonInterface:
                 query = buff[0].strip()
                 if len(query) == 4:
                     self.weather.weatherClientSend('?' + query)
+                    XPSetWidgetDescriptor(self.metarQueryOutput, 'Quering, please wait.')
                 else:
                     XPSetWidgetDescriptor(self.metarQueryOutput, 'Please insert a valid ICAO code.')
                 return 1
@@ -1029,7 +1030,7 @@ class PythonInterface:
     def metarQueryCallback(self, msg):
         ''' Callback for metar queries '''
         
-        if self.metarWindow and XPIsWidgetVisible(self.metarWindowWidget):
+        if self.metarWindow:
             XPSetWidgetDescriptor(self.metarQueryOutput, '%s %s' % (msg['metar']['icao'], msg['metar']['metar']))
             
     def metarQueryWindowToggle(self):
@@ -1190,7 +1191,7 @@ class PythonInterface:
             if 'precipitation' in wdata['metar']:
                 p = wdata['metar']['precipitation']
                 for precp in p:
-                    precip, wet = c.metar2xpprecipitation(precp, p[precp]['int'], p[precp]['int'], p[precp]['recent'] )
+                    precip, wet = c.metar2xpprecipitation(precp, p[precp]['int'], p[precp]['int'], p[precp]['recent'])
                     
                     if precip is not False:
                         rain = precip
