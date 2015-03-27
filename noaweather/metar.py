@@ -280,7 +280,7 @@ class Metar:
         
         m = self.RE_VISIBILITY.search(metar)
         if m:
-            if m.group(0) == 'CAVOK':
+            if m.group(0) == 'CAVOK' or (m.group(0)[0] == 'P' and int(m.group(2)) > 7999):
                 visibility = 9999
             else:
                 visibility = 0
