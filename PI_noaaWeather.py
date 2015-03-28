@@ -1003,11 +1003,51 @@ class PythonInterface:
         XPSetWidgetProperty(self.metarQueryOutput, xpProperty_TextFieldType, xpTextTranslucent)
         
         # Register our widget handler
+        self.metarQueryInputHandlerCB = self.metarQueryInputHandler
+        XPAddWidgetCallback(self, self.metarQueryInput, self.metarQueryInputHandlerCB)
+        
+        # Register our widget handler
         self.metarWindowHandlerCB = self.metarWindowHandler
         XPAddWidgetCallback(self, self.metarWindowWidget, self.metarWindowHandlerCB)
         
         
         XPSetKeyboardFocus(self.metarQueryInput)
+    
+    def metarQueryInputHandler(self, inMessage, inWidget, inParam1, inParam2):
+        ''' Override texfield keyboard input to be more friendly'''
+        if inMessage == xpMsg_KeyPress:
+            key, flags, vkey = PI_GetKeyState(inParam1)
+            if flags == 8:
+                buff = []
+                cursor = XPGetWidgetProperty(self.metarQueryInput, xpProperty_EditFieldSelStart, None)
+                XPGetWidgetDescriptor(self.metarQueryInput, buff, 256)
+                text = buff[0]
+                if key in (8, 127):
+                    #pass
+                    XPSetWidgetDescriptor(self.metarQueryInput, text[:-1])
+                    cursor -= 1
+                elif key == 13:
+                    self.metarQuery()
+                elif key == 27:
+                    #ESC
+                    XPLoseKeyboardFocus(self.metarQueryInput)
+                elif 65 <= key <= 90 or 97 <= key <= 122 and len(text) < 4:
+                    text += chr(key).upper()
+                    XPSetWidgetDescriptor(self.metarQueryInput, text)
+                    cursor += 1
+                
+                ltext = len(text)
+                if cursor < 0: cursor = 0
+                if cursor > ltext: cursor = ltext
+                
+                XPSetWidgetProperty(self.metarQueryInput, xpProperty_EditFieldSelStart, cursor)
+                XPSetWidgetProperty(self.metarQueryInput, xpProperty_EditFieldSelEnd, cursor)  
+                
+                return 1
+        elif inMessage in (xpMsg_MouseDrag, xpMsg_MouseDown, xpMsg_MouseUp):
+            XPSetKeyboardFocus(self.metarQueryInput)
+            return 1
+        return 0
     
     def metarWindowHandler(self, inMessage, inWidget, inParam1, inParam2):
         if inMessage == xpMessage_CloseButtonPushed:
@@ -1016,16 +1056,19 @@ class PythonInterface:
                 return 1
         if inMessage == xpMsg_PushButtonPressed:
             if (inParam1 == self.metarQueryButton):
-                buff = []
-                XPGetWidgetDescriptor(self.metarQueryInput, buff, 256)
-                query = buff[0].strip()
-                if len(query) == 4:
-                    self.weather.weatherClientSend('?' + query)
-                    XPSetWidgetDescriptor(self.metarQueryOutput, 'Quering, please wait.')
-                else:
-                    XPSetWidgetDescriptor(self.metarQueryOutput, 'Please insert a valid ICAO code.')
+                self.metarQuery()
                 return 1
         return 0
+    
+    def metarQuery(self):
+        buff = []
+        XPGetWidgetDescriptor(self.metarQueryInput, buff, 256)
+        query = buff[0].strip()
+        if len(query) == 4:
+            self.weather.weatherClientSend('?' + query)
+            XPSetWidgetDescriptor(self.metarQueryOutput, 'Quering, please wait.')
+        else:
+            XPSetWidgetDescriptor(self.metarQueryOutput, 'Please insert a valid ICAO code.')
     
     def metarQueryCallback(self, msg):
         ''' Callback for metar queries '''
