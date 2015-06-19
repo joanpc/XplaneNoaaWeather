@@ -160,10 +160,7 @@ class Metar:
         
         xpmetar = os.sep.join([self.conf.syspath, 'METAR.rwx'])
         
-        try:
-            shutil.copyfile(path, xpmetar)
-        except:
-            print "Can't override %s" % (xpmetar)
+        util.copy(path, xpmetar)
         
         if not self.conf.keepOldFiles:
             util.remove(path)

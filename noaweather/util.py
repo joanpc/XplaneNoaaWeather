@@ -9,6 +9,7 @@ of the License, or any later version.
 '''
 
 import os
+import shutil
 
 class util:
     
@@ -33,3 +34,9 @@ class util:
         if os.path.exists(dpath):
             cls.remove(dpath)
         os.rename(opath, dpath)
+    
+    @classmethod
+    def copy(cls, opath, dpath):
+        if os.path.exists(dpath):
+            cls.remove(dpath)
+        shutil.copyfile(opath, dpath)
