@@ -14,12 +14,13 @@ import threading
 from datetime import datetime, timedelta
 import os
 import subprocess
+import sys
 
 from wafs import WAFS
 from metar import Metar
 from asyncdownload import AsyncDownload
 from c import c
-import sys
+from util import util
 
 class GFS(threading.Thread):
     '''
@@ -162,7 +163,7 @@ class GFS(threading.Thread):
                 # Dowload success
                 if lastgrib:
                     if not self.conf.keepOldFiles and self.conf.lastgrib:
-                        os.remove(os.sep.join([self.conf.cachepath, self.lastgrib]))
+                        util.remove(os.sep.join([self.conf.cachepath, self.lastgrib]))
                     self.lastgrib = lastgrib
                     self.conf.lastgrib = self.lastgrib
                     self.newGrib = True

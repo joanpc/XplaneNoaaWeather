@@ -16,6 +16,7 @@ import sys
 import shutil
 from datetime import datetime, timedelta
 import time
+from util import util
 
 from c import c
 from asyncdownload import AsyncDownload
@@ -165,7 +166,7 @@ class Metar:
             print "Can't override %s" % (xpmetar)
         
         if not self.conf.keepOldFiles:
-            os.remove(path)
+            util.remove(path)
         
         return updated
     

@@ -15,6 +15,7 @@ import zlib
 import os
 import subprocess
 import sys
+from util import util
 
 class AsyncDownload():
     '''
@@ -38,9 +39,9 @@ class AsyncDownload():
         tempfile = filepath + '.tmp'
         
         if os.path.exists(tempfile):
-            os.remove(tempfile)
+            util.remove(tempfile)
         if os.path.exists(filepath):
-            os.remove(filepath)
+            util.remove(filepath)
         
         print "Dowloading: %s" % (cachefile)
         
@@ -76,7 +77,7 @@ class AsyncDownload():
                 of.write(data)
         except Exception:
             if os.path.exists(tempfile):
-                os.remove(tempfile)
+                util.remove(tempfile)
             self.q.put(False)
         
         of.close()
@@ -95,9 +96,10 @@ class AsyncDownload():
                     p = subprocess.Popen(args, stdout=sys.stdout, stderr=sys.stderr)
                 p.wait()
                 
-                os.remove(tempfile)
+                util.remove(tempfile)
+                
             else:
-                os.rename(tempfile, filepath)    
+                util.rename(tempfile, filepath)  
            
             # Call callback if defined otherwise put the file on the queue
             if self.callback:
@@ -107,9 +109,9 @@ class AsyncDownload():
         else:
             # File to small, remove file.
             if os.path.exists(tempfile):
-                os.remove(tempfile)
+                util.remove(tempfile)
             self.q.put(False)
-
+        
     def die(self):
         if self.t.is_alive():
             self.cancel.set()

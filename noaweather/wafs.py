@@ -14,6 +14,7 @@ import subprocess
 
 from asyncdownload import AsyncDownload
 from c import c
+from util import util
 
 class WAFS:
     '''
@@ -53,7 +54,7 @@ class WAFS:
                 self.downloading = False
                 if lastgrib:
                     if not self.conf.keepOldFiles and self.conf.lastwafsgrib:
-                        os.remove(os.sep.join([self.conf.cachepath, self.lastgrib]))
+                        util.remove(os.sep.join([self.conf.cachepath, self.lastgrib]))
                     self.lastgrib = lastgrib
                     self.conf.lastwafsgrib = lastgrib
                     if len(self.conf.lastwafsgrib.split(os.sep)) > 0:
