@@ -10,6 +10,7 @@ of the License, or any later version.
 
 import os
 import shutil
+import sys
 
 class util:
     
@@ -25,7 +26,14 @@ class util:
             while 1:
                 npath = '%s-%d' % (filepath, i)
                 if not os.path.exists(npath):
-                    os.rename(filepath, npath)
+                    try:
+                        os.rename(filepath, npath)
+                    except:
+                        print "can't rename %s" % (filepath)
+                        if sys.platform == 'win32':
+                            import ctypes
+                            print '%s marked for deletion.' % (filepath)
+                            ctypes.windll.kernel32.MoveFileExA(filepath, None, 4)
                     break
                 i += 1
     
