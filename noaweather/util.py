@@ -32,7 +32,7 @@ class util:
                         print "can't rename %s" % (filepath)
                         if sys.platform == 'win32':
                             import ctypes
-                            print '%s marked for deletion.' % (filepath)
+                            print '%s marked for deletion on reboot.' % (filepath)
                             ctypes.windll.kernel32.MoveFileExA(filepath, None, 4)
                     break
                 i += 1
