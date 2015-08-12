@@ -163,7 +163,7 @@ class GFS(threading.Thread):
                 # Dowload success
                 if lastgrib:
                     if not self.conf.keepOldFiles and self.conf.lastgrib:
-                        util.remove(os.sep.join([self.conf.cachepath, self.lastgrib]))
+                        util.remove(os.sep.join([self.conf.cachepath, self.conf.lastgrib]))
                     self.lastgrib = lastgrib
                     self.conf.lastgrib = self.lastgrib
                     self.newGrib = True
