@@ -1074,7 +1074,9 @@ class PythonInterface:
         ''' Callback for metar queries '''
         
         if self.metarWindow:
-            XPSetWidgetDescriptor(self.metarQueryOutput, '%s %s' % (msg['metar']['icao'], msg['metar']['metar']))
+            # Filter metar text
+            metar = filter(lambda x: x in self.conf.printableChars, msg['metar']['metar'])
+            XPSetWidgetDescriptor(self.metarQueryOutput, '%s %s' % (msg['metar']['icao'], metar))
             
     def metarQueryWindowToggle(self):
         ''' Metar window toggle command '''

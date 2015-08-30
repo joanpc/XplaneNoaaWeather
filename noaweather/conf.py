@@ -18,6 +18,7 @@ class Conf:
     Configuration variables
     '''
     syspath, dirsep = '', os.sep
+    printableChars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ '
     __VERSION__ = '2.2'
     
     def __init__(self, syspath):
