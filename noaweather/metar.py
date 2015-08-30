@@ -276,6 +276,8 @@ class Metar:
                 if temps: temp *= -1
                 weather['temperature'] = [temp, dew]
         
+        metar = metar.split('RMK')[0]
+        
         m = self.RE_VISIBILITY.search(metar)
         if m:
             if m.group(0) == 'CAVOK' or (m.group(0)[0] == 'P' and int(m.group(2)) > 7999):
