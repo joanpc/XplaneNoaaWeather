@@ -143,11 +143,12 @@ class Metar:
                 
                 inserts.append((timestamp, metar, icao, timestamp))
                 updated += 1
+                timestamp = 0
                   
                 if (i % INSBUF) == 0:
                     sys.stdout.flush()
                     cursor.executemany('UPDATE airports SET timestamp = ?, metar = ? WHERE icao = ? AND timestamp < ?', inserts)
-                    inserts = []            
+                    inserts = []
             elif len(line) > 15:
                 timestamp = int(line[0:4] + line[5:7] + line[8:10] + line[11:13] + line[14:16])
         
@@ -170,7 +171,7 @@ class Metar:
     def clearMetarReports(self, db):
         '''Clears all metar reports from the db'''
         cursor = db.cursor()
-        cursor.execute('UPDATE airports SET metar = NULL')
+        cursor.execute('UPDATE airports SET metar = NULL, timestamp = 0')
         db.commit()
         
         
