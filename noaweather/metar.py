@@ -132,10 +132,17 @@ class Metar:
         i = 0
         inserts = []
         INSBUF = 128
+        
         for line in f.readlines():
             if line[0].isalpha():
                 i += 1
                 icao, mtime, metar = line[0:4], line[5:11] , re.sub(r'[^\x00-\x7F]+',' ', line[5:-1])
+                
+                if mtime[-1] == 'Z':
+                    mtime = '0' + mtime
+                
+                if not mtime.isdigit():
+                    mtime = '000000'
                 
                 # Create timestamp for VATSIM metars
                 if timestamp == 0:
@@ -150,7 +157,9 @@ class Metar:
                     cursor.executemany('UPDATE airports SET timestamp = ?, metar = ? WHERE icao = ? AND timestamp < ?', inserts)
                     inserts = []
             elif len(line) > 15:
-                timestamp = int(line[0:4] + line[5:7] + line[8:10] + line[11:13] + line[14:16])
+                strtime = line[0:4] + line[5:7] + line[8:10] + line[11:13] + line[14:16]
+                if strtime.isdigit():
+                    timestamp = int(strtime)
         
         if len(inserts):
             updated += len(inserts)
