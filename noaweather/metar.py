@@ -139,7 +139,7 @@ class Metar:
                 icao, mtime, metar = line[0:4], line[5:11] , re.sub(r'[^\x00-\x7F]+',' ', line[5:-1])
                 
                 if mtime[-1] == 'Z':
-                    mtime = '0' + mtime
+                    mtime = '0' + mtime[:-1]
                 
                 if not mtime.isdigit():
                     mtime = '000000'
