@@ -132,10 +132,17 @@ class Metar:
         i = 0
         inserts = []
         INSBUF = 128
+        
         for line in f.readlines():
             if line[0].isalpha():
                 i += 1
                 icao, mtime, metar = line[0:4], line[5:11] , re.sub(r'[^\x00-\x7F]+',' ', line[5:-1])
+                
+                if mtime[-1] == 'Z':
+                    mtime = '0' + mtime[:-1]
+                
+                if not mtime.isdigit():
+                    mtime = '000000'
                 
                 # Create timestamp for VATSIM metars
                 if timestamp == 0:
@@ -143,13 +150,16 @@ class Metar:
                 
                 inserts.append((timestamp, metar, icao, timestamp))
                 updated += 1
+                timestamp = 0
                   
                 if (i % INSBUF) == 0:
                     sys.stdout.flush()
                     cursor.executemany('UPDATE airports SET timestamp = ?, metar = ? WHERE icao = ? AND timestamp < ?', inserts)
-                    inserts = []            
+                    inserts = []
             elif len(line) > 15:
-                timestamp = int(line[0:4] + line[5:7] + line[8:10] + line[11:13] + line[14:16])
+                strtime = line[0:4] + line[5:7] + line[8:10] + line[11:13] + line[14:16]
+                if strtime.isdigit():
+                    timestamp = int(strtime)
         
         if len(inserts):
             updated += len(inserts)
@@ -170,7 +180,7 @@ class Metar:
     def clearMetarReports(self, db):
         '''Clears all metar reports from the db'''
         cursor = db.cursor()
-        cursor.execute('UPDATE airports SET metar = NULL')
+        cursor.execute('UPDATE airports SET metar = NULL, timestamp = 0')
         db.commit()
         
         
@@ -275,6 +285,8 @@ class Metar:
                 if dews: dew *= -1
                 if temps: temp *= -1
                 weather['temperature'] = [temp, dew]
+        
+        metar = metar.split('RMK')[0]
         
         m = self.RE_VISIBILITY.search(metar)
         if m:
