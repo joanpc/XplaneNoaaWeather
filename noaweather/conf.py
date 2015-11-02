@@ -20,7 +20,7 @@ class Conf:
     syspath, dirsep = '', os.sep
     printableChars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ '
     
-    __VERSION__ = '2.2a'
+    __VERSION__ = '2.2.1'
     
     def __init__(self, syspath):
         # Inits conf
