@@ -54,7 +54,7 @@ class WAFS:
                 self.downloading = False
                 if lastgrib:
                     if not self.conf.keepOldFiles and self.conf.lastwafsgrib:
-                        util.remove(os.sep.join([self.conf.cachepath, self.lastgrib]))
+                        util.remove(os.sep.join([self.conf.cachepath, self.conf.lastwafsgrib]))
                     self.lastgrib = lastgrib
                     self.conf.lastwafsgrib = lastgrib
                     if len(self.conf.lastwafsgrib.split(os.sep)) > 0:
