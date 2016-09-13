@@ -7,6 +7,9 @@ class EasyDref:
 
     Copyright (C) 2011  Joan Perez i Cauhe
     '''
+
+    datarefs = []
+
     def __init__(self, dataref, type = "float", register = False, writable = False):
         # Clear dataref
         dataref = dataref.strip()
@@ -52,13 +55,28 @@ class EasyDref:
         if dref: dataref = dref
 
         if register:
-            self.setCB = self.set_f
+            if writable:
+                self.setCB = self.set_f
+            else:
+                self.setCB = False
             self.getCB = self.get_f
 
             self.DataRef = XPLMRegisterDataAccessor(self, dataref, self.dr_type,
             writable, self.getCB, self.setCB, self.getCB, self.setCB, self.getCB, self.setCB
             , self.getCB, self.setCB, self.getCB, self.setCB, self.getCB, self.setCB,
             False, False)
+
+            self.__class__.datarefs.append(self.DataRef)
+
+            # Init default value
+            if self.isarray:
+                self.value_f = [0] * self.count
+            else:
+                self.value_f = 0
+
+            # Local shortcut
+            self.set = self.set_f
+            self.get = self.get_f
 
         else:
             self.DataRef = XPLMFindDataRef(dataref)
@@ -104,9 +122,11 @@ class EasyDref:
             return self.dr_get(self.DataRef)
 
     def set_f(self, value):
-        self.value = value
-    def get_f(self, value):
-        pass
+        self.value_f = value
+
+    def get_f(self):
+        return self.value_f
+
     def __getattr__(self, name):
         if name == 'value':
             return self.get()
@@ -118,6 +138,11 @@ class EasyDref:
             self.set(value)
         else:
             self.__dict__[name] = value
+
+    @classmethod
+    def cleanup(cls):
+        for dataref in cls.datarefs:
+            XPLMUnregisterDataAccessor(dataref)
 
 class EasyCommand:
     '''
