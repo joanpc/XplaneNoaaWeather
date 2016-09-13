@@ -1,0 +1,35 @@
+# Overrides
+xjpc/XPNoaaWeather/config/override_clouds int
+xjpc/XPNoaaWeather/config/override_winds int
+EasyDref(xjpc/XPNoaaWeather/config/override_visibility int
+EasyDref(xjpc/XPNoaaWeather/config/override_turbulence int
+xjpc/XPNoaaWeather/config/override_pressure int
+xjpc/XPNoaaWeather/config/override_precipitation int
+xjpc/XPNoaaWeather/config/override_runway_friction int
+
+# Weather variables
+xjpc/XPNoaaWeather/weather/ready float
+xjpc/XPNoaaWeather/weather/visibility float
+
+xjpc/XPNoaaWeather/weather/gfs_nwinds int
+xjpc/XPNoaaWeather/weather/gfs_wind_alt[16] float
+xjpc/XPNoaaWeather/weather/gfs_wind_hdg[16] float
+xjpc/XPNoaaWeather/weather/gfs_wind_speed[16] float
+xjpc/XPNoaaWeather/weather/gfs_wind_temp[16] float
+
+xjpc/XPNoaaWeather/weather/cloud_base[3] float
+xjpc/XPNoaaWeather/weather/cloud_top[3] float
+xjpc/XPNoaaWeather/weather/cloud_cover[3] float
+
+xjpc/XPNoaaWeather/weather/wafs_nturb int
+xjpc/XPNoaaWeather/weather/turbulence_alt[16] float
+xjpc/XPNoaaWeather/weather/turbulence_sev[16] float
+
+# Metar variables
+xjpc/XPNoaaWeather/weather/metar_temperature float
+xjpc/XPNoaaWeather/weather/metar_dewpoint float
+xjpc/XPNoaaWeather/weather/metar_pressure float
+xjpc/XPNoaaWeather/weather/metar_visibility float
+xjpc/XPNoaaWeather/weather/metar_precipitation float
+xjpc/XPNoaaWeather/weather/metar_thunderstorm float
+xjpc/XPNoaaWeather/weather/metar_runwayFriction float
