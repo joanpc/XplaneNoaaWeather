@@ -9,6 +9,7 @@ class EasyDref:
     '''
 
     datarefs = []
+    plugin = False
 
     def __init__(self, dataref, type = "float", register = False, writable = False):
         # Clear dataref
@@ -54,19 +55,30 @@ class EasyDref:
 
         if dref: dataref = dref
 
+        self.dataref = dataref
+
         if register:
-            if writable:
-                self.setCB = self.set_f
+            self.setCB, self.getCB = False, False
+            self.rsetCB, self.rgetCB = False, False
+
+            if self.isarray:
+                if writable: self.rsetCB = self.set_cb
+                self.rgetCB = self.get_cb
             else:
-                self.setCB = False
-            self.getCB = self.get_f
+                if writable: self.setCB = self.set_cb
+                self.getCB = self.get_cb
 
-            self.DataRef = XPLMRegisterDataAccessor(self, dataref, self.dr_type,
-            writable, self.getCB, self.setCB, self.getCB, self.setCB, self.getCB, self.setCB
-            , self.getCB, self.setCB, self.getCB, self.setCB, self.getCB, self.setCB,
-            False, False)
+            self.DataRef = XPLMRegisterDataAccessor(self.plugin, dataref, self.dr_type,
+            writable,
+            self.getCB, self.setCB,
+            self.getCB, self.setCB,
+            self.getCB, self.setCB,
+            self.rgetCB, self.rsetCB,
+            self.rgetCB, self.rsetCB,
+            self.rgetCB, self.rsetCB,
+            0, 0)
 
-            self.__class__.datarefs.append(self.DataRef)
+            self.__class__.datarefs.append(self)
 
             # Init default value
             if self.isarray:
@@ -121,10 +133,20 @@ class EasyDref:
         else:
             return self.dr_get(self.DataRef)
 
+    # Local shortcuts
     def set_f(self, value):
+        print self.dataref
+        print value
         self.value_f = value
 
     def get_f(self):
+        return self.value_f
+
+    # Data access Callbacks
+    def set_cb(self, inRefcon, value):
+        self.value_f = value
+
+    def get_cb(self, inRefcon):
         return self.value_f
 
     def __getattr__(self, name):
@@ -142,7 +164,8 @@ class EasyDref:
     @classmethod
     def cleanup(cls):
         for dataref in cls.datarefs:
-            XPLMUnregisterDataAccessor(dataref)
+            XPLMUnregisterDataAccessor(cls.plugin, dataref.DataRef)
+            pass
 
 class EasyCommand:
     '''
