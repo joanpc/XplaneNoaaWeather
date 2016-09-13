@@ -67,9 +67,10 @@ class Weather:
     ref_winds = {}
     lat, lon, last_lat, last_lon = 99, 99, False, False
 
-    def __init__(self, conf):
+    def __init__(self, conf, data):
 
         self.conf = conf
+        self.data = data
         self.lastMetarStation = False
 
         '''
@@ -472,14 +473,30 @@ class Weather:
 
         nClouds = len(setClouds)
 
-        for i in range(3):
-            if nClouds > i:
-                base, top, cover = setClouds[i]
-                redraw += self.setDrefIfDiff(self.clouds[i]['bottom'], base, minRedraw[i] + self.alt/10)
-                redraw += self.setDrefIfDiff(self.clouds[i]['top'], top, minRedraw[i] + self.alt/10)
-                redraw += self.setDrefIfDiff(self.clouds[i]['coverage'], cover, 1)
-            else:
-                redraw += self.setDrefIfDiff(self.clouds[i]['coverage'], 0)
+        if not self.data.override_clouds:
+            for i in range(3):
+                if nClouds > i:
+                    base, top, cover = setClouds[i]
+                    redraw += self.setDrefIfDiff(self.clouds[i]['bottom'], base, minRedraw[i] + self.alt/10)
+                    redraw += self.setDrefIfDiff(self.clouds[i]['top'], top, minRedraw[i] + self.alt/10)
+                    redraw += self.setDrefIfDiff(self.clouds[i]['coverage'], cover, 1)
+                else:
+                    redraw += self.setDrefIfDiff(self.clouds[i]['coverage'], 0)
+
+        # Update datarefs
+        bases = []
+        tops = []
+        covers = []
+
+        for layer in setClouds:
+            base, top, cover = layer
+            bases.append(base)
+            tops.append(top)
+            covers.append(cover)
+
+        self.data.cloud_base.value = bases
+        self.data.cloud_top.value = tops
+        self.data.cloud_cover.value = cover
 
     def setPressure(self, pressure, elapsed):
         c.datarefTransition(self.pressure, pressure, elapsed, 0.005)
@@ -509,6 +526,9 @@ class Data:
         self.override_pressure = EasyDref('xjpc/XPNoaaWeather/config/override_pressure', 'int', register = True, writable = True)
 
         # Weather variables
+
+        self.ready = EasyDref('xjpc/XPNoaaWeather/weather/ready', 'float', register = True)
+
         self.visibility = EasyDref('xjpc/XPNoaaWeather/weather/visibility', 'float', register = True)
 
         self.nwinds = EasyDref('xjpc/XPNoaaWeather/weather/gfs_nwinds', 'int', register = True)
@@ -524,6 +544,45 @@ class Data:
         self.nturbulence =  EasyDref('xjpc/XPNoaaWeather/weather/wafs_nturb', 'int', register = True)
         self.turbulence_alt = EasyDref('xjpc/XPNoaaWeather/weather/turbulence_alt[16]', 'float', register = True)
         self.turbulence_sev = EasyDref('xjpc/XPNoaaWeather/weather/turbulence_sev[16]', 'float', register = True)
+
+    def updateData(self, wdata):
+        '''Publish raw dataref data'''
+
+        if not self.weather.weatherData:
+            self.ready.value = 0
+        else:
+            self.ready.value = 1
+            if 'metar' in wdata and 'icao' in wdata['metar']:
+                pass
+
+            if 'gfs' in wdata:
+                if 'winds' in wdata['gfs']:
+
+                    alts = []
+                    hdgs = []
+                    speeds = []
+                    temps = []
+
+                    for layer in wdata['gfs']['winds']:
+                        i += 1
+                        alt, hdg, speed, extra = layer
+                        alts.append(alt)
+                        hdgs.append(hdg)
+                        speeds.append(speed)
+                        temps.append(extra['temp'])
+
+                    self.wind_alt.value = alts
+                    self.wind_hdg.value = hdgs
+                    self.wind_speed = speeds
+                    self.wind_temp = temps
+
+            if 'wafs' in wdata:
+
+                turb_fl = []
+                turb_sev = []
+                for layer in wdata['wafs']:
+                    turb_fl.append(layer[0])
+                    turb_fl.append(layer[1])
 
 class PythonInterface:
     '''
@@ -541,7 +600,8 @@ class PythonInterface:
         self.londr  = EasyDref('sim/flightmodel/position/longitude', 'double')
         self.altdr  = EasyDref('sim/flightmodel/position/elevation', 'double')
 
-        self.weather = Weather(self.conf)
+        self.data = Data()
+        self.weather = Weather(self.conf, self.data)
 
         # floop
         self.floop = self.floopCallback
@@ -569,8 +629,6 @@ class PythonInterface:
         self.newAptLoaded = False
 
         self.aboutlines = 17
-
-        self.data = Data()
 
         return self.Name, self.Sig, self.Desc
 
@@ -1269,7 +1327,7 @@ class PythonInterface:
                 if not self.data.override_visibility.value:
                     self.weather.visibility.value = visibility
 
-                self.data.visibility = visibility
+                self.data.visibility.value = visibility
 
             if 'precipitation' in wdata['metar']:
                 p = wdata['metar']['precipitation']
@@ -1295,7 +1353,7 @@ class PythonInterface:
             self.weather.newData = False
 
             # Set clouds
-            if not self.data.override_clouds.value and self.conf.set_clouds:
+            if self.conf.set_clouds:
                 self.weather.setClouds()
 
         ''' Data enforced/interpolated/transitioned on each cycle '''
