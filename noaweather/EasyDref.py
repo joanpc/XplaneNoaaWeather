@@ -1,26 +1,26 @@
 from XPLMDataAccess import *
 from XPLMUtilities  import *
 
-class EasyDref:    
+class EasyDref:
     '''
     Easy Dataref access
-    
+
     Copyright (C) 2011  Joan Perez i Cauhe
     '''
-    def __init__(self, dataref, type = "float"):
+    def __init__(self, dataref, type = "float", register = False, writable = False):
         # Clear dataref
         dataref = dataref.strip()
         self.isarray, dref = False, False
-        
+
         if ('"' in dataref):
             dref = dataref.split('"')[1]
             dataref = dataref[dataref.rfind('"')+1:]
-        
+
         if ('(' in dataref):
             # Detect embedded type, and strip it from dataref
             type = dataref[dataref.find('(')+1:dataref.find(')')]
             dataref = dataref[:dataref.find('(')] + dataref[dataref.find(')')+1:]
-        
+
         if ('[' in dataref):
             # We have an array
             self.isarray = True
@@ -28,45 +28,62 @@ class EasyDref:
             dataref = dataref[:dataref.find('[')]
             if (len(range) < 2):
                 range.append(range[0])
-            
+
             self.initArrayDref(range[0], range[1], type)
-            
+
         elif (type == "int"):
             self.dr_get = XPLMGetDatai
             self.dr_set = XPLMSetDatai
+            self.dr_type = xplmType_Int
             self.cast = int
         elif (type == "float"):
             self.dr_get = XPLMGetDataf
             self.dr_set = XPLMSetDataf
-            self.cast = float  
+            self.dr_type = xplmType_Float
+            self.cast = float
         elif (type == "double"):
             self.dr_get = XPLMGetDatad
             self.dr_set = XPLMSetDatad
+            self.dr_type = xplmType_Double
             self.cast = float
         else:
             print "ERROR: invalid DataRef type", type
-        
+
         if dref: dataref = dref
-        self.DataRef = XPLMFindDataRef(dataref)
-        if self.DataRef == False:
-            print "Can't find " + dataref + " DataRef"
-    
+
+        if register:
+            self.setCB = self.set_f
+            self.getCB = self.get_f
+
+            self.DataRef = XPLMRegisterDataAccessor(self, dataref, self.dr_type,
+            writable, self.getCB, self.setCB, self.getCB, self.setCB, self.getCB, self.setCB
+            , self.getCB, self.setCB, self.getCB, self.setCB, self.getCB, self.setCB,
+            False, False)
+
+        else:
+            self.DataRef = XPLMFindDataRef(dataref)
+            if self.DataRef == False:
+                print "Can't find " + dataref + " DataRef"
+
     def initArrayDref(self, first, last, type):
         self.index = int(first)
         self.count = int(last) - int(first) +1
         self.last = int(last)
-        
+
         if (type == "int"):
             self.rget = XPLMGetDatavi
             self.rset = XPLMSetDatavi
+            self.dr_type = xplmType_IntArray
             self.cast = int
         elif (type == "float"):
             self.rget = XPLMGetDatavf
             self.rset = XPLMSetDatavf
-            self.cast = float  
+            self.dr_type = xplmType_FloatArray
+            self.cast = float
         elif (type == "bit"):
             self.rget = XPLMGetDatab
             self.rset = XPLMSetDatab
+            self.dr_type = xplmType_DataArray
             self.cast = float
         else:
             print "ERROR: invalid DataRef type", type
@@ -77,7 +94,7 @@ class EasyDref:
             self.rset(self.DataRef, value, self.index, len(value))
         else:
             self.dr_set(self.DataRef, self.cast(value))
-            
+
     def get(self):
         if (self.isarray):
             list = []
@@ -85,19 +102,23 @@ class EasyDref:
             return list
         else:
             return self.dr_get(self.DataRef)
-        
+
+    def set_f(self, value):
+        self.value = value
+    def get_f(self, value):
+        pass
     def __getattr__(self, name):
         if name == 'value':
             return self.get()
         else:
             raise AttributeError
-    
+
     def __setattr__(self, name, value):
         if name == 'value':
             self.set(value)
         else:
             self.__dict__[name] = value
-            
+
 class EasyCommand:
     '''
     Creates a command with an assigned callback with arguments
@@ -109,7 +130,7 @@ class EasyCommand:
         XPLMRegisterCommandHandler(plugin, self.command, self.commandCH, 1, 0)
 
         self.function = function
-        self.args = args        
+        self.args = args
         self.plugin = plugin
         # Command handlers
     def commandCHandler(self, inCommand, inPhase, inRefcon):
@@ -124,4 +145,3 @@ class EasyCommand:
         return 0
     def destroy(self):
         XPLMUnregisterCommandHandler(self.plugin, self.command, self.commandCH, 1, 0)
-            
