@@ -526,9 +526,10 @@ class Data:
         self.override_visibility = EasyDref('xjpc/XPNoaaWeather/config/override_visibility', 'int', register = True, writable = True)
         self.override_turbulence = EasyDref('xjpc/XPNoaaWeather/config/override_turbulence', 'int', register = True, writable = True)
         self.override_pressure = EasyDref('xjpc/XPNoaaWeather/config/override_pressure', 'int', register = True, writable = True)
+        self.override_precipitation = EasyDref('xjpc/XPNoaaWeather/config/override_precipitation', 'int', register = True, writable = True)
+        self.override_runway_friction = EasyDref('xjpc/XPNoaaWeather/config/override_runway_friction', 'int', register = True, writable = True)
 
         # Weather variables
-
         self.ready = EasyDref('xjpc/XPNoaaWeather/weather/ready', 'float', register = True)
         self.visibility = EasyDref('xjpc/XPNoaaWeather/weather/visibility', 'float', register = True)
 
@@ -546,6 +547,17 @@ class Data:
         self.turbulence_alt = EasyDref('xjpc/XPNoaaWeather/weather/turbulence_alt[16]', 'float', register = True)
         self.turbulence_sev = EasyDref('xjpc/XPNoaaWeather/weather/turbulence_sev[16]', 'float', register = True)
 
+        # Metar variables
+        self.metar_temperature = EasyDref('xjpc/XPNoaaWeather/weather/metar_temperature', 'float', register = True)
+        self.metar_dewpoint = EasyDref('xjpc/XPNoaaWeather/weather/metar_dewpoint', 'float', register = True)
+        self.metar_pressure = EasyDref('xjpc/XPNoaaWeather/weather/metar_pressure', 'float', register = True)
+        self.metar_visibility = EasyDref('xjpc/XPNoaaWeather/weather/metar_visibility', 'float', register = True)
+        self.metar_precipitation = EasyDref('xjpc/XPNoaaWeather/weather/metar_precipitation', 'float', register = True)
+        self.metar_thunderstorm = EasyDref('xjpc/XPNoaaWeather/weather/metar_thunderstorm', 'float', register = True)
+        self.metar_runwayFriction = EasyDref('xjpc/XPNoaaWeather/weather/metar_runwayFriction', 'float', register = True)
+
+
+
     def updateData(self, wdata):
         '''Publish raw dataref data'''
 
@@ -554,7 +566,11 @@ class Data:
         else:
             self.ready.value = 1
             if 'metar' in wdata and 'icao' in wdata['metar']:
-                pass
+
+                self.metar_temperature.value = wdata['metar']['temperature'][0]
+                self.metar_dewpoint.value = wdata['metar']['temperature'][1]
+                self.metar_pressure.value = wdata['metar']['pressure']
+                self.metar_visibility.value = wdata['metar']['visibility']
 
             if 'gfs' in wdata:
                 if 'winds' in wdata['gfs']:
@@ -1351,10 +1367,18 @@ class PythonInterface:
                     elif p['TS']['int'] == '+':
                         ts = 1
 
-            self.weather.thunderstorm.value = ts
-            self.weather.precipitation.value = rain
+            if not self.data.override_precipitation:
+                self.weather.thunderstorm.value = ts
+                self.weather.precipitation.value = rain
 
-            self.weather.runwayFriction.value = friction
+            self.data.metar_precipitation.value = rain
+            self.data.metar_thunderstorm.value  = ts
+
+            if not self.data.override_runway_friction:
+                self.weather.runwayFriction.value = friction
+
+            self.data.metar_runwayFriction.value = friction
+
             self.weather.newData = False
 
             # Set clouds
