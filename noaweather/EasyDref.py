@@ -135,8 +135,6 @@ class EasyDref:
 
     # Local shortcuts
     def set_f(self, value):
-        print self.dataref
-        print value
         self.value_f = value
 
     def get_f(self):
