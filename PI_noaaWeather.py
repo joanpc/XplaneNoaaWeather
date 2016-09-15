@@ -520,6 +520,8 @@ class Data:
     def __init__(self, plugin):
 
         EasyDref.plugin = plugin
+        self.registered = False
+        self.registerTries = 0
 
         # Overrides
         self.override_clouds = EasyDref('xjpc/XPNoaaWeather/config/override_clouds', 'int', register = True, writable = True);
@@ -557,10 +559,16 @@ class Data:
         self.metar_thunderstorm = EasyDref('xjpc/XPNoaaWeather/weather/metar_thunderstorm', 'int', register = True)
         self.metar_runwayFriction = EasyDref('xjpc/XPNoaaWeather/weather/metar_runwayFriction', 'float', register = True)
 
-
-
     def updateData(self, wdata):
-        '''Publish raw dataref data'''
+        '''Publish raw dataref data
+        some data is published elsewhere
+        '''
+
+        if not self.registered:
+            self.registered = EasyDref.DataRefEditorRegister()
+            self.registerTries += 1
+            if self.registerTries > 20:
+                self.registered = True
 
         if not wdata:
             self.ready.value = 0
