@@ -48,6 +48,7 @@ from XPWidgetDefs import *
 from XPWidgets import *
 from XPStandardWidgets import *
 
+import ctypes
 import cPickle
 import socket
 import threading
@@ -552,8 +553,8 @@ class Data:
         self.metar_dewpoint = EasyDref('xjpc/XPNoaaWeather/weather/metar_dewpoint', 'float', register = True)
         self.metar_pressure = EasyDref('xjpc/XPNoaaWeather/weather/metar_pressure', 'float', register = True)
         self.metar_visibility = EasyDref('xjpc/XPNoaaWeather/weather/metar_visibility', 'float', register = True)
-        self.metar_precipitation = EasyDref('xjpc/XPNoaaWeather/weather/metar_precipitation', 'float', register = True)
-        self.metar_thunderstorm = EasyDref('xjpc/XPNoaaWeather/weather/metar_thunderstorm', 'float', register = True)
+        self.metar_precipitation = EasyDref('xjpc/XPNoaaWeather/weather/metar_precipitation', 'int', register = True)
+        self.metar_thunderstorm = EasyDref('xjpc/XPNoaaWeather/weather/metar_thunderstorm', 'int', register = True)
         self.metar_runwayFriction = EasyDref('xjpc/XPNoaaWeather/weather/metar_runwayFriction', 'float', register = True)
 
 
@@ -1115,8 +1116,9 @@ class PythonInterface:
         XPSetWidgetProperty(self.metarQueryOutput, xpProperty_TextFieldType, xpTextTranslucent)
 
         # Register our widget handler
-        self.metarQueryInputHandlerCB = self.metarQueryInputHandler
-        XPAddWidgetCallback(self, self.metarQueryInput, self.metarQueryInputHandlerCB)
+        if not self.conf.inputbug:
+            self.metarQueryInputHandlerCB = self.metarQueryInputHandler
+            XPAddWidgetCallback(self, self.metarQueryInput, self.metarQueryInputHandlerCB)
 
         # Register our widget handler
         self.metarWindowHandlerCB = self.metarWindowHandler
@@ -1128,7 +1130,13 @@ class PythonInterface:
     def metarQueryInputHandler(self, inMessage, inWidget, inParam1, inParam2):
         ''' Override texfield keyboard input to be more friendly'''
         if inMessage == xpMsg_KeyPress:
-            key, flags, vkey = PI_GetKeyState(inParam1)
+            try:
+                key, flags, vkey = PI_GetKeyState(inParam1)
+            except:
+                # nasty bug, disable inputHandler on config
+                self.conf.inputbug = True
+                return 0
+
             if flags == 8:
                 buff = []
                 cursor = XPGetWidgetProperty(self.metarQueryInput, xpProperty_EditFieldSelStart, None)
@@ -1139,6 +1147,7 @@ class PythonInterface:
                     XPSetWidgetDescriptor(self.metarQueryInput, text[:-1])
                     cursor -= 1
                 elif key == 13:
+                    #Enter
                     self.metarQuery()
                 elif key == 27:
                     #ESC

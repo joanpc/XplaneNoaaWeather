@@ -97,6 +97,8 @@ class Conf:
         self.set_pressure   = True
         self.turbulence_probability = 1
 
+        self.inputbug       = False
+
         # From this AGL level METAR values are interpolated to GFS ones.
         self.metar_agl_limit = 10 # In meters
         # From this distance from the airport gfs data is used for temp, dew, pressure and clouds
@@ -173,6 +175,7 @@ class Conf:
                 'max_visibility': self.max_visibility,
                 'max_cloud_height': self.max_cloud_height,
                 'turbulence_probability': self.turbulence_probability,
+                'inputbug': self.inputbug,
                 }
         self.saveSettings(self.settingsfile, conf)
 
