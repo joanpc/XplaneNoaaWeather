@@ -1,8 +1,8 @@
 # Overrides
 xjpc/XPNoaaWeather/config/override_clouds int
 xjpc/XPNoaaWeather/config/override_winds int
-EasyDref(xjpc/XPNoaaWeather/config/override_visibility int
-EasyDref(xjpc/XPNoaaWeather/config/override_turbulence int
+xjpc/XPNoaaWeather/config/override_visibility int
+xjpc/XPNoaaWeather/config/override_turbulence int
 xjpc/XPNoaaWeather/config/override_pressure int
 xjpc/XPNoaaWeather/config/override_precipitation int
 xjpc/XPNoaaWeather/config/override_runway_friction int
@@ -30,6 +30,6 @@ xjpc/XPNoaaWeather/weather/metar_temperature float
 xjpc/XPNoaaWeather/weather/metar_dewpoint float
 xjpc/XPNoaaWeather/weather/metar_pressure float
 xjpc/XPNoaaWeather/weather/metar_visibility float
-xjpc/XPNoaaWeather/weather/metar_precipitation float
-xjpc/XPNoaaWeather/weather/metar_thunderstorm float
+xjpc/XPNoaaWeather/weather/metar_precipitation int
+xjpc/XPNoaaWeather/weather/metar_thunderstorm int
 xjpc/XPNoaaWeather/weather/metar_runwayFriction float
