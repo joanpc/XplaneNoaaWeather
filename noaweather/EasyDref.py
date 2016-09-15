@@ -1,5 +1,7 @@
 from XPLMDataAccess import *
 from XPLMUtilities  import *
+from XPLMPlugin     import *
+from XPLMDefs       import *
 
 class EasyDref:
     '''
@@ -15,6 +17,7 @@ class EasyDref:
         # Clear dataref
         dataref = dataref.strip()
         self.isarray, dref = False, False
+        self.register = register
 
         if ('"' in dataref):
             dref = dataref.split('"')[1]
@@ -63,10 +66,10 @@ class EasyDref:
 
             if self.isarray:
                 if writable: self.rsetCB = self.set_cb
-                self.rgetCB = self.get_cb
+                self.rgetCB = self.rget_cb
             else:
                 if writable: self.setCB = self.set_cb
-                self.getCB = self.get_cb
+                self.getCB = self.rget_cb
 
             self.DataRef = XPLMRegisterDataAccessor(self.plugin, dataref, self.dr_type,
             writable,
@@ -80,15 +83,16 @@ class EasyDref:
 
             self.__class__.datarefs.append(self)
 
-            # Init default value
-            if self.isarray:
-                self.value_f = [0] * self.count
-            else:
-                self.value_f = 0
-
             # Local shortcut
             self.set = self.set_f
             self.get = self.get_f
+
+            # Init default value
+            if self.isarray:
+                self.value_f = [self.cast(0)] * self.index
+                self.set = self.rset_f
+            else:
+                self.value_f = self.cast(0)
 
         else:
             self.DataRef = XPLMFindDataRef(dataref)
@@ -96,9 +100,13 @@ class EasyDref:
                 print "Can't find " + dataref + " DataRef"
 
     def initArrayDref(self, first, last, type):
-        self.index = int(first)
-        self.count = int(last) - int(first) +1
-        self.last = int(last)
+        if self.register:
+            self.index = 0
+            self.count = int(first)
+        else:
+            self.index = int(first)
+            self.count = int(last) - int(first) +1
+            self.last = int(last)
 
         if (type == "int"):
             self.rget = XPLMGetDatavi
@@ -120,12 +128,21 @@ class EasyDref:
         pass
 
     def set(self, value):
-        if (self.isarray):
+        if self.isarray:
             self.rset(self.DataRef, value, self.index, len(value))
         else:
             self.dr_set(self.DataRef, self.cast(value))
 
     def get(self):
+        if (self.isarray):
+            list = []
+            self.rget(self.DataRef, list, self.index, self.count)
+            return list
+        else:
+            return self.dr_get(self.DataRef)
+
+
+    def get2(self):
         if (self.isarray):
             list = []
             self.rget(self.DataRef, list, self.index, self.count)
@@ -140,12 +157,41 @@ class EasyDref:
     def get_f(self):
         return self.value_f
 
-    # Data access Callbacks
+    def rset_f(self, value):
+
+        vlen = len(value)
+        if vlen < self.count:
+            self.value_f = [self.cast(0)] * self.count
+            self.value_f = value + self.value[vlen:]
+        else:
+            self.value_f = value
+
+    # Data access SDK Callbacks
     def set_cb(self, inRefcon, value):
         self.value_f = value
 
     def get_cb(self, inRefcon):
         return self.value_f
+
+    def rget_cb(self, inRefcon, values, index, limit):
+        print (values, index, limit)
+        if values == None:
+            return self.count
+        else:
+            i = 0
+            for item in self.value_f:
+                if i < limit:
+                    values.append(item)
+                    i += 1
+                else:
+                    break
+            return i
+
+    def rset_cb(self, inRefcon, values, index, count):
+        if self.count >= index+count:
+            self.value_f = self.value_f[:index] + values + self.value_f[index+count:]
+        else:
+            return False
 
     def __getattr__(self, name):
         if name == 'value':
@@ -164,6 +210,20 @@ class EasyDref:
         for dataref in cls.datarefs:
             XPLMUnregisterDataAccessor(cls.plugin, dataref.DataRef)
             pass
+
+    @classmethod
+    def DataRefEditorRegister(cls):
+        MSG_ADD_DATAREF = 0x01000000
+        PluginID = XPLMFindPluginBySignature("xplanesdk.examples.DataRefEditor")
+
+        drefs = 0
+        if PluginID != XPLM_NO_PLUGIN_ID:
+            for dataref in cls.datarefs:
+                print dataref.dataref
+                XPLMSendMessageToPlugin(PluginID, MSG_ADD_DATAREF, dataref.dataref)
+                drefs += 1
+
+        return drefs
 
 class EasyCommand:
     '''
