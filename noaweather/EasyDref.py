@@ -69,7 +69,7 @@ class EasyDref:
                 self.rgetCB = self.rget_cb
             else:
                 if writable: self.setCB = self.set_cb
-                self.getCB = self.rget_cb
+                self.getCB = self.get_cb
 
             self.DataRef = XPLMRegisterDataAccessor(self.plugin, dataref, self.dr_type,
             writable,
