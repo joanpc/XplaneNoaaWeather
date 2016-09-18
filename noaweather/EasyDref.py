@@ -174,7 +174,6 @@ class EasyDref:
         return self.value_f
 
     def rget_cb(self, inRefcon, values, index, limit):
-        print (values, index, limit)
         if values == None:
             return self.count
         else:
@@ -219,7 +218,6 @@ class EasyDref:
         drefs = 0
         if PluginID != XPLM_NO_PLUGIN_ID:
             for dataref in cls.datarefs:
-                print dataref.dataref
                 XPLMSendMessageToPlugin(PluginID, MSG_ADD_DATAREF, dataref.dataref)
                 drefs += 1
 
