@@ -474,7 +474,7 @@ class Weather:
 
         nClouds = len(setClouds)
 
-        if not self.data.override_clouds:
+        if not self.data.override_clouds.value:
             for i in range(3):
                 if nClouds > i:
                     base, top, cover = setClouds[i]
@@ -1387,14 +1387,14 @@ class PythonInterface:
                     elif p['TS']['int'] == '+':
                         ts = 1
 
-            if not self.data.override_precipitation:
+            if not self.data.override_precipitation.value:
                 self.weather.thunderstorm.value = ts
                 self.weather.precipitation.value = rain
 
             self.data.metar_precipitation.value = rain
             self.data.metar_thunderstorm.value  = ts
 
-            if not self.data.override_runway_friction:
+            if not self.data.override_runway_friction.value:
                 self.weather.runwayFriction.value = friction
 
             self.data.metar_runwayFriction.value = friction
