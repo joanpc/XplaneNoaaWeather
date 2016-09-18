@@ -141,21 +141,12 @@ class EasyDref:
         else:
             return self.dr_get(self.DataRef)
 
-
-    def get2(self):
-        if (self.isarray):
-            list = []
-            self.rget(self.DataRef, list, self.index, self.count)
-            return list
-        else:
-            return self.dr_get(self.DataRef)
-
     # Local shortcuts
     def set_f(self, value):
         self.value_f = value
 
     def get_f(self):
-        return self.value_f
+        return self.cast(self.value_f)
 
     def rset_f(self, value):
 
@@ -171,7 +162,7 @@ class EasyDref:
         self.value_f = value
 
     def get_cb(self, inRefcon):
-        return self.value_f
+        return self.cast(self.value_f)
 
     def rget_cb(self, inRefcon, values, index, limit):
         if values == None:
@@ -180,7 +171,7 @@ class EasyDref:
             i = 0
             for item in self.value_f:
                 if i < limit:
-                    values.append(item)
+                    values.append(self.cast(item))
                     i += 1
                 else:
                     break
