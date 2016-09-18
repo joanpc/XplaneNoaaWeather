@@ -35,7 +35,7 @@ class Metar:
     RE_TEMPERATURE2 = re.compile(r'\bT(0|1)([0-9]{3})(0|1)([0-9]{3})\b')
     RE_PRECIPITATION = re.compile('(-|\+)?(RE)?(DZ|SG|IC|PL|SH)?(DZ|RA|SN|TS)(NO|E)?')
 
-    METAR_STATIONS_URL = 'hhttp://www.aviationweather.gov/docs/metar/stations.txt'
+    METAR_STATIONS_URL = 'http://www.aviationweather.gov/docs/metar/stations.txt'
     VATSIM_METAR_STATIONS_URL = 'http://metar.vatsim.net/metar.php?id=all'
     IVAO_METAR_STATIONS_URL = 'http://wx.ivao.aero/metar.php'
     METAR_REPORT_URL = 'http://tgftp.nws.noaa.gov/data/observations/metar/cycles/%sZ.TXT'
