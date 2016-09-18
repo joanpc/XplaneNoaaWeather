@@ -146,7 +146,13 @@ class EasyDref:
         self.value_f = value
 
     def get_f(self):
-        return self.cast(self.value_f)
+        if self.isarray:
+            vals = []
+            for item in self.value_f:
+                vals.append(self.cast(item))
+            return vals
+        else:
+            return self.value_f
 
     def rset_f(self, value):
 
