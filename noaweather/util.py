@@ -13,7 +13,7 @@ import shutil
 import sys
 
 class util:
-    
+
     @classmethod
     def remove(cls, filepath):
         '''Try to remove a file. if fails trys to rename-it
@@ -36,15 +36,23 @@ class util:
                             ctypes.windll.kernel32.MoveFileExA(filepath, None, 4)
                     break
                 i += 1
-    
+
     @classmethod
     def rename(cls, opath, dpath):
         if os.path.exists(dpath):
             cls.remove(dpath)
-        os.rename(opath, dpath)
-    
+        try:
+            os.rename(opath, dpath)
+        except:
+            print "Can't rename: %s to %s, trying to copy/remove" % (opath, dpath)
+            cls.copy(opath, dpath)
+            cls.remove(opath)
+
     @classmethod
     def copy(cls, opath, dpath):
         if os.path.exists(dpath):
             cls.remove(dpath)
-        shutil.copyfile(opath, dpath)
+        try:
+            shutil.copyfile(opath, dpath)
+        except:
+            print "Can't copy %s to %s" % (opath, dpath)
