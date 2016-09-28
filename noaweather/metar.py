@@ -117,7 +117,7 @@ class Metar:
                 if line[20] != ' ' and line[51] != '9':
                     cursor.execute('INSERT OR REPLACE INTO airports (icao, lat, lon, elevation, timestamp) VALUES (?,?,?,?,0)',
                                    (icao.strip('"'), lat, lon, elevation))
-                n += 1
+                    n += 1
 
         f.close()
         db.commit()
