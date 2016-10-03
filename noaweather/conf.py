@@ -20,7 +20,7 @@ class Conf:
     syspath, dirsep = '', os.sep
     printableChars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ '
 
-    __VERSION__ = '2.3.0'
+    __VERSION__ = '2.3.1'
 
     def __init__(self, syspath):
         # Inits conf
@@ -156,6 +156,11 @@ class Conf:
             for var in conf:
                 if var in self.__dict__:
                     self.__dict__[var] = conf[var]
+
+            if 'version' in conf:
+                if conf['version'] < '2.3.1':
+                    # Enforce metar station update
+                    self.ms_update = 0
 
     def pluginSave(self):
         '''Save plugin settings'''
