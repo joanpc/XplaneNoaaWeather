@@ -452,7 +452,7 @@ class c:
         else:
             x1, x2, startime, endtime, time = min_val, 0, 0, 0, 0
 
-        if heading and (max_val - min_val) >= 360:
+        if heading:
             ret =  self.cosineInterpolateHeading(x1, x2, startime, endtime, time)
         else:
             ret =  self.cosineInterpolate(x1, x2, startime, endtime, time)
