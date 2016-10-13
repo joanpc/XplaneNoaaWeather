@@ -36,11 +36,12 @@ class Metar:
     RE_PRECIPITATION = re.compile('(-|\+)?(RE)?(DZ|SG|IC|PL|SH)?(DZ|RA|SN|TS)(NO|E)?')
 
     METAR_STATIONS_URL = 'http://www.aviationweather.gov/docs/metar/stations.txt'
-    VATSIM_METAR_STATIONS_URL = 'http://metar.vatsim.net/metar.php?id=all'
-    IVAO_METAR_STATIONS_URL = 'http://wx.ivao.aero/metar.php'
-    METAR_REPORT_URL = 'http://tgftp.nws.noaa.gov/data/observations/metar/cycles/%sZ.TXT'
+    NOAA_FTP_METAR_URL = 'http://tgftp.nws.noaa.gov/data/observations/metar/cycles/%sZ.TXT'
+    NOAA_ADDS_METAR_URL = 'https://www.aviationweather.gov/adds/dataserver_current/httpparam?dataSource=metars&requestType=retrieve&fields=raw_text&format=csv&hoursBeforeNow=%.2f&mostRecentForEachStation=constraint'
+    VATSIM_METAR_URL = 'http://metar.vatsim.net/metar.php?id=all'
+    IVAO_METAR_URL = 'http://wx.ivao.aero/metar.php'
 
-    UPDATE_RATE = 10 # Redownload metar data every # minutes
+    UPDATE_RATE = 5 # Redownload metar data every # minutes
 
     STATION_UPDATE_RATE = 30 # In days
 
@@ -67,8 +68,8 @@ class Metar:
         # Refresh rate
         self.updateRate = self.UPDATE_RATE
 
-        # Flag to trigger a complete download from NOAA cycles
-        self.firstrun = True
+        # NOAA Update counters
+        self.nupdates = 0
 
         # Main db connection, create db if doens't exist
         createdb = True
@@ -134,9 +135,10 @@ class Metar:
         INSBUF = 128
 
         for line in f.readlines():
-            if line[0].isalpha():
+            if line[0].isalpha() and len(line) > 11 and line[11] == 'Z':
                 i += 1
                 icao, mtime, metar = line[0:4], line[5:11] , re.sub(r'[^\x00-\x7F]+',' ', line[5:-1])
+                metar = metar.split(',')[0]
 
                 if mtime[-1] == 'Z':
                     mtime = '0' + mtime[:-1]
@@ -153,7 +155,6 @@ class Metar:
                 timestamp = 0
 
                 if (i % INSBUF) == 0:
-                    sys.stdout.flush()
                     cursor.executemany('UPDATE airports SET timestamp = ?, metar = ? WHERE icao = ? AND timestamp < ?', inserts)
                     inserts = []
             elif len(line) > 15:
@@ -162,7 +163,6 @@ class Metar:
                     timestamp = int(strtime)
 
         if len(inserts):
-            updated += len(inserts)
             cursor.executemany('UPDATE airports SET timestamp = ?, metar = ? WHERE icao = ? AND timestamp < ?', inserts)
         db.commit()
 
@@ -211,15 +211,14 @@ class Metar:
     def getCycle(self):
         now = datetime.utcnow()
         # Cycle is updated until the houre has arrived (ex: 01 cycle updates until 1am)
-        if self.firstrun:
-            # Cold start
+
+        if self.nupdates == 1:
+            # Cold start download an hour ahead
             cnow = now - timedelta(hours=1, minutes=5)
-            self.firstrun = False
-            timestamp = int(time.time()) - self.UPDATE_RATE * 60 + 20
         else:
             cnow = now + timedelta(hours=0, minutes=5)
-            timestamp = int(time.time())
-        # Get last cycle
+
+        timestamp = int(time.time())
         return ('%02d' % cnow.hour, timestamp)
 
     def parseMetar(self, icao, metar, airport_msl = 0):
@@ -377,7 +376,7 @@ class Metar:
                     print 'Updating metar reports.'
                     nrep = self.updateMetar(self.th_db, os.sep.join([self.conf.cachepath, metarfile]))
                     self.reparse = True
-                    print '%d metar reports updated.' % (nrep)
+                    print '%d metar reports readed.' % (nrep)
                 else:
                     # No file downloaded
                     pass
@@ -385,9 +384,10 @@ class Metar:
         elif self.conf.download:
             # Download new data if required
             cycle, timestamp = self.getCycle()
-            if (timestamp - self.last_timestamp) > self.UPDATE_RATE * 60:
+            if (self.nupdates < 3 and self.conf.metar_source == 'NOAA') or (timestamp - self.last_timestamp) > self.UPDATE_RATE * 60:
                 self.last_timestamp = timestamp
                 self.downloadCycle(cycle, timestamp)
+                self.nupdates += 1
 
         # Update stations table if required
         if self.ms_download and not self.ms_download.q.empty():
@@ -403,16 +403,25 @@ class Metar:
         if not os.path.exists(cachepath):
             os.makedirs(cachepath)
 
-        if self.conf.metar_source == 'NOAA':
-            url = self.METAR_REPORT_URL % (cycle)
-            cachefile = os.sep.join(['metar', 'NOAA_%d_%sZ.txt' % (timestamp, cycle)])
-        elif self.conf.metar_source == 'VATSIM':
-            url = self.VATSIM_METAR_STATIONS_URL
-            cachefile = os.sep.join(['metar', 'VATSIM_%d_%sZ.txt' % (timestamp, cycle)])
-        elif self.conf.metar_source == 'IVAO':
-            url = self.IVAO_METAR_STATIONS_URL
-            cachefile = os.sep.join(['metar', 'IVAO_%d_%sZ.txt' % (timestamp, cycle)])
+        prefix = self.conf.metar_source
 
+        if self.conf.metar_source == 'NOAA':
+            if self.nupdates < 2:
+                url = self.NOAA_FTP_METAR_URL % (cycle)
+                prefix += '_FTP'
+            else:
+                last = 0.15
+                if self.nupdates < 3: last = 0.3
+                url = self.NOAA_ADDS_METAR_URL % (last)
+                prefix += '_ADDS'
+
+        elif self.conf.metar_source == 'VATSIM':
+            url = self.VATSIM_METAR_URL
+
+        elif self.conf.metar_source == 'IVAO':
+            url = self.IVAO_METAR_URL
+
+        cachefile = os.sep.join(['metar', '%s_%d_%sZ.txt' % (prefix, timestamp, cycle)])
         self.download = AsyncDownload(self.conf, url, cachefile)
 
     def die(self):
