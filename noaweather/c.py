@@ -108,12 +108,12 @@ class c:
             return t2 % 360
 
     @classmethod
-    def expoCosineInterpolateHeading(self, hdg1, hdg2, alt1, alt2, alt):
+    def expoCosineInterpolateHeading(self, hdg1, hdg2, alt1, alt2, alt, expo = 3):
 
         if alt1 == alt2: return hdg1
 
         t2 = self.shortHdg(hdg1, hdg2)
-        t2 = self.expoCosineInterpolate(0, t2, alt1, alt2, alt)
+        t2 = self.expoCosineInterpolate(0, t2, alt1, alt2, alt, expo)
         t2 += hdg1
 
         if t2 < 0:

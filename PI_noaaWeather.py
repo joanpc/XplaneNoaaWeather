@@ -350,13 +350,17 @@ class Weather:
         layer = [0, 0, 0, {}]
 
         layer[0] = current_altitude
+
+        # weight heading interpolation using wind speed
+        expo = 2 * wlayer1[2] / (wlayer1[2] + wlayer2[2])
+
         if nlayer:
-            layer[1] = c.interpolateHeading(wlayer1[1], wlayer2[1], wlayer1[0], wlayer2[0], current_altitude)
+            layer[1] = c.expoCosineInterpolateHeading(wlayer1[1], wlayer2[1], wlayer1[0], wlayer2[0], current_altitude, expo)
             layer[2] = c.interpolate(wlayer1[2], wlayer2[2], wlayer1[0], wlayer2[0], current_altitude)
         else:
             # First layer
-            layer[1] = c.expoCosineInterpolateHeading(wlayer1[1], wlayer2[1], wlayer1[0], wlayer2[0], current_altitude)
-            layer[2] = c.expoCosineInterpolate(wlayer1[2], wlayer2[2], wlayer1[0], wlayer2[0], current_altitude)
+            layer[1] = c.expoCosineInterpolateHeading(wlayer1[1], wlayer2[1], wlayer1[0], wlayer2[0], current_altitude, expo)
+            layer[2] = c.expoCosineInterpolate(wlayer1[2], wlayer2[2], wlayer1[0], wlayer2[0], current_altitude, expo)
 
 
         if not 'variation' in wlayer1[3]:
