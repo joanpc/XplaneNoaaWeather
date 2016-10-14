@@ -131,6 +131,7 @@ class Conf:
         self.windHdgTransSpeed = 0.5# degrees/s
 
         self.metar_source = 'NOAA'
+        self.metar_updaterate = 5 # minutes
 
     def saveSettings(self, filepath, settings):
         f = open(filepath, 'w')
@@ -181,11 +182,17 @@ class Conf:
                 'max_cloud_height': self.max_cloud_height,
                 'turbulence_probability': self.turbulence_probability,
                 'inputbug': self.inputbug,
+                'metar_updaterate': self.metar_updaterate,
                 }
         self.saveSettings(self.settingsfile, conf)
 
     def pluginLoad(self):
         self.loadSettings(self.settingsfile)
+
+        if self.metar_source == 'NOAA':
+            self.metar_updaterate = 1
+        else:
+            self.metar_updaterate = 10
 
     def serverSave(self):
         '''Save weather server settings'''

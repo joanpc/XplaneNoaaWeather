@@ -41,8 +41,6 @@ class Metar:
     VATSIM_METAR_URL = 'http://metar.vatsim.net/metar.php?id=all'
     IVAO_METAR_URL = 'http://wx.ivao.aero/metar.php'
 
-    UPDATE_RATE = 5 # Redownload metar data every # minutes
-
     STATION_UPDATE_RATE = 30 # In days
 
     def __init__(self, conf):
@@ -64,9 +62,6 @@ class Metar:
         # Download flags
         self.ms_download = False
         self.downloading = False
-
-        # Refresh rate
-        self.updateRate = self.UPDATE_RATE
 
         # NOAA Update counters
         self.nupdates = 0
@@ -127,7 +122,8 @@ class Metar:
     def updateMetar(self, db, path):
         ''' Updates metar table from Metar file'''
         f = open(path, 'r')
-        updated = 0
+        nupdated = 0
+        nparsed = 0
         timestamp = 0
         cursor = db.cursor()
         i = 0
@@ -151,12 +147,13 @@ class Metar:
                     timestamp = int(datetime.utcnow().strftime('%Y%m') + mtime)
 
                 inserts.append((timestamp, metar, icao, timestamp))
-                updated += 1
+                nparsed += 1
                 timestamp = 0
 
                 if (i % INSBUF) == 0:
                     cursor.executemany('UPDATE airports SET timestamp = ?, metar = ? WHERE icao = ? AND timestamp < ?', inserts)
                     inserts = []
+                    nupdated += cursor.rowcount
             elif len(line) > 15:
                 strtime = line[0:4] + line[5:7] + line[8:10] + line[11:13] + line[14:16]
                 if strtime.isdigit():
@@ -164,6 +161,7 @@ class Metar:
 
         if len(inserts):
             cursor.executemany('UPDATE airports SET timestamp = ?, metar = ? WHERE icao = ? AND timestamp < ?', inserts)
+            nupdated += cursor.rowcount
         db.commit()
 
         f.close()
@@ -175,7 +173,8 @@ class Metar:
         if not self.conf.keepOldFiles:
             util.remove(path)
 
-        return updated
+
+        return nupdated, nparsed
 
     def clearMetarReports(self, db):
         '''Clears all metar reports from the db'''
@@ -373,10 +372,10 @@ class Metar:
                 metarfile = self.download.q.get()
 
                 if metarfile:
-                    print 'Updating metar reports.'
-                    nrep = self.updateMetar(self.th_db, os.sep.join([self.conf.cachepath, metarfile]))
+                    print 'Parsing METAR download.'
+                    updated, parsed = self.updateMetar(self.th_db, os.sep.join([self.conf.cachepath, metarfile]))
                     self.reparse = True
-                    print '%d metar reports readed.' % (nrep)
+                    print "METAR updated/parsed: %d/%d" % (updated, parsed)
                 else:
                     # No file downloaded
                     pass
@@ -384,7 +383,7 @@ class Metar:
         elif self.conf.download:
             # Download new data if required
             cycle, timestamp = self.getCycle()
-            if (self.nupdates < 3 and self.conf.metar_source == 'NOAA') or (timestamp - self.last_timestamp) > self.UPDATE_RATE * 60:
+            if (self.nupdates < 3 and self.conf.metar_source == 'NOAA') or (timestamp - self.last_timestamp) > self.conf.metar_updaterate * 60:
                 self.last_timestamp = timestamp
                 self.downloadCycle(cycle, timestamp)
                 self.nupdates += 1
@@ -410,7 +409,7 @@ class Metar:
                 url = self.NOAA_FTP_METAR_URL % (cycle)
                 prefix += '_FTP'
             else:
-                last = 0.15
+                last = 0.05 # 3min
                 if self.nupdates < 3: last = 0.3
                 url = self.NOAA_ADDS_METAR_URL % (last)
                 prefix += '_ADDS'
