@@ -136,6 +136,8 @@ class Conf:
         self.tracker_uid = False
         self.tracker_enabled = True
 
+        self.ignore_metar_stations = ['LEBL', 'LEPA']
+
     def saveSettings(self, filepath, settings):
         f = open(filepath, 'w')
         cPickle.dump(settings, f)
@@ -187,7 +189,8 @@ class Conf:
                 'inputbug': self.inputbug,
                 'metar_updaterate': self.metar_updaterate,
                 'tracker_uid': self.tracker_uid,
-                'tracker_enabled': self.tracker_enabled
+                'tracker_enabled': self.tracker_enabled,
+                'ignore_metar_stations': self.ignore_metar_stations
                 }
         self.saveSettings(self.settingsfile, conf)
 

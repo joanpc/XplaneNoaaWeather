@@ -188,10 +188,23 @@ class Metar:
 
         cursor = db.cursor()
         fudge = math.pow(math.cos(math.radians(lat)),2)
-        res = cursor.execute('''SELECT * FROM airports
-                                WHERE metar NOT NULL
-                                ORDER BY ((? - lat) * (? - lat) + (? - lon) * (? - lon) * ?)
-                                LIMIT ?''', (lat, lat, lon, lon, fudge, limit))
+
+        if self.conf.ignore_metar_stations:
+
+            q = '''SELECT * FROM airports
+                                    WHERE metar NOT NULL AND icao NOT in (%s)
+                                    ORDER BY ((? - lat) * (? - lat) + (? - lon) * (? - lon) * ?)
+                                    LIMIT ?''' % (','.join(['?'] * len(self.conf.ignore_metar_stations)))
+
+            res = cursor.execute(q , tuple(self.conf.ignore_metar_stations) + (lat, lat, lon, lon, fudge, limit))
+
+
+        else:
+            res = cursor.execute('''SELECT * FROM airports
+                                    WHERE metar NOT NULL
+                                    ORDER BY ((? - lat) * (? - lat) + (? - lon) * (? - lon) * ?)
+                                    LIMIT ?''', (lat, lat, lon, lon, fudge, limit))
+
         ret = res.fetchall()
         if limit == 1 and len(ret) > 0:
             return ret[0]
@@ -202,6 +215,7 @@ class Metar:
         cursor = db.cursor()
         res = cursor.execute('''SELECT * FROM airports
                                 WHERE icao = ? AND metar NOT NULL LIMIT 1''', (icao.upper(), ))
+
         ret = res.fetchall()
         if len(ret) > 0:
             return ret[0]

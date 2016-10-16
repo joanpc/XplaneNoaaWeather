@@ -844,6 +844,11 @@ class PythonInterface:
         XPSetWidgetProperty(self.downloadCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
         XPSetWidgetProperty(self.downloadCheck, xpProperty_ButtonState, self.conf.download)
 
+        XPCreateWidget(x+160, y, x+260, y-20, 1, 'Ignore Stations:', 0, window, xpWidgetClass_Caption)
+        self.stationIgnoreInput = XPCreateWidget(x+260, y, x+540, y-20, 1, ' '.join(self.conf.ignore_metar_stations) , 0, window, xpWidgetClass_TextField)
+        XPSetWidgetProperty(self.maxVisInput, xpProperty_TextFieldType, xpTextEntryField)
+        XPSetWidgetProperty(self.maxVisInput, xpProperty_Enabled, 1)
+
         y -= 20
         XPCreateWidget(x, y, x+20, y-20, 1, 'Send anonymous stats', 0, window, xpWidgetClass_Caption)
         self.trackCheck = XPCreateWidget(x+127, y, x+130, y-20, 1, '', 0, window, xpWidgetClass_Button)
@@ -958,6 +963,16 @@ class PythonInterface:
                 XPGetWidgetDescriptor(self.maxVisInput, buff, 256)
                 self.conf.max_visibility = c.convertFromInput(buff[0], 'sm2m')
 
+                # Metar station ignore
+                buff = []
+                XPGetWidgetDescriptor(self.stationIgnoreInput, buff, 256)
+                ignore_stations = []
+                for icao in buff[0].split(' '):
+                    if len(icao) == 4:
+                        ignore_stations.append(icao.upper())
+
+                self.conf.ignore_metar_stations = ignore_stations
+
                 # Check metar source
                 prev_metar_source = self.conf.metar_source
                 for check in self.mtSourceChecks:
@@ -995,6 +1010,7 @@ class PythonInterface:
         #XPSetWidgetDescriptor(self.transAltInput, c.convertForInput(self.conf.metar_agl_limit, 'm2ft'))
         XPSetWidgetDescriptor(self.maxVisInput, c.convertForInput(self.conf.max_visibility, 'm2sm'))
         XPSetWidgetDescriptor(self.maxCloudHeightInput, c.convertForInput(self.conf.max_cloud_height, 'm2ft'))
+        XPSetWidgetDescriptor(self.stationIgnoreInput, ' '.join(self.conf.ignore_metar_stations))
 
         self.updateStatus()
 
