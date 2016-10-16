@@ -20,10 +20,9 @@ import random
 
 from XPLMUtilities import *
 
-
 class Tracker:
 
-    TRACKER_URL = 'http://analytics.somosdesign.com/piwik.php'
+    TRACKER_URL = 'http://analytics.joanpc.com/piwik.php'
 
     def __init__(self, conf, site_id, base_path = ''):
 
@@ -50,7 +49,8 @@ class Tracker:
         self.userAgent = 'X-Plane/%s (%s ; %s/%s ; %s)' % (xpver, self.conf.__VERSION__, uname[0], uname[2], platform.platform())
 
     def track(self, url, action_name = ''):
-        thread.start_new_thread(self._track, (url, action_name))
+        if self.conf.tracker_enabled:
+            thread.start_new_thread(self._track, (url, action_name))
 
     def _track(self, url, action_name = ''):
         params = urllib.urlencode({ 'idsite': self.site_id,

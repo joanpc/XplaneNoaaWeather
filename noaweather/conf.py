@@ -131,9 +131,10 @@ class Conf:
         self.windHdgTransSpeed = 0.5# degrees/s
 
         self.metar_source = 'NOAA'
-        self.metar_updaterate = 5 # minutes
+        self.metar_updaterate = 10 # minutes
 
         self.tracker_uid = False
+        self.tracker_enabled = True
 
     def saveSettings(self, filepath, settings):
         f = open(filepath, 'w')
@@ -186,6 +187,7 @@ class Conf:
                 'inputbug': self.inputbug,
                 'metar_updaterate': self.metar_updaterate,
                 'tracker_uid': self.tracker_uid,
+                'tracker_enabled': self.tracker_enabled
                 }
         self.saveSettings(self.settingsfile, conf)
 

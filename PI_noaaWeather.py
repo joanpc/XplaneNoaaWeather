@@ -668,9 +668,10 @@ class PythonInterface:
         self.aboutlines = 17
 
         # Tracker
-        self.tracker = Tracker(self.conf, 4, 'http://x-plane.joanpc.com/NOAAWeather/%s/' % self.conf.__VERSION__)
+        self.tracker = Tracker(self.conf, 4, 'http://x-plane.joanpc.com/NOAAWeather')
 
         self.tracker.track('start', 'start x-plane')
+        self.last_track = 0
 
         return self.Name, self.Sig, self.Desc
 
@@ -695,7 +696,7 @@ class PythonInterface:
 
     def CreateAboutWindow(self, x, y):
         x2 = x + 780
-        y2 = y - 85 - 20 * 15
+        y2 = y - 85 - 20 * 16
         Buffer = "X-Plane NOAA GFS Weather - %s  -- Thanks to all betatesters! --" % (self.conf.__VERSION__)
         top = y
 
@@ -809,7 +810,7 @@ class PythonInterface:
         XPSetWidgetProperty(self.maxCloudHeightInput, xpProperty_TextFieldType, xpTextEntryField)
         XPSetWidgetProperty(self.maxCloudHeightInput, xpProperty_Enabled, 1)
 
-        y -= 40
+        y -= 60
         # Save
         self.saveButton = XPCreateWidget(x+25, y-20, x+125, y-60, 1, "Apply & Save", 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.saveButton, xpProperty_ButtonType, xpPushButton)
@@ -818,7 +819,7 @@ class PythonInterface:
         y = top
 
         # ABOUT/ STATUS Sub Window
-        subw = XPCreateWidget(x+10, y-30, x2-20 + 10, y - (19 * self.aboutlines), 1, "" ,  0,window, xpWidgetClass_SubWindow)
+        subw = XPCreateWidget(x+10, y-30, x2-20 + 10, y - (19 * self.aboutlines) - 20, 1, "" ,  0,window, xpWidgetClass_SubWindow)
         # Set the style to sub window
         XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
         x += 20
@@ -838,10 +839,17 @@ class PythonInterface:
 
         y -= 20
         XPCreateWidget(x, y, x+20, y-20, 1, 'Download latest data', 0, window, xpWidgetClass_Caption)
-        self.downloadCheck = XPCreateWidget(x+120, y, x+130, y-20, 1, '', 0, window, xpWidgetClass_Button)
+        self.downloadCheck = XPCreateWidget(x+127, y, x+130, y-20, 1, '', 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.downloadCheck, xpProperty_ButtonType, xpRadioButton)
         XPSetWidgetProperty(self.downloadCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
         XPSetWidgetProperty(self.downloadCheck, xpProperty_ButtonState, self.conf.download)
+
+        y -= 20
+        XPCreateWidget(x, y, x+20, y-20, 1, 'Send anonymous stats', 0, window, xpWidgetClass_Caption)
+        self.trackCheck = XPCreateWidget(x+127, y, x+130, y-20, 1, '', 0, window, xpWidgetClass_Button)
+        XPSetWidgetProperty(self.trackCheck, xpProperty_ButtonType, xpRadioButton)
+        XPSetWidgetProperty(self.trackCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
+        XPSetWidgetProperty(self.trackCheck, xpProperty_ButtonState, self.conf.tracker_enabled)
 
         # DumpLog Button
         self.dumpLogButton = XPCreateWidget(x+160, y, x+260, y-20, 1, "DumpLog", 0, window, xpWidgetClass_Button)
@@ -850,7 +858,7 @@ class PythonInterface:
         self.dumpLabel = XPCreateWidget(x+270, y, x+380, y-20, 1, '', 0, window, xpWidgetClass_Caption)
 
         y -= 30
-        subw = XPCreateWidget(x-10, y, x2-20 + 10, y2 +15, 1, "" ,  0,window, xpWidgetClass_SubWindow)
+        subw = XPCreateWidget(x-10, y - 5, x2-20 + 10, y2 +15, 1, "" ,  0,window, xpWidgetClass_SubWindow)
         x += 10
         # Set the style to sub window
 
@@ -909,14 +917,17 @@ class PythonInterface:
             if (inParam1 == self.aboutVisit):
                 from webbrowser import open_new
                 open_new('http://x-plane.joanpc.com/');
+                self.tracker.track('Homepage', 'homepage button')
                 return 1
             if (inParam1 == self.donate):
                 from webbrowser import open_new
                 open_new('https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=ZQL6V9YLKRFEJ&lc=US&item_name=joan%20x%2dplane%20developer&item_number=XP%20NOAA%20Weather&currency_code=EUR&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted');
+                self.tracker.track('donate', 'donate button')
                 return 1
             if (inParam1 == self.aboutForum):
                 from webbrowser import open_new
                 open_new('http://forums.x-plane.org/index.php?showtopic=72313&view=getnewpost');
+                self.tracker.track('Support', 'support button')
                 return 1
             if inParam1 == self.saveButton:
                 # Save configuration
@@ -934,6 +945,7 @@ class PythonInterface:
 
                 self.conf.download      = XPGetWidgetProperty(self.downloadCheck, xpProperty_ButtonState, None)
 
+                self.conf.tracker_enabled = XPGetWidgetProperty(self.trackCheck, xpProperty_ButtonState, None)
                 #buff = []
                 #XPGetWidgetDescriptor(self.transAltInput, buff, 256)
                 #self.conf.metar_agl_limit = c.convertFromInput(buff[0], 'f2m', 900)
@@ -1210,6 +1222,7 @@ class PythonInterface:
         query = buff[0].strip()
         if len(query) == 4:
             self.weather.weatherClientSend('?' + query)
+            self.tracker.track('metar_query/%s' % query, 'query metar')
             XPSetWidgetDescriptor(self.metarQueryOutput, 'Quering, please wait.')
         else:
             XPSetWidgetDescriptor(self.metarQueryOutput, 'Please insert a valid ICAO code.')
@@ -1339,6 +1352,12 @@ class PythonInterface:
         ''' Return if the plugin is disabled '''
         if not self.conf.enabled:
             return -1
+
+        # tracker
+        self.last_track += elapsedMe
+        if (self.last_track > 60 * 10):
+            self.tracker.track('running/FL%d0' % (c.m2ft(self.altdr.value) / 1000), 'running')
+            self.last_track = 0
 
         ''' Request new data from the weather server (if required)'''
         self.flcounter += elapsedMe
