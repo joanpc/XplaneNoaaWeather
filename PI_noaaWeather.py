@@ -58,7 +58,7 @@ import signal
 from datetime import datetime
 from random import random
 
-from noaweather import EasyDref, Conf, c, EasyCommand
+from noaweather import EasyDref, Conf, c, EasyCommand, Tracker
 
 class Weather:
     '''
@@ -666,6 +666,11 @@ class PythonInterface:
         self.newAptLoaded = False
 
         self.aboutlines = 17
+
+        # Tracker
+        self.tracker = Tracker(self.conf, 4, 'http://x-plane.joanpc.com/NOAAWeather/%s/' % self.conf.__VERSION__)
+
+        self.tracker.track('start', 'start x-plane')
 
         return self.Name, self.Sig, self.Desc
 
@@ -1434,6 +1439,8 @@ class PythonInterface:
         return -1
 
     def XPluginStop(self):
+        self.tracker.track('stop', 'stop x-plane')
+
         # Destroy windows
         if self.aboutWindow:
             XPDestroyWidget(self, self.aboutWindowWidget, 1)

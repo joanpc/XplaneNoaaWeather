@@ -133,6 +133,8 @@ class Conf:
         self.metar_source = 'NOAA'
         self.metar_updaterate = 5 # minutes
 
+        self.tracker_uid = False
+
     def saveSettings(self, filepath, settings):
         f = open(filepath, 'w')
         cPickle.dump(settings, f)
@@ -183,6 +185,7 @@ class Conf:
                 'turbulence_probability': self.turbulence_probability,
                 'inputbug': self.inputbug,
                 'metar_updaterate': self.metar_updaterate,
+                'tracker_uid': self.tracker_uid,
                 }
         self.saveSettings(self.settingsfile, conf)
 
