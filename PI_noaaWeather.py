@@ -818,7 +818,14 @@ class PythonInterface:
         XPSetWidgetProperty(self.maxCloudHeightInput, xpProperty_TextFieldType, xpTextEntryField)
         XPSetWidgetProperty(self.maxCloudHeightInput, xpProperty_Enabled, 1)
 
-        y -= 60
+        y -= 25
+        XPCreateWidget(x, y-40, x+80, y-60, 1, 'Metar window bug', 0, window, xpWidgetClass_Caption)
+        self.bugCheck = XPCreateWidget(x+120, y-40, x+140, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        XPSetWidgetProperty(self.bugCheck, xpProperty_ButtonType, xpRadioButton)
+        XPSetWidgetProperty(self.bugCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
+        XPSetWidgetProperty(self.bugCheck, xpProperty_ButtonState, self.conf.inputbug)
+
+        y -= 40
         # Save
         self.saveButton = XPCreateWidget(x+25, y-20, x+125, y-60, 1, "Apply & Save", 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.saveButton, xpProperty_ButtonType, xpPushButton)
@@ -949,6 +956,7 @@ class PythonInterface:
                 self.conf.set_clouds    = XPGetWidgetProperty(self.cloudsCheck, xpProperty_ButtonState, None)
                 self.conf.set_temp      = XPGetWidgetProperty(self.tempCheck, xpProperty_ButtonState, None)
                 self.conf.set_pressure  = XPGetWidgetProperty(self.pressureCheck, xpProperty_ButtonState, None)
+                self.conf.inputbug      = XPGetWidgetProperty(self.bugCheck, xpProperty_ButtonState, None)
                 self.conf.turbulence_probability = XPGetWidgetProperty(self.turbulenceSlider, xpProperty_ScrollBarSliderPosition, None) / 1000.0
 
                 # Zero turbulence data if disabled
@@ -1187,12 +1195,7 @@ class PythonInterface:
         if inMessage == xpMsg_KeyPress:
 
             if not self.conf.inputbug:
-                try:
-                    key, flags, vkey = PI_GetKeyState(inParam1)
-                except:
-                    # nasty bug, disable inputHandler on config
-                    self.conf.inputbug = True
-                    return 1
+                key, flags, vkey = PI_GetKeyState(inParam1)
             else:
                 key, flags, vkey = PI_GetKeyState(ctypes.c_uint32(inParam1).value)
 
