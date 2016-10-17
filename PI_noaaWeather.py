@@ -939,7 +939,7 @@ class PythonInterface:
                 return 1
             if (inParam1 == self.aboutForum):
                 from webbrowser import open_new
-                open_new('http://forums.x-plane.org/index.php?showtopic=72313&view=getnewpost');
+                open_new('http://forums.x-plane.org/index.php?/forums/topic/72313-noaa-weather-plugin/&do=getNewComment');
                 self.tracker.track('Support', 'support button')
                 return 1
             if inParam1 == self.saveButton:
