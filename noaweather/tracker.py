@@ -48,12 +48,12 @@ class Tracker:
 
         self.userAgent = 'X-Plane/%s (%s ; %s/%s ; %s)' % (xpver, self.conf.__VERSION__, uname[0], uname[2], platform.platform())
 
-    def track(self, url, action_name = ''):
+    def track(self, url, action_name = '', params = {}):
         if self.conf.tracker_enabled:
-            thread.start_new_thread(self._track, (url, action_name))
+            thread.start_new_thread(self._track, (url, action_name, params))
 
-    def _track(self, url, action_name = ''):
-        params = urllib.urlencode({ 'idsite': self.site_id,
+    def _track(self, url, action_name = '', params = {}):
+        tparams = {'idsite': self.site_id,
                                     'rec': 1,
                                     'apiv': 1,
                                     'url': '/'.join([self.base_path, url]),
@@ -62,7 +62,12 @@ class Tracker:
                                     'cookie': 0,
                                     'uid': self.conf.tracker_uid,
                                     '_cvar': self.cvars,
-                                    })
+                                    'send_image': 0,
+                                    }
+        tparams.update(params)
 
-        req = urllib2.Request(self.TRACKER_URL, params, {'User-Agent': self.userAgent})
-        urllib2.urlopen(req)
+        req = urllib2.Request(self.TRACKER_URL, urllib.urlencode(tparams), {'User-Agent': self.userAgent})
+        try:
+            urllib2.urlopen(req)
+        except:
+            pass
