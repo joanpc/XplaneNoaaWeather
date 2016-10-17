@@ -181,6 +181,7 @@ class Metar:
         cursor = db.cursor()
         cursor.execute('UPDATE airports SET metar = NULL, timestamp = 0')
         db.commit()
+        self.nupdates = 0
 
 
     def getClosestStation(self, db, lat, lon, limit = 1):
