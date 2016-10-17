@@ -218,8 +218,16 @@ class Weather:
             extra = {'gust': gust, 'metar': True}
 
             if 'variable_wind' in self.weatherData['metar'] and self.weatherData['metar']['variable_wind']:
+
                 h1, h2 = self.weatherData['metar']['variable_wind']
-                extra['variation'] = hdg - c.randPattern('metar_wind_hdg', h1, elapsed, min_val = h2, min_time = 20, max_time = 50, heading = True)
+                h1 %= 360
+                if h1 > h2:
+                    var = 360 - h1 + h2
+                else:
+                    var = h2 - h1
+
+                hdg = h1
+                extra['variation'] = c.randPattern('metar_wind_hdg', var, elapsed, min_time = 20, max_time = 50)
 
             alt += self.conf.metar_agl_limit
             alt = c.transition(alt, '0-metar_wind_alt', elapsed, 0.3048) # 1f/s
@@ -301,7 +309,7 @@ class Weather:
         wind = self.winds[index]
 
         if 'variation' in extra:
-            hdg += extra['variation']
+            hdg = (hdg + extra['variation']) % 360
 
         wind['hdg'].value, wind['speed'].value = hdg, speed
 
@@ -1238,7 +1246,7 @@ class PythonInterface:
         query = buff[0].strip()
         if len(query) == 4:
             self.weather.weatherClientSend('?' + query)
-            self.tracker.track('metar_query/%s' % query, 'query metar')
+            self.tracker.track('metar_query/%s' % query, 'query metar', {'search': query})
             XPSetWidgetDescriptor(self.metarQueryOutput, 'Quering, please wait.')
         else:
             XPSetWidgetDescriptor(self.metarQueryOutput, 'Please insert a valid ICAO code.')
@@ -1406,6 +1414,7 @@ class PythonInterface:
             # Clear transitions on airport load
             if self.newAptLoaded:
                 c.transitionClearReferences()
+                c.randRefs = {}
                 self.newAptLoaded = False
 
             # Set metar values
