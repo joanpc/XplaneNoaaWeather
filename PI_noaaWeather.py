@@ -1052,7 +1052,7 @@ class PythonInterface:
             if 'info' in wdata:
                 sysinfo = [
                            'XPNoaaWeather %s Status:' % self.conf.__VERSION__,
-                           '    LAT: %.2f/%.2f LON: %.2f/%.2f MAGNETIC DEV: %.2f' % (self.latdr.value , wdata['info']['lat'], self.londr.value, wdata['info']['lon'], self.weather.mag_deviation.value),
+                           '    LAT: %.2f/%.2f LON: %.2f/%.2f FL: %02.f MAGNETIC DEV: %.2f' % (self.latdr.value , wdata['info']['lat'], self.londr.value, wdata['info']['lon'], c.m2ft(self.altdr.value)/100 , self.weather.mag_deviation.value),
                            '    GFS Cycle: %s' % (wdata['info']['gfs_cycle']),
                            '    WAFS Cycle: %s' % (wdata['info']['wafs_cycle']),
                 ]
@@ -1330,6 +1330,7 @@ class PythonInterface:
         for var in self.weather.__dict__:
             if isinstance(self.weather.__dict__[var], EasyDref):
                 vars[var] = self.weather.__dict__[var].value
+        vars['altitude'] = self.altdr.value
         pprint(vars, f, width=160)
 
         f.write('\n--- Configuration ---\n')
