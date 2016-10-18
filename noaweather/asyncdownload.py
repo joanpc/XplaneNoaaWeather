@@ -48,6 +48,7 @@ class AsyncDownload():
         # Request gzipped file
         request = urllib2.Request(url)
         request.add_header('Accept-encoding', 'gzip,deflate')
+        request.add_header('User-Agent', 'XPNOAAWeather/%s', self.conf.__VERSION__)
 
         try:
             response = urllib2.urlopen(request)
