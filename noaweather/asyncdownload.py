@@ -30,6 +30,7 @@ class AsyncDownload():
         self.wgrib2bin = conf.wgrib2bin[:]
         self.cancel = threading.Event()
         self.min_size = min_size
+        self.conf = conf
 
         self.t = threading.Thread(target = self.run, args = (conf, url, cachepath, cachefile))
         self.t.start()
