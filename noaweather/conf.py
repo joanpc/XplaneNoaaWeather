@@ -136,7 +136,7 @@ class Conf:
         self.tracker_uid = False
         self.tracker_enabled = True
 
-        self.ignore_metar_stations = ['LEBL', 'LEPA']
+        self.ignore_metar_stations = []
 
     def saveSettings(self, filepath, settings):
         f = open(filepath, 'w')
@@ -163,10 +163,14 @@ class Conf:
                 if var in self.__dict__:
                     self.__dict__[var] = conf[var]
 
+            # Versions config overrides
             if 'version' in conf:
                 if conf['version'] < '2.3.1':
                     # Enforce metar station update
                     self.ms_update = 0
+                if conf['version'] < '2.4.0':
+                    # Clean ignore stations
+                    self.ignore_metar_stations = []
 
     def pluginSave(self):
         '''Save plugin settings'''
