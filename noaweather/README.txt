@@ -1,10 +1,9 @@
-==========================================
-[XPGFS] Xplane Noa Global Forecast weather
-==========================================
+===========================================
+[XPGFS] Xplane NOAA Global Forecast weather
+===========================================
 
-Downloads METAR and Forecast data from NOAA servers and sets x-plane wind and
-cloud layers using forecasted data for the current time and
-world corrdinates.
+Downloads METAR and Forecast data from NOAA servers and sets x-plane weather
+using forecasted and reported data for the current time and world coordinates.
 
 ============
 Requirements
@@ -21,7 +20,7 @@ bin folder and there's no need to install-it.
 Installation
 ============
 
-Install the X-Plane Python interface:
+Install X-Plane Python interface:
 http://www.xpluginsdk.org/python_interface_latest_downloads.htm
 
 Copy the zip file contents to your X-Plane/Resources/plugins/PythonScripts folder.
