@@ -30,7 +30,6 @@ class AsyncDownload():
         self.wgrib2bin = conf.wgrib2bin[:]
         self.cancel = threading.Event()
         self.min_size = min_size
-        self.conf = conf
 
         self.t = threading.Thread(target = self.run, args = (conf, url, cachepath, cachefile))
         self.t.start()
@@ -49,7 +48,7 @@ class AsyncDownload():
         # Request gzipped file
         request = urllib2.Request(url)
         request.add_header('Accept-encoding', 'gzip,deflate')
-        request.add_header('User-Agent', 'XPNOAAWeather/%s', self.conf.__VERSION__)
+        request.add_header('User-Agent', 'XPNOAAWeather/%s' % (conf.__VERSION__))
 
         try:
             response = urllib2.urlopen(request)
