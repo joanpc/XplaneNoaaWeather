@@ -54,7 +54,7 @@ class AsyncDownload():
             response = urllib2.urlopen(request)
         except:
             print "Download error: %s %s" % (sys.exc_info()[0], sys.exc_info()[1])
-            return
+            self.q.put(False)
 
         # Check for gzziped file
         isGzip = response.headers.get('content-encoding', '').find('gzip') >= 0
