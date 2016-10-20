@@ -392,7 +392,8 @@ class Metar:
                     self.reparse = True
                     print "METAR updated/parsed: %d/%d" % (updated, parsed)
                 else:
-                    # No file downloaded
+                    # No file downloaded, We missed a download so restart from 0
+                    self.nupdates = 0
                     pass
 
         elif self.conf.download:
