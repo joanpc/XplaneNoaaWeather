@@ -1334,6 +1334,15 @@ class PythonInterface:
         vars['altitude'] = self.altdr.value
         pprint(vars, f, width=160)
 
+        f.write('\n--- Overrides ---\n')
+
+        vars = {}
+        f.write('\n')
+        for var in self.data.__dict__:
+            if 'override' in var and isinstance(self.data.__dict__[var], EasyDref):
+                vars[var] = self.data.__dict__[var].value
+        pprint(vars, f, width=160)
+
         f.write('\n--- Configuration ---\n')
         vars = {}
         for var in self.conf.__dict__:
