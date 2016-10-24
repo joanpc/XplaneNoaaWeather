@@ -941,7 +941,7 @@ class PythonInterface:
                 return 1
             if (inParam1 == self.donate):
                 from webbrowser import open_new
-                open_new('https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=ZQL6V9YLKRFEJ&lc=US&item_name=joan%20x%2dplane%20developer&item_number=XP%20NOAA%20Weather&currency_code=EUR&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted');
+                open_new('https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=GH6YPFGSS5UEU');
                 self.tracker.track('donate', 'donate button')
                 return 1
             if (inParam1 == self.aboutForum):
