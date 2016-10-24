@@ -66,6 +66,8 @@ class Metar:
         # NOAA Update counters
         self.nupdates = 0
 
+        self.next_metarRWX = time.time() + 30
+
         # Main db connection, create db if doens't exist
         createdb = True
         if os.path.exists(self.database):
@@ -411,6 +413,12 @@ class Metar:
             self.ms_download = False
             print '%d metar stations updated.' % nstations
 
+        # Update METAR.rwx
+        if self.conf.updateMetarRWX and self.next_metarRWX < time.time():
+            if self.updateMetarRWX(self.th_db):
+                self.next_metarRWX = time.time() * 600
+                print 'Updated METAR.rwx file.'
+
     def downloadCycle(self, cycle, timestamp):
         self.downloading = True
 
@@ -438,6 +446,30 @@ class Metar:
 
         cachefile = os.sep.join(['metar', '%s_%d_%sZ.txt' % (prefix, timestamp, cycle)])
         self.download = AsyncDownload(self.conf, url, cachefile)
+
+    def updateMetarRWX(self, db):
+        # Updates metar RWX file.
+
+        cursor = db.cursor()
+
+        try:
+            f = open(os.sep.join([self.conf.syspath, 'METAR.rwx']), 'w')
+        except:
+            print "ERROR updating METAR.rwx file: %s %s" % (sys.exc_info()[0], sys.exc_info()[1])
+            return False
+
+        res = cursor.execute('SELECT icao, metar FROM airports WHERE metar NOT NULL')
+
+        while True:
+            rows = res.fetchmany()
+            if rows:
+                for row in rows:
+                    f.write('%s %s\n' % (row[0], row[1]))
+            else:
+                break
+
+        f.close()
+        return True
 
     def die(self):
         self.connection.commit()

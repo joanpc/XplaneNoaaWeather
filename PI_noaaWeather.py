@@ -102,6 +102,7 @@ class Weather:
         self.windata = []
 
         self.xpWeatherOn = EasyDref('sim/weather/use_real_weather_bool', 'int')
+        self.xpWeatherDownloadOn = EasyDref('sim/weather/download_real_weather', 'int')
         self.msltemp     = EasyDref('sim/weather/temperature_sealevel_c', 'float')
         self.msldewp    = EasyDref('sim/weather/dewpoi_sealevel_c', 'float')
         self.thermalAlt  = EasyDref('sim/weather/thermal_altitude_msl_m', 'float')

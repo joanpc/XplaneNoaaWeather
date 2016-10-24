@@ -138,6 +138,8 @@ class Conf:
 
         self.ignore_metar_stations = []
 
+        self.updateMetarRWX = False
+
     def saveSettings(self, filepath, settings):
         f = open(filepath, 'w')
         cPickle.dump(settings, f)
