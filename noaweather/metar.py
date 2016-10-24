@@ -168,12 +168,8 @@ class Metar:
 
         f.close()
 
-        #xpmetar = os.sep.join([self.conf.syspath, 'METAR.rwx'])
-        #util.copy(path, xpmetar)
-
         if not self.conf.keepOldFiles:
             util.remove(path)
-
 
         return nupdated, nparsed
 
@@ -415,8 +411,12 @@ class Metar:
         # Update METAR.rwx
         if self.conf.updateMetarRWX and self.next_metarRWX < time.time():
             if self.updateMetarRWX(self.th_db):
-                self.next_metarRWX = time.time() * 300
+                self.next_metarRWX = time.time() + 300
                 print 'Updated METAR.rwx file.'
+            else:
+                # Retry in 10 sec
+                self.next_metarRWX = time.time() + 10
+
 
     def downloadCycle(self, cycle, timestamp):
         self.downloading = True
