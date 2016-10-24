@@ -138,7 +138,7 @@ class Conf:
 
         self.ignore_metar_stations = []
 
-        self.updateMetarRWX = False
+        self.updateMetarRWX = True
 
     def saveSettings(self, filepath, settings):
         f = open(filepath, 'w')
