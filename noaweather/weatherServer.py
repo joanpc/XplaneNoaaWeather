@@ -198,5 +198,5 @@ if __name__ == "__main__":
     # Close gfs worker and save config
     gfs.die.set()
     conf.serverSave()
-    print 'Server stoped.'
+    print 'Server stopped.'
     logfile.close()

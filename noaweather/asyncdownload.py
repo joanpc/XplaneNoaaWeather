@@ -43,7 +43,7 @@ class AsyncDownload():
         if os.path.exists(filepath):
             util.remove(filepath)
 
-        print "Dowloading: %s" % (cachefile)
+        print "Downloading: %s" % (cachefile)
 
         # Request gzipped file
         request = urllib2.Request(url)
