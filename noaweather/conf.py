@@ -131,7 +131,7 @@ class Conf:
         self.windHdgTransSpeed = 0.5# degrees/s
 
         self.metar_source = 'NOAA'
-        self.metar_updaterate = 10 # minutes
+        self.metar_updaterate = 5 # minutes
 
         self.tracker_uid = False
         self.tracker_enabled = True
@@ -204,7 +204,7 @@ class Conf:
         self.loadSettings(self.settingsfile)
 
         if self.metar_source == 'NOAA':
-            self.metar_updaterate = 1
+            self.metar_updaterate = 5
         else:
             self.metar_updaterate = 10
 
