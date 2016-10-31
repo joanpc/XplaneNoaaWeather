@@ -36,7 +36,7 @@ class Metar:
     RE_PRECIPITATION = re.compile('(-|\+)?(RE)?(DZ|SG|IC|PL|SH)?(DZ|RA|SN|TS)(NO|E)?')
 
     METAR_STATIONS_URL = 'http://www.aviationweather.gov/docs/metar/stations.txt'
-    NOAA_METAR_URL = 'http://aviationweather.gov/adds/dataserver_current/current/metars.cache.csv'
+    NOAA_METAR_URL = 'http://aviationweather.gov/adds/dataserver_current/current/metars.cache.csv.gz'
     VATSIM_METAR_URL = 'http://metar.vatsim.net/metar.php?id=all'
     IVAO_METAR_URL = 'http://wx.ivao.aero/metar.php'
 

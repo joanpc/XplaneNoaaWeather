@@ -47,7 +47,7 @@ class AsyncDownload():
 
         # Request gzipped file
         request = urllib2.Request(url)
-        request.add_header('Accept-encoding', 'gzip,deflate')
+        request.add_header('Accept-encoding', 'gzip, deflate')
         request.add_header('User-Agent', 'XPNOAAWeather/%s' % (conf.__VERSION__))
 
         try:
@@ -58,6 +58,8 @@ class AsyncDownload():
 
         # Check for gzziped file
         isGzip = response.headers.get('content-encoding', '').find('gzip') >= 0
+        isGziped = url[-3:] == '.gz'
+
         gz = zlib.decompressobj(16+zlib.MAX_WBITS)
 
         binary = ''
@@ -75,6 +77,8 @@ class AsyncDownload():
                     print 'Downloaded: %s' % (cachefile)
                     break
                 if isGzip:
+                    data = gz.decompress(data)
+                if isGziped:
                     data = gz.decompress(data)
                 of.write(data)
         except Exception:
