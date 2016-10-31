@@ -28,7 +28,7 @@ class GFS(threading.Thread):
     '''
     cycles = [0, 6, 12, 18]
     baseurl = 'http://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p50.pl?'
-    
+
     params = [
               'leftlon=0',
               'rightlon=360',
@@ -65,48 +65,51 @@ class GFS(threading.Thread):
                  'RH',
                  ]
     nwinds, nclouds = 0, 0
-    
+
     downloading = False
     downloadWait = 0
     # wait n seconds to start download
     lastgrib    = False
-    
+
     lat, lon, lastlat, lastlon = False, False, False, False
-    
+
     cycle = ''
     lastcycle = ''
-    
+
     newGrib = False
     parsed_latlon = (0, 0)
-    
+
     die = threading.Event()
     dummy = threading.Event()
     lock = threading.Lock()
-    
+
     def __init__(self, conf):
         self.conf = conf
         self.lastgrib = self.conf.lastgrib
         self.wafs = WAFS(conf)
         self.metar = Metar(conf)
         threading.Thread.__init__(self)
-    
+
     def run(self):
         # Worker thread
         while not self.die.wait(self.conf.parserate):
-            
+
+            if not self.conf.enabled:
+                continue
+
             datecycle, cycle, forecast = self.getCycleDate()
 
             if self.downloadWait < 1:
                 self.downloadCycle(datecycle, cycle, forecast)
             elif self.downloadWait > 0:
                 self.downloadWait -= self.conf.parserate
-            
+
             # Run WAFS worker
             self.wafs.run(self.lat, self.lon, self.conf.parserate)
-            
+
             # Run Metar worker
             self.metar.run(self.lat, self.lon, self.conf.parserate)
-            
+
             if self.die.isSet():
                 # Kill downloaders if avaliable
                 if self.wafs and self.wafs.downloading and self.wafs.download:
@@ -114,15 +117,15 @@ class GFS(threading.Thread):
                 if self.downloading and self.download:
                     self.download.die()
                 return
-            
-            # flush stdout 
+
+            # flush stdout
             sys.stdout.flush()
-        
+
     def getCycleDate(self):
         '''
         Returns last cycle date avaliable
         '''
-        now = datetime.utcnow() 
+        now = datetime.utcnow()
         #cycle is published with 4 hours 25min delay
         cnow = now - timedelta(hours=4, minutes=0)
         #get last cycle
@@ -141,25 +144,25 @@ class GFS(threading.Thread):
         '''
         Downloads the requested grib file
         '''
-        
+
         filename = 'gfs.t%02dz.pgrb2full.0p50.f0%02d' % (cycle, forecast)
-        
+
         path = os.sep.join([self.conf.cachepath, 'gfs'])
         cachefile = os.sep.join(['gfs', '%s_%s.grib2' % (datecycle, filename)])
-        
+
         if cachefile == self.lastgrib:
             # No need to download
             return
-        
+
         if not os.path.exists(path):
             os.makedirs(path)
-        
+
         if self.downloading == True:
             if not self.download.q.empty():
-            
+
                 #Finished downloading
                 lastgrib = self.download.q.get()
-                
+
                 # Dowload success
                 if lastgrib:
                     if not self.conf.keepOldFiles and self.conf.lastgrib:
@@ -171,32 +174,32 @@ class GFS(threading.Thread):
                 else:
                     # Wait a minute
                     self.downloadWait = 60
-                    
+
                 self.downloading = False
-                
+
         elif self.conf.download and self.downloadWait < 1:
             # Download new grib
-            
+
             ## Build download url
             params = self.params;
             dir =  'dir=%%2Fgfs.%s' % (datecycle)
             params.append(dir)
-            params.append('file=' + filename)  
-            
+            params.append('file=' + filename)
+
             # add variables
             for level in self.levels:
                 params.append('lev_' + level + '=1')
             for var in self.variables:
                 params.append('var_' + var + '=1')
-            
+
             url = self.baseurl + '&'.join(params)
-            
+
             #print 'XPGFS: downloading %s' % (url)
             self.downloading = True
             self.download = AsyncDownload(self.conf, url, cachefile)
-            
+
         return False
-    
+
     def parseGribData(self, filepath, lat, lon):
         '''
         Executes wgrib2 and parses its output
@@ -219,7 +222,7 @@ class GFS(threading.Thread):
             r = line[:-1].split(':')
             # Level, variable, value
             level, variable, value = [r[4].split(' '),  r[3],  r[7].split(',')[2].split('=')[1]]
-            
+
             if len(level) > 1:
                 if level[1] == 'cloud':
                     #cloud layer
@@ -236,12 +239,12 @@ class GFS(threading.Thread):
                 elif level[0] == 'mean':
                     if variable == 'PRMSL':
                         pressure = c.pa2inhg(float(value))
-    
+
         windlevels = []
         cloudlevels = []
-        
+
         # Let data ready to push on datarefs.
-        
+
         # Convert wind levels
         for level in data:
             wind = data[level]
@@ -249,7 +252,7 @@ class GFS(threading.Thread):
                 hdg, vel = c.c2p(float(wind['UGRD']), float(wind['VGRD']))
                 #print wind['UGRD'], wind['VGRD'], float(wind['UGRD']), float(wind['VGRD']), hdg, vel
                 alt = c.mb2alt(float(level))
-                
+
                 # Optional varialbes
                 temp, rh, dew = False, False, False
                 # Temperature
@@ -260,32 +263,32 @@ class GFS(threading.Thread):
                     rh = float(wind['RH'])
                 else:
                     temp = False
-                
+
                 if temp and rh:
                     dew = c.dewpoint(temp, rh)
-                    
+
                 windlevels.append([alt, hdg, c.ms2knots(vel), {'temp': temp, 'rh': rh, 'dew': dew, 'gust': 0}])
-                #print 'alt: %i rh: %i vis: %i' % (alt, float(wind['RH']), vis) 
-        
+                #print 'alt: %i rh: %i vis: %i' % (alt, float(wind['RH']), vis)
+
         # Convert cloud level
         for level in clouds:
             level = clouds[level]
             if 'top' in level and 'bottom' in level and 'TCDC' in level:
                 top, bottom, cover = float(level['top']), float(level['bottom']), float(level['TCDC'])
                 #print "XPGFS: top: %.0fmbar %.0fm, bottom: %.0fmbar %.0fm %d%%" % (top * 0.01, c.mb2alt(top * 0.01), bottom * 0.01, c.mb2alt(bottom * 0.01), cover)
-                
+
                 #if bottom > 1 and alt > 1:
                 cloudlevels.append([c.mb2alt(bottom * 0.01) * 0.3048, c.mb2alt(top * 0.01) * 0.3048, cover])
-                #XP10 
+                #XP10
                 #cloudlevels.append((c.mb2alt(bottom * 0.01) * 0.3048, c.mb2alt(top * 0.01) * 0.3048, cover/10))
-    
-        windlevels.sort()        
+
+        windlevels.sort()
         cloudlevels.sort()
-        
+
         data = {
                 'winds': windlevels,
                 'clouds': cloudlevels,
                 'pressure': pressure
                 }
-        
+
         return data
