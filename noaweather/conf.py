@@ -75,6 +75,8 @@ class Conf:
         else:
             # Linux?
             wgbin = 'linux-glib2.5-i686-wgrib2'
+            if os.path.exists(self.pythonpath + '2.7'):
+                self.pythonpath = self.pythonpath + '2.7'
 
         self.wgrib2bin  = os.sep.join([self.respath, 'bin', wgbin])
 
