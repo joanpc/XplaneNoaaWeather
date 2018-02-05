@@ -1180,9 +1180,10 @@ class PythonInterface:
         XPSetWidgetProperty(self.metarQueryOutput, xpProperty_Enabled, 1)
         XPSetWidgetProperty(self.metarQueryOutput, xpProperty_TextFieldType, xpTextTranslucent)
 
-        # Register our widget handler
-        self.metarQueryInputHandlerCB = self.metarQueryInputHandler
-        XPAddWidgetCallback(self, self.metarQueryInput, self.metarQueryInputHandlerCB)
+        if not self.conf.inputbug:
+            # Register our sometimes buggy widget handler
+            self.metarQueryInputHandlerCB = self.metarQueryInputHandler
+            XPAddWidgetCallback(self, self.metarQueryInput, self.metarQueryInputHandlerCB)
 
         # Register our widget handler
         self.metarWindowHandlerCB = self.metarWindowHandler
@@ -1195,10 +1196,7 @@ class PythonInterface:
         ''' Override texfield keyboard input to be more friendly'''
         if inMessage == xpMsg_KeyPress:
 
-            if not self.conf.inputbug:
-                key, flags, vkey = PI_GetKeyState(inParam1)
-            else:
-                key, flags, vkey = PI_GetKeyState(ctypes.c_uint32(inParam1).value)
+            key, flags, vkey = PI_GetKeyState(inParam1)
 
             if flags == 8:
                 buff = []
