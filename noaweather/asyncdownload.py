@@ -51,6 +51,8 @@ class AsyncDownload():
         request.add_header('Accept-encoding', 'gzip, deflate')
         request.add_header('User-Agent', 'XPNOAAWeather/%s' % (conf.__VERSION__))
 
+        context = hasattr(ssl, '_create_unverified_context') and ssl._create_unverified_context() or None
+
         try:
             response = urllib2.urlopen(request, context=ssl._create_unverified_context())
         except:
