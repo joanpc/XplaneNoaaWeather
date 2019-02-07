@@ -20,7 +20,7 @@ class Conf:
     syspath, dirsep = '', os.sep
     printableChars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ '
 
-    __VERSION__ = '2.4.2'
+    __VERSION__ = '2.4.3'
 
     def __init__(self, syspath):
         # Inits conf
@@ -175,6 +175,8 @@ class Conf:
                 if conf['version'] < '2.4.0':
                     # Clean ignore stations
                     self.ignore_metar_stations = []
+                if conf['version'] < '2.4.3':
+                    self.inputbug = True
 
     def pluginSave(self):
         '''Save plugin settings'''
