@@ -27,7 +27,7 @@ class GFS(threading.Thread):
     NOAA GFS download and parse functions.
     '''
     cycles = [0, 6, 12, 18]
-    baseurl = 'http://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p50.pl?'
+    baseurl = 'https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p50.pl?'
 
     params = [
               'leftlon=0',
@@ -127,7 +127,7 @@ class GFS(threading.Thread):
         '''
         now = datetime.utcnow()
         #cycle is published with 4 hours 25min delay
-        cnow = now - timedelta(hours=4, minutes=0)
+        cnow = now - timedelta(hours=4, minutes=25)
         #get last cycle
         for cycle in self.cycles:
             if cnow.hour >= cycle:
@@ -194,7 +194,7 @@ class GFS(threading.Thread):
 
             url = self.baseurl + '&'.join(params)
 
-            #print 'XPGFS: downloading %s' % (url)
+            #print('XPGFS: downloading %s' % (url))
             self.downloading = True
             self.download = AsyncDownload(self.conf, url, cachefile)
 
