@@ -10,6 +10,7 @@ of the License, or any later version.
 
 import threading
 import Queue
+import ssl
 import urllib2
 import zlib
 import os
@@ -51,7 +52,7 @@ class AsyncDownload():
         request.add_header('User-Agent', 'XPNOAAWeather/%s' % (conf.__VERSION__))
 
         try:
-            response = urllib2.urlopen(request)
+            response = urllib2.urlopen(request, context=ssl._create_unverified_context())
         except:
             print "Download error: %s %s" % (sys.exc_info()[0], sys.exc_info()[1])
             self.q.put(False)

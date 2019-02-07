@@ -11,6 +11,7 @@ as published by the Free Software Foundation; either version 2
 of the License, or any later version.
 '''
 import thread
+import ssl
 import urllib, urllib2
 import platform
 import json
@@ -22,7 +23,7 @@ from XPLMUtilities import *
 
 class Tracker:
 
-    TRACKER_URL = 'http://analytics.joanpc.com/piwik.php'
+    TRACKER_URL = 'https://analytics.joanpc.com/piwik.php'
 
     def __init__(self, conf, site_id, base_path = ''):
 
@@ -68,6 +69,6 @@ class Tracker:
 
         req = urllib2.Request(self.TRACKER_URL, urllib.urlencode(tparams), {'User-Agent': self.userAgent})
         try:
-            urllib2.urlopen(req)
+            urllib2.urlopen(req, context=ssl._create_unverified_context())
         except:
             pass
