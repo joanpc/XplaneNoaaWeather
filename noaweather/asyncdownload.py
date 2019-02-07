@@ -51,14 +51,15 @@ class AsyncDownload():
         request.add_header('Accept-encoding', 'gzip, deflate')
         request.add_header('User-Agent', 'XPNOAAWeather/%s' % (conf.__VERSION__))
 
-        context = hasattr(ssl, '_create_unverified_context') and ssl._create_unverified_context() or None
+        if hasattr(ssl, '_create_unverified_context'):
+            params = {'context': ssl._create_unverified_context()}
+        else:
+            params = {}
 
         try:
-            if context:
-                response = urllib2.urlopen(request, context=context)
-            else:
-                response = urllib2.urlopen(request)
-        except:
+            response = urllib2.urlopen(request, **params)
+
+        except Exception:
             print "Download error: %s %s" % (sys.exc_info()[0], sys.exc_info()[1])
             self.q.put(False)
 
