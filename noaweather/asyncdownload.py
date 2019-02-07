@@ -54,7 +54,7 @@ class AsyncDownload():
         context = hasattr(ssl, '_create_unverified_context') and ssl._create_unverified_context() or None
 
         try:
-            response = urllib2.urlopen(request, context=ssl._create_unverified_context())
+            response = urllib2.urlopen(request, context=context)
         except:
             print "Download error: %s %s" % (sys.exc_info()[0], sys.exc_info()[1])
             self.q.put(False)
