@@ -68,7 +68,8 @@ class Tracker:
         tparams.update(params)
 
         req = urllib2.Request(self.TRACKER_URL, urllib.urlencode(tparams), {'User-Agent': self.userAgent})
+        context = hasattr(ssl, '_create_unverified_context') and ssl._create_unverified_context() or None
         try:
-            urllib2.urlopen(req, context=ssl._create_unverified_context())
+            urllib2.urlopen(req, context=context)
         except:
             pass
