@@ -1391,7 +1391,7 @@ class PythonInterface:
 
         # tracker
         self.last_track += elapsedMe
-        if (self.last_track > 60 * 10):
+        if (self.last_track > 60 * 15):
             self.tracker.track('running/FL%d0' % (c.m2ft(self.altdr.value) / 1000), 'running')
             self.last_track = 0
 

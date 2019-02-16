@@ -35,10 +35,10 @@ class Metar:
     RE_TEMPERATURE2 = re.compile(r'\bT(0|1)([0-9]{3})(0|1)([0-9]{3})\b')
     RE_PRECIPITATION = re.compile('(-|\+)?(RE)?(DZ|SG|IC|PL|SH)?(DZ|RA|SN|TS)(NO|E)?')
 
-    METAR_STATIONS_URL = 'http://www.aviationweather.gov/docs/metar/stations.txt'
-    NOAA_METAR_URL = 'http://aviationweather.gov/adds/dataserver_current/current/metars.cache.csv.gz'
-    VATSIM_METAR_URL = 'http://metar.vatsim.net/metar.php?id=all'
-    IVAO_METAR_URL = 'http://wx.ivao.aero/metar.php'
+    METAR_STATIONS_URL = 'https://www.aviationweather.gov/docs/metar/stations.txt'
+    NOAA_METAR_URL = 'https://aviationweather.gov/adds/dataserver_current/current/metars.cache.csv.gz'
+    VATSIM_METAR_URL = 'https://metar.vatsim.net/metar.php?id=all'
+    IVAO_METAR_URL = 'https://wx.ivao.aero/metar.php'
 
     STATION_UPDATE_RATE = 30 # In days
 
