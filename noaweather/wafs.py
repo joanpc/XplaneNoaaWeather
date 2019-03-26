@@ -39,7 +39,7 @@ class WAFS:
         # Use last grib stored in config if still avaliable
         if self.conf.lastwafsgrib and os.path.exists(os.sep.join([self.conf.cachepath, self.conf.lastwafsgrib])):
             self.lastgrib = self.conf.lastwafsgrib
-            self.current_datecycle = self.conf.lastwafsgrib.split(os.sep)[1][:10]
+            self.current_datecycle = self.conf.lastwafsgrib[5:15]
 
     def run(self, lat, lon, rate):
         # Worker thread
