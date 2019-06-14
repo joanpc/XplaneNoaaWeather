@@ -39,7 +39,7 @@ class WAFS:
         # Use last grib stored in config if still avaliable
         if self.conf.lastwafsgrib and os.path.exists(os.sep.join([self.conf.cachepath, self.conf.lastwafsgrib])):
             self.lastgrib = self.conf.lastwafsgrib
-            self.current_datecycle = self.conf.lastwafsgrib.split(os.sep)[1][:10]
+            self.current_datecycle = self.conf.lastwafsgrib[5:15]
 
     def run(self, lat, lon, rate):
         # Worker thread
@@ -145,7 +145,7 @@ class WAFS:
     def downloadCycle(self, datecycle, cycle, forecast):
         self.downloading = True
         filename = "WAFS_blended_%sf%02d.grib2" % (datecycle, forecast)
-        url =  "%s/gfs.%s/%s" % (self.baseurl, datecycle, filename)
+        url = "%s/gfs.%s/%s/%s" % (self.baseurl, datecycle[:-2], datecycle[-2:], filename)
         cachefile = os.sep.join(['wafs', '%s_%s' % (datecycle, filename)])
         path = os.sep.join([self.conf.cachepath, 'wafs'])
         if not os.path.exists(path):

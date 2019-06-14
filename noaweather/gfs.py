@@ -180,9 +180,9 @@ class GFS(threading.Thread):
         elif self.conf.download and self.downloadWait < 1:
             # Download new grib
 
-            ## Build download url
-            params = self.params;
-            dir =  'dir=%%2Fgfs.%s' % (datecycle)
+            # Build download url
+            params = self.params
+            dir = 'dir=%%2Fgfs.%s/%s' % (datecycle[0:-2], datecycle[-2:])
             params.append(dir)
             params.append('file=' + filename)
 
