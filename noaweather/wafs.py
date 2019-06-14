@@ -145,7 +145,7 @@ class WAFS:
     def downloadCycle(self, datecycle, cycle, forecast):
         self.downloading = True
         filename = "WAFS_blended_%sf%02d.grib2" % (datecycle, forecast)
-        url =  "%s/gfs.%s/%s" % (self.baseurl, datecycle, filename)
+        url = "%s/gfs.%s/%s/%s" % (self.baseurl, datecycle[:-2], datecycle[-2:], filename)
         cachefile = os.sep.join(['wafs', '%s_%s' % (datecycle, filename)])
         path = os.sep.join([self.conf.cachepath, 'wafs'])
         if not os.path.exists(path):
