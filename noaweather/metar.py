@@ -20,9 +20,10 @@ from util import util
 
 from c import c
 from asyncdownload import AsyncDownload
+from weathersource import WeatherSource
 
 
-class Metar:
+class Metar(WeatherSource):
     """
     Provides METAR download and parsing routines.
     """
@@ -46,8 +47,6 @@ class Metar:
     STATION_UPDATE_RATE = 30  # In days
 
     def __init__(self, conf):
-
-        self.conf = conf
 
         self.cachepath = os.sep.join([conf.cachepath, 'metar'])
         if not os.path.exists(self.cachepath):
@@ -74,14 +73,16 @@ class Metar:
         self.connection = self.db_connect(self.database)
         self.cursor = self.connection.cursor()
         if createdb:
-            self.conf.ms_update = 0
+            conf.ms_update = 0
             self.db_create(self.connection)
 
         # Metar stations update
-        if (time.time() - self.conf.ms_update) > self.STATION_UPDATE_RATE * 86400:
-            self.ms_download = AsyncDownload(self.conf, self.METAR_STATIONS_URL, os.sep.join(['metar', 'stations.txt']))
+        if (time.time() - conf.ms_update) > self.STATION_UPDATE_RATE * 86400:
+            self.ms_download = AsyncDownload(conf, self.METAR_STATIONS_URL, os.sep.join(['metar', 'stations.txt']))
 
         self.last_latlon, self.last_station, self.last_timestamp = [False] * 3
+
+        super(Metar, self).__init__(conf)
 
     def db_connect(self, path):
         """Returns an SQLite connection to the metar database"""
@@ -223,7 +224,8 @@ class Metar:
             return ret[0]
         return ret
 
-    def get_current_cycle(self):
+    @staticmethod
+    def get_current_cycle():
         """Returns the current METAR cycle"""
         now = datetime.utcnow()
         # Cycle is updated until the hour has arrived (ex: 01 cycle updates until 1am)
@@ -233,7 +235,8 @@ class Metar:
         timestamp = int(time.time())
         return ('%02d' % current_cycle.hour, timestamp)
 
-    def parse_metar(self, icao, metar, airport_msl=0):
+    @classmethod
+    def parse_metar(cls, icao, metar, airport_msl=0):
         """Returns a parsed METAR"""
 
         weather = {
@@ -253,14 +256,14 @@ class Metar:
 
         clouds = []
 
-        for cloud in self.RE_CLOUD.findall(metar):
+        for cloud in cls.RE_CLOUD.findall(metar):
             coverage, alt, type = cloud
             alt = float(alt) * 30.48 + airport_msl
             clouds.append([alt, coverage, type])
 
         weather['clouds'] = clouds
 
-        m = self.RE_PRESSURE.search(metar)
+        m = cls.RE_PRESSURE.search(metar)
         if m:
             unit, press = m.groups()
             press = float(press)
@@ -279,7 +282,7 @@ class Metar:
             if 25 < press < 35:
                 weather['pressure'] = press
 
-        m = self.RE_TEMPERATURE2.search(metar)
+        m = cls.RE_TEMPERATURE2.search(metar)
         if m:
             tp, temp, dp, dew = m.groups()
             temp = float(temp) * 0.1
@@ -288,7 +291,7 @@ class Metar:
             if dp == '1': dew *= -1
             weather['temperature'] = [temp, dew]
         else:
-            m = self.RE_TEMPERATURE.search(metar)
+            m = cls.RE_TEMPERATURE.search(metar)
             if m:
                 temps, temp, dews, dew = m.groups()
                 temp = int(temp)
@@ -299,7 +302,7 @@ class Metar:
 
         metar = metar.split('RMK')[0]
 
-        m = self.RE_VISIBILITY.search(metar)
+        m = cls.RE_VISIBILITY.search(metar)
         if m:
             if m.group(0) == 'CAVOK' or (m.group(0)[0] == 'P' and int(m.group(2)) > 7999):
                 visibility = 9999
@@ -320,7 +323,7 @@ class Metar:
 
             weather['visibility'] = visibility
 
-        m = self.RE_WIND.search(metar)
+        m = cls.RE_WIND.search(metar)
         if m:
             heading, speed, gust, unit = m.groups()
             if heading == 'VRB':
@@ -347,13 +350,13 @@ class Metar:
 
             weather['wind'] = [heading, speed, gust]
 
-        m = self.RE_VARIABLE_WIND.search(metar)
+        m = cls.RE_VARIABLE_WIND.search(metar)
         if m:
             h1, h2 = m.groups()
             weather['variable_wind'] = [int(h1), int(h2)]
 
         precipitation = {}
-        for precp in self.RE_PRECIPITATION.findall(metar):
+        for precp in cls.RE_PRECIPITATION.findall(metar):
             intensity, recent, mod, kind, neg = precp
             if neg == 'E':
                 recent = 'RE'
@@ -371,7 +374,7 @@ class Metar:
 
         return weather
 
-    def run(self, lat, lon, rate):
+    def run(self, elapsed):
 
         # Worker thread requires it's own db connection and cursor
         if not self.th_db:
@@ -407,7 +410,7 @@ class Metar:
             print '%d metar stations updated.' % nstations
 
         # Update METAR.rwx
-        if self.conf.update_metar_rwx_file and self.next_metarRWX < time.time():
+        if self.conf.updateMetarRWX and self.next_metarRWX < time.time():
             if self.update_metar_rwx_file(self.th_db):
                 self.next_metarRWX = time.time() + 300
                 print 'Updated METAR.rwx file.'
@@ -460,6 +463,7 @@ class Metar:
         f.close()
         return True
 
-    def die(self):
+    def shutdown(self):
+        super(Metar, self).shutdown()
         self.connection.commit()
         self.connection.close()

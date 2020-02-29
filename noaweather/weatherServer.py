@@ -14,6 +14,8 @@ of the License, or any later version.
 
 from conf import Conf
 from gfs import GFS
+from wafs import WAFS
+from metar import Metar
 from c import c
 
 import SocketServer
@@ -26,10 +28,8 @@ import time
 from datetime import datetime
 
 
-class logFile:
-    '''
-    File object wrapper, adds timestamp to print output
-    '''
+class LogFile:
+    """File object wrapper, adds timestamp to print output"""
 
     def __init__(self, path, options):
         self.f = open(path, options)
@@ -50,12 +50,32 @@ class logFile:
             self.__dict__[name] = value
 
 
-class clientHandler(SocketServer.BaseRequestHandler):
+class Worker(threading.Thread):
+    """Runs worker functions on weather sources to periodically trigger data updating"""
 
-    def getWeatherData(self, data):
-        '''
-        Prepares weather response
-        '''
+    def __init__(self, workers, rate):
+        self.workers = workers
+        self.die = threading.Event()
+        self.rate = rate
+        threading.Thread.__init__(self)
+
+    def run(self):
+        while not self.die.wait(self.rate):
+            for worker in self.workers:
+                worker.run(self.rate)
+
+        if self.die.isSet():
+            for worker in self.workers:
+                worker.shutdown()
+            sys.stdout.flush()
+
+
+class ClientHandler(SocketServer.BaseRequestHandler):
+
+    @staticmethod
+    def get_weather_data(data):
+        """Collects weather data for the response"""
+
         lat, lon = float(data[0]), float(data[1])
 
         response = {
@@ -74,29 +94,29 @@ class clientHandler(SocketServer.BaseRequestHandler):
         if lat > 98 and lon > 98:
             return False
 
-        # Parse gfs and wfas
+        # Parse gfs and wafs
         if gfs.lastgrib:
             response['gfs'] = gfs.parseGribData(gfs.lastgrib, lat, lon)
             response['info']['gfs_cycle'] = gfs.lastgrib
-        if gfs.wafs.lastgrib:
-            response['wafs'] = gfs.wafs.parseGribData(gfs.wafs.lastgrib, lat, lon)
-            response['info']['wafs_cycle'] = gfs.wafs.lastgrib
+        if wafs.lastgrib:
+            response['wafs'] = wafs.parseGribData(wafs.lastgrib, lat, lon)
+            response['info']['wafs_cycle'] = wafs.lastgrib
 
         # Parse metar
-        apt = gfs.metar.get_closest_station(gfs.metar.connection, lat, lon)
+        apt = metar.get_closest_station(metar.connection, lat, lon)
         if apt and len(apt) > 4:
-            response['metar'] = gfs.metar.parse_metar(apt[0], apt[5], apt[3])
+            response['metar'] = metar.parse_metar(apt[0], apt[5], apt[3])
             response['metar']['latlon'] = (apt[1], apt[2])
             response['metar']['distance'] = c.greatCircleDistance((lat, lon), (apt[1], apt[2]))
 
         return response
 
     def shutdown(self):
-        # Shutdown server. Needs to be from a different thread
-        def shutNow(srv):
+        # shutdown Needs to be from called from a different thread
+        def shut_down_now(srv):
             srv.shutdown()
 
-        th = threading.Thread(target=shutNow, args=(self.server,))
+        th = threading.Thread(target=shut_down_now, args=(self.server,))
         th.start()
 
     def handle(self):
@@ -108,13 +128,13 @@ class clientHandler(SocketServer.BaseRequestHandler):
                 # weather data request
                 sdata = data[1:].split('|')
                 if len(sdata) > 1:
-                    response = self.getWeatherData(sdata)
+                    response = self.get_weather_data(sdata)
                 elif len(data) == 5:
                     # Icao
                     response = {}
-                    apt = gfs.metar.get_metar(gfs.metar.connection, data[1:])
+                    apt = metar.get_metar(metar.connection, data[1:])
                     if len(apt) and apt[5]:
-                        response['metar'] = gfs.metar.parse_metar(apt[0], apt[5], apt[3])
+                        response['metar'] = metar.parse_metar(apt[0], apt[5], apt[3])
                     else:
                         response['metar'] = {'icao': 'METAR STATION',
                                              'metar': 'NOT AVAILABLE'}
@@ -128,8 +148,8 @@ class clientHandler(SocketServer.BaseRequestHandler):
                 conf.pluginLoad()
             elif data == '!resetMetar':
                 # Clear database and force redownload
-                gfs.metar.clear_reports(gfs.metar.connection)
-                gfs.metar.last_timestamp = 0
+                metar.clear_reports(metar.connection)
+                metar.last_timestamp = 0
             elif data == '!ping':
                 response = '!pong'
             else:
@@ -147,24 +167,26 @@ class clientHandler(SocketServer.BaseRequestHandler):
 
 
 if __name__ == "__main__":
+    debug = False
     # Get the X-Plane path from the arguments
     if len(sys.argv) > 1:
         path = sys.argv[1]
     else:
         # Joanpc's personal debuggin options
+        debug = True
         if sys.platform == 'win32':
             path = 'H:'
         else:
-            path = '/Volumes/TO_GO/X-Plane 10'
+            path = '/tmp'
+            # path = '/Volumes/TO_GO/X-Plane 10'
 
     conf = Conf(path)
 
-    # logfile = open(os.sep.join([conf.respath, 'weatherServerLog.txt']), 'a')
+    if not debug:
+        logfile = LogFile(os.sep.join([conf.respath, 'weatherServerLog.txt']), 'a')
 
-    logfile = logFile(os.sep.join([conf.respath, 'weatherServerLog.txt']), 'a')
-
-    sys.stderr = logfile
-    sys.stdout = logfile
+        sys.stderr = logfile
+        sys.stdout = logfile
 
     print '---------------'
     print 'Starting server'
@@ -172,7 +194,7 @@ if __name__ == "__main__":
     print sys.argv
 
     try:
-        server = SocketServer.UDPServer(("localhost", conf.server_port), clientHandler)
+        server = SocketServer.UDPServer(("localhost", conf.server_port), ClientHandler)
     except socket.error:
         print "Can't bind address: %s, port: %d." % ("localhost", conf.server_port)
 
@@ -181,14 +203,20 @@ if __name__ == "__main__":
             os.kill(conf.weatherServerPid, signal.SIGTERM)
             time.sleep(2)
             conf.serverLoad()
-            server = SocketServer.UDPServer(("localhost", conf.server_port), clientHandler)
+            server = SocketServer.UDPServer(("localhost", conf.server_port), ClientHandler)
 
     # Save pid
     conf.weatherServerPid = os.getpid()
     conf.serverSave()
 
+    # Weather classes
     gfs = GFS(conf)
-    gfs.start()
+    metar = Metar(conf)
+    wafs = WAFS(conf)
+
+    # Init worker thread
+    worker = Worker([gfs, metar, wafs], conf.parserate)
+    worker.start()
 
     print 'Server started.'
 
@@ -199,7 +227,10 @@ if __name__ == "__main__":
         pass
 
     # Close gfs worker and save config
-    gfs.die.set()
+    worker.die.set()
     conf.serverSave()
+
     print 'Server stopped.'
-    logfile.close()
+
+    if not debug:
+        logfile.close()

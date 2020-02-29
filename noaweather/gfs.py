@@ -10,20 +10,18 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or any later version.
 '''
-import threading
+
 from datetime import datetime, timedelta
 import os
 import subprocess
-import sys
 
-from wafs import WAFS
-from metar import Metar
+from weathersource import WeatherSource
 from asyncdownload import AsyncDownload
 from c import c
 from util import util
 
 
-class GFS(threading.Thread):
+class GFS(WeatherSource):
     '''
     NOAA GFS download and parse functions.
     '''
@@ -80,47 +78,23 @@ class GFS(threading.Thread):
     newGrib = False
     parsed_latlon = (0, 0)
 
-    die = threading.Event()
-    dummy = threading.Event()
-    lock = threading.Lock()
-
     def __init__(self, conf):
-        self.conf = conf
-        self.lastgrib = self.conf.lastgrib
-        self.wafs = WAFS(conf)
-        self.metar = Metar(conf)
-        threading.Thread.__init__(self)
+        self.lastgrib = conf.lastgrib
 
-    def run(self):
+        super(GFS, self).__init__(conf)
+
+    def run(self, elapsed):
         # Worker thread
-        while not self.die.wait(self.conf.parserate):
 
-            if not self.conf.enabled:
-                continue
+        if not self.conf.enabled:
+            pass
 
-            datecycle, cycle, forecast = self.getCycleDate()
+        datecycle, cycle, forecast = self.getCycleDate()
 
-            if self.downloadWait < 1:
-                self.downloadCycle(datecycle, cycle, forecast)
-            elif self.downloadWait > 0:
-                self.downloadWait -= self.conf.parserate
-
-            # Run WAFS worker
-            self.wafs.run(self.lat, self.lon, self.conf.parserate)
-
-            # Run Metar worker
-            self.metar.run(self.lat, self.lon, self.conf.parserate)
-
-            if self.die.isSet():
-                # Kill downloaders if avaliable
-                if self.wafs and self.wafs.downloading and self.wafs.download:
-                    self.wafs.download.die()
-                if self.downloading and self.download:
-                    self.download.die()
-                return
-
-            # flush stdout
-            sys.stdout.flush()
+        if self.downloadWait < 1:
+            self.downloadCycle(datecycle, cycle, forecast)
+        elif self.downloadWait > 0:
+            self.downloadWait -= elapsed
 
     def getCycleDate(self):
         '''

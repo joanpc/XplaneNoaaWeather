@@ -13,11 +13,12 @@ from datetime import datetime, timedelta
 import subprocess
 
 from asyncdownload import AsyncDownload
+from weathersource import WeatherSource
 from c import c
 from util import util
 
 
-class WAFS:
+class WAFS(WeatherSource):
     '''
     World Area Forecast System - Upper Air Forecast
     Download and parse functions
@@ -34,15 +35,14 @@ class WAFS:
     downloadWait = 0
 
     def __init__(self, conf):
-        self.conf = conf
-        self.downloading = False
-
         # Use last grib stored in config if still avaliable
-        if self.conf.lastwafsgrib and os.path.exists(os.sep.join([self.conf.cachepath, self.conf.lastwafsgrib])):
-            self.lastgrib = self.conf.lastwafsgrib
-            self.current_datecycle = self.conf.lastwafsgrib[5:15]
+        if conf.lastwafsgrib and os.path.exists(os.sep.join([conf.cachepath, conf.lastwafsgrib])):
+            self.lastgrib = conf.lastwafsgrib
+            self.current_datecycle = conf.lastwafsgrib[5:15]
 
-    def run(self, lat, lon, rate):
+        super(WAFS, self).__init__(conf)
+
+    def run(self, elapsed):
         # Worker thread
 
         datecycle, cycle, forecast = self.getCycleDate()
@@ -67,7 +67,7 @@ class WAFS:
                     self.downloadWait = 60
 
         if self.downloadWait > 0:
-            self.downloadWait -= rate
+            self.downloadWait -= elapsed
 
         # Download new grib if required
         if self.current_datecycle != datecycle and self.conf.download and not self.downloading and self.downloadWait < 1:
