@@ -1,4 +1,4 @@
-'''
+"""
 X-plane NOAA GFS weather plugin.
 Copyright (C) 2012-2015 Joan Perez i Cauhe
 ---
@@ -6,7 +6,7 @@ This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or any later version.
-'''
+"""
 
 import re
 import os
@@ -23,9 +23,9 @@ from asyncdownload import AsyncDownload
 
 
 class Metar:
-    '''
-    Metar download and interpretation class
-    '''
+    """
+    Provides METAR download and parsing routines.
+    """
     # Metar parse regex
     RE_CLOUD = re.compile(r'\b(FEW|BKN|SCT|OVC|VV)([0-9]+)([A-Z][A-Z][A-Z]?)?\b')
     RE_WIND = re.compile(r'\b(VRB|[0-9]{3})([0-9]{2,3})(G[0-9]{2,3})?(MPH|KT?|MPS|KMH)\b')
@@ -84,16 +84,18 @@ class Metar:
         self.last_latlon, self.last_station, self.last_timestamp = [False] * 3
 
     def db_connect(self, path):
+        """Returns an SQLite connection to the metar database"""
         return sqlite3.connect(path, check_same_thread=False)
 
     def db_create(self, db):
+        """Creates the METAR database and tables"""
         cursor = db.cursor()
         cursor.execute('''CREATE TABLE airports (icao text KEY UNIQUE, lat real, lon real, elevation int,
                         timestamp int KEY, metar text)''')
         db.commit()
 
     def update_stations(self, db, path):
-        ''' Updates aiports db from metar stations file'''
+        """Updates db's airport information from the METAR station file"""
         self.conf.ms_update = time.time()
 
         cursor = db.cursor()
@@ -122,7 +124,7 @@ class Metar:
         return n
 
     def update_metar(self, db, path):
-        ''' Updates metar table from Metar file'''
+        """Updates metar table from Metar file"""
         f = open(path, 'r')
         nupdated = 0
         nparsed = 0
@@ -179,13 +181,13 @@ class Metar:
 
     @staticmethod
     def clear_reports(self, db):
-        '''Clears all metar reports from the db'''
+        """Clears all metar reports from the db"""
         cursor = db.cursor()
         cursor.execute('UPDATE airports SET metar = NULL, timestamp = 0')
         db.commit()
 
     def get_closest_station(self, db, lat, lon, limit=1):
-        ''' Return closest airport with a metar report'''
+        """Return the closest airport with a metar report"""
 
         cursor = db.cursor()
         fudge = math.pow(math.cos(math.radians(lat)), 2)
@@ -211,7 +213,7 @@ class Metar:
         return ret
 
     def get_metar(self, db, icao):
-        ''' Get metar from icao name '''
+        """Returns the METAR from an airport icao code"""
         cursor = db.cursor()
         res = cursor.execute('''SELECT * FROM airports
                                 WHERE icao = ? AND metar NOT NULL LIMIT 1''', (icao.upper(),))
@@ -222,16 +224,17 @@ class Metar:
         return ret
 
     def get_current_cycle(self):
+        """Returns the current METAR cycle"""
         now = datetime.utcnow()
-        # Cycle is updated until the houre has arrived (ex: 01 cycle updates until 1am)
+        # Cycle is updated until the hour has arrived (ex: 01 cycle updates until 1am)
 
-        cnow = now + timedelta(hours=0, minutes=5)
+        current_cycle = now + timedelta(hours=0, minutes=5)
 
         timestamp = int(time.time())
-        return ('%02d' % cnow.hour, timestamp)
+        return ('%02d' % current_cycle.hour, timestamp)
 
     def parse_metar(self, icao, metar, airport_msl=0):
-        ''' Parse metar'''
+        """Returns a parsed METAR"""
 
         weather = {
             'icao': icao,
