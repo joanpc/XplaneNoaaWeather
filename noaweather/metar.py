@@ -34,6 +34,8 @@ class Metar:
     RE_TEMPERATURE  = re.compile(r'\b(M|-)?([0-9]{1,2})/(M|-)?([0-9]{1,2})\b')
     RE_TEMPERATURE2 = re.compile(r'\bT(0|1)([0-9]{3})(0|1)([0-9]{3})\b')
     RE_PRECIPITATION = re.compile('(-|\+)?(RE)?(DZ|SG|IC|PL|SH)?(DZ|RA|SN|TS)(NO|E)?')
+    RE_RVR = re.compile(r'\bR(?P<runway>(?P<rw_number>[0-9]{2})(?P<rw_position>[LCR]))?/'
+                        '(?P<exceed>[PM])?(?P<visibility>[0-9]{4})(?P<change>[UDN])?\b')
 
     METAR_STATIONS_URL = 'https://www.aviationweather.gov/docs/metar/stations.txt'
     NOAA_METAR_URL = 'https://aviationweather.gov/adds/dataserver_current/current/metars.cache.csv.gz'
