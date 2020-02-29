@@ -21,17 +21,18 @@ from util import util
 from c import c
 from asyncdownload import AsyncDownload
 
+
 class Metar:
     '''
     Metar download and interpretation class
     '''
     # Metar parse regex
-    RE_CLOUD        = re.compile(r'\b(FEW|BKN|SCT|OVC|VV)([0-9]+)([A-Z][A-Z][A-Z]?)?\b')
-    RE_WIND         = re.compile(r'\b(VRB|[0-9]{3})([0-9]{2,3})(G[0-9]{2,3})?(MPH|KT?|MPS|KMH)\b')
+    RE_CLOUD = re.compile(r'\b(FEW|BKN|SCT|OVC|VV)([0-9]+)([A-Z][A-Z][A-Z]?)?\b')
+    RE_WIND = re.compile(r'\b(VRB|[0-9]{3})([0-9]{2,3})(G[0-9]{2,3})?(MPH|KT?|MPS|KMH)\b')
     RE_VARIABLE_WIND = re.compile(r'\b([0-9]{3})V([0-9]{3})\b')
-    RE_VISIBILITY   = re.compile(r'\b(CAVOK|[PM]?([0-9]{4})|([0-9] )?([0-9]{1,2})(/[0-9])?(SM|KM))\b')
-    RE_PRESSURE     = re.compile(r'\b(Q|QNH|SLP|A)[ ]?([0-9]{3,4})\b')
-    RE_TEMPERATURE  = re.compile(r'\b(M|-)?([0-9]{1,2})/(M|-)?([0-9]{1,2})\b')
+    RE_VISIBILITY = re.compile(r'\b(CAVOK|[PM]?([0-9]{4})|([0-9] )?([0-9]{1,2})(/[0-9])?(SM|KM))\b')
+    RE_PRESSURE = re.compile(r'\b(Q|QNH|SLP|A)[ ]?([0-9]{3,4})\b')
+    RE_TEMPERATURE = re.compile(r'\b(M|-)?([0-9]{1,2})/(M|-)?([0-9]{1,2})\b')
     RE_TEMPERATURE2 = re.compile(r'\bT(0|1)([0-9]{3})(0|1)([0-9]{3})\b')
     RE_PRECIPITATION = re.compile('(-|\+)?(RE)?(DZ|SG|IC|PL|SH)?(DZ|RA|SN|TS)(NO|E)?')
     RE_RVR = re.compile(r'\bR(?P<runway>(?P<rw_number>[0-9]{2})(?P<rw_position>[LCR]))?/'
@@ -42,7 +43,7 @@ class Metar:
     VATSIM_METAR_URL = 'https://metar.vatsim.net/metar.php?id=all'
     IVAO_METAR_URL = 'https://wx.ivao.aero/metar.php'
 
-    STATION_UPDATE_RATE = 30 # In days
+    STATION_UPDATE_RATE = 30  # In days
 
     def __init__(self, conf):
 
@@ -80,7 +81,7 @@ class Metar:
         if (time.time() - self.conf.ms_update) > self.STATION_UPDATE_RATE * 86400:
             self.ms_download = AsyncDownload(self.conf, self.METAR_STATIONS_URL, os.sep.join(['metar', 'stations.txt']))
 
-        self.last_latlon, self.last_station, self.last_timestamp = [False]*3
+        self.last_latlon, self.last_station, self.last_timestamp = [False] * 3
 
     def dbConnect(self, path):
         return sqlite3.connect(path, check_same_thread=False)
@@ -103,16 +104,17 @@ class Metar:
         for line in f.readlines():
             if line[0] != '!' and len(line) > 80:
                 icao = line[20:24]
-                lat = float(line[39:41]) + round(float(line[42:44])/60, 4)
+                lat = float(line[39:41]) + round(float(line[42:44]) / 60, 4)
                 if line[44] == 'S':
                     lat *= -1
-                lon = float(line[47:50]) + round(float(line[51:53])/60, 4)
+                lon = float(line[47:50]) + round(float(line[51:53]) / 60, 4)
                 if line[53] == 'W':
                     lon *= -1
                 elevation = int(line[55:59])
                 if line[20] != ' ' and line[51] != '9':
-                    cursor.execute('INSERT OR REPLACE INTO airports (icao, lat, lon, elevation, timestamp) VALUES (?,?,?,?,0)',
-                                   (icao.strip('"'), lat, lon, elevation))
+                    cursor.execute(
+                        'INSERT OR REPLACE INTO airports (icao, lat, lon, elevation, timestamp) VALUES (?,?,?,?,0)',
+                        (icao.strip('"'), lat, lon, elevation))
                     n += 1
 
         f.close()
@@ -138,7 +140,7 @@ class Metar:
         for line in f.readlines():
             if line[0].isalpha() and len(line) > 11 and line[11] == 'Z':
                 i += 1
-                icao, mtime, metar = line[0:4], line[5:11] , re.sub(r'[^\x00-\x7F]+',' ', line[5:-1])
+                icao, mtime, metar = line[0:4], line[5:11], re.sub(r'[^\x00-\x7F]+', ' ', line[5:-1])
                 metar = metar.split(',')[0]
 
                 if mtime[-1] == 'Z':
@@ -158,7 +160,8 @@ class Metar:
                 timestamp = 0
 
                 if (i % INSBUF) == 0:
-                    cursor.executemany('UPDATE airports SET timestamp = ?, metar = ? WHERE icao = ? AND timestamp < ?', inserts)
+                    cursor.executemany('UPDATE airports SET timestamp = ?, metar = ? WHERE icao = ? AND timestamp < ?',
+                                       inserts)
                     inserts = []
                     nupdated += cursor.rowcount
 
@@ -180,11 +183,11 @@ class Metar:
         cursor.execute('UPDATE airports SET metar = NULL, timestamp = 0')
         db.commit()
 
-    def getClosestStation(self, db, lat, lon, limit = 1):
+    def getClosestStation(self, db, lat, lon, limit=1):
         ''' Return closest airport with a metar report'''
 
         cursor = db.cursor()
-        fudge = math.pow(math.cos(math.radians(lat)),2)
+        fudge = math.pow(math.cos(math.radians(lat)), 2)
 
         if self.conf.ignore_metar_stations:
 
@@ -193,7 +196,7 @@ class Metar:
                                     ORDER BY ((? - lat) * (? - lat) + (? - lon) * (? - lon) * ?)
                                     LIMIT ?''' % (','.join(['?'] * len(self.conf.ignore_metar_stations)))
 
-            res = cursor.execute(q , tuple(self.conf.ignore_metar_stations) + (lat, lat, lon, lon, fudge, limit))
+            res = cursor.execute(q, tuple(self.conf.ignore_metar_stations) + (lat, lat, lon, lon, fudge, limit))
 
 
         else:
@@ -211,7 +214,7 @@ class Metar:
         ''' Get metar from icao name '''
         cursor = db.cursor()
         res = cursor.execute('''SELECT * FROM airports
-                                WHERE icao = ? AND metar NOT NULL LIMIT 1''', (icao.upper(), ))
+                                WHERE icao = ? AND metar NOT NULL LIMIT 1''', (icao.upper(),))
 
         ret = res.fetchall()
         if len(ret) > 0:
@@ -227,21 +230,21 @@ class Metar:
         timestamp = int(time.time())
         return ('%02d' % cnow.hour, timestamp)
 
-    def parseMetar(self, icao, metar, airport_msl = 0):
+    def parseMetar(self, icao, metar, airport_msl=0):
         ''' Parse metar'''
 
         weather = {
-                   'icao': icao,
-                   'metar': metar,
-                   'elevation': airport_msl,
-                   'wind': [0, 0, 0], # Heading, speed, shear
-                   'variable_wind': False,
-                   'clouds': [0, 0, False] * 3, # Alt, coverage type
-                   'temperature': [False, False], # Temperature, dewpoint
-                   'pressure': False, # space c.pa2inhg(10.1325),
-                   'visibility': 9998,
-                   'precipitation': {},
-                   }
+            'icao': icao,
+            'metar': metar,
+            'elevation': airport_msl,
+            'wind': [0, 0, 0],  # Heading, speed, shear
+            'variable_wind': False,
+            'clouds': [0, 0, False] * 3,  # Alt, coverage type
+            'temperature': [False, False],  # Temperature, dewpoint
+            'pressure': False,  # space c.pa2inhg(10.1325),
+            'visibility': 9998,
+            'precipitation': {},
+        }
 
         metar = metar.split('TEMPO')[0]
 
@@ -261,7 +264,7 @@ class Metar:
 
             if unit:
                 if unit == 'A':
-                    press = press/100
+                    press = press / 100
                 elif unit == 'SLP':
                     if press > 500:
                         press = c.pa2inhg((press / 10 + 900) * 100)
@@ -334,7 +337,7 @@ class Metar:
                 gust = c.ms2knots(gust)
                 if unit == 'MPH':
                     speed /= 60
-                    gust  /= 60
+                    gust /= 60
             if unit == 'KMH':
                 speed = c.m2kn(speed / 1000.0)
                 gust = c.m2kn(gust / 1000.0)
@@ -352,7 +355,7 @@ class Metar:
             if neg == 'E':
                 recent = 'RE'
             if neg != 'NO':
-                precipitation[kind] = {'int': intensity ,'mod': mod, 'recent': recent}
+                precipitation[kind] = {'int': intensity, 'mod': mod, 'recent': recent}
 
         weather['precipitation'] = precipitation
 
@@ -408,7 +411,6 @@ class Metar:
             else:
                 # Retry in 10 sec
                 self.next_metarRWX = time.time() + 10
-
 
     def downloadCycle(self, cycle, timestamp):
         self.downloading = True

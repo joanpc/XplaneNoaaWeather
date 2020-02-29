@@ -13,6 +13,7 @@ import cPickle
 import sys
 import subprocess
 
+
 class Conf:
     '''
     Configuration variables
@@ -24,12 +25,12 @@ class Conf:
 
     def __init__(self, syspath):
         # Inits conf
-        self.syspath      = syspath
-        self.respath      = os.sep.join([self.syspath, 'Resources', 'plugins', 'PythonScripts', 'noaweather'])
+        self.syspath = syspath
+        self.respath = os.sep.join([self.syspath, 'Resources', 'plugins', 'PythonScripts', 'noaweather'])
         self.settingsfile = os.sep.join([self.respath, 'settings.pkl'])
         self.serverSettingsFile = os.sep.join([self.respath, 'weatherServer.pkl'])
 
-        self.cachepath    = os.sep.join([self.respath, 'cache'])
+        self.cachepath = os.sep.join([self.respath, 'cache'])
         if not os.path.exists(self.cachepath):
             os.makedirs(self.cachepath)
 
@@ -69,8 +70,8 @@ class Conf:
             # Hide wgrib window for windows users
             self.spinfo = subprocess.STARTUPINFO()
 
-            self.spinfo.dwFlags |= 1 # STARTF_USESHOWWINDOW
-            self.spinfo.wShowWindow = 0 # 0 or SW_HIDE 0
+            self.spinfo.dwFlags |= 1  # STARTF_USESHOWWINDOW
+            self.spinfo.wShowWindow = 0  # 0 or SW_HIDE 0
 
         else:
             # Linux?
@@ -78,7 +79,7 @@ class Conf:
             if os.path.exists(self.pythonpath + '2.7'):
                 self.pythonpath = self.pythonpath + '2.7'
 
-        self.wgrib2bin  = os.sep.join([self.respath, 'bin', wgbin])
+        self.wgrib2bin = os.sep.join([self.respath, 'bin', wgbin])
 
         # Enforce execution rights
         try:
@@ -90,50 +91,50 @@ class Conf:
         # Default and storable settings
 
         # User settings
-        self.enabled        = True
-        self.set_wind       = True
-        self.set_clouds     = True
-        self.set_temp       = True
+        self.enabled = True
+        self.set_wind = True
+        self.set_clouds = True
+        self.set_temp = True
         self.set_visibility = False
-        self.set_turb       = True
-        self.set_pressure   = True
+        self.set_turb = True
+        self.set_pressure = True
         self.turbulence_probability = 1
 
-        self.inputbug       = False
+        self.inputbug = False
 
         # From this AGL level METAR values are interpolated to GFS ones.
-        self.metar_agl_limit = 10 # In meters
+        self.metar_agl_limit = 10  # In meters
         # From this distance from the airport gfs data is used for temp, dew, pressure and clouds
-        self.metar_distance_limit = 100000 # In meters
+        self.metar_distance_limit = 100000  # In meters
 
-        self.parserate      = 1
-        self.updaterate     = 1
-        self.download       = True
-        self.keepOldFiles   = False
+        self.parserate = 1
+        self.updaterate = 1
+        self.download = True
+        self.keepOldFiles = False
 
         # Performance tweaks
-        self.max_visibility = False # in SM
-        self.max_cloud_height = False # in feet
+        self.max_visibility = False  # in SM
+        self.max_cloud_height = False  # in feet
 
         # Weather server configuration
-        self.server_updaterate = 10 # Run the weather loop each #seconds
+        self.server_updaterate = 10  # Run the weather loop each #seconds
         self.server_address = '127.0.0.1'
-        self.server_port    = 8950
+        self.server_port = 8950
 
         # Weather server variables
-        self.lastgrib       = False
-        self.lastwafsgrib   = False
-        self.ms_update      = 0
+        self.lastgrib = False
+        self.lastwafsgrib = False
+        self.ms_update = 0
 
         self.weatherServerPid = False
 
         # Transitions
-        self.windTransSpeed = 0.14 # kt/s
-        self.windGustTransSpeed = 0.5 # kt/s
-        self.windHdgTransSpeed = 0.5# degrees/s
+        self.windTransSpeed = 0.14  # kt/s
+        self.windGustTransSpeed = 0.5  # kt/s
+        self.windHdgTransSpeed = 0.5  # degrees/s
 
         self.metar_source = 'NOAA'
-        self.metar_updaterate = 5 # minutes
+        self.metar_updaterate = 5  # minutes
 
         self.tracker_uid = False
         self.tracker_enabled = True
@@ -181,27 +182,27 @@ class Conf:
     def pluginSave(self):
         '''Save plugin settings'''
         conf = {
-                'version'   : self.__VERSION__,
-                'set_temp'  : self.set_temp,
-                'set_clouds': self.set_clouds,
-                'set_wind'  : self.set_wind,
-                'set_turb'  : self.set_turb,
-                'set_pressure' : self.set_pressure,
-                'enabled'   : self.enabled,
-                'updaterate': self.updaterate,
-                'metar_source': self.metar_source,
-                'download'  : self.download,
-                'metar_agl_limit': self.metar_agl_limit,
-                'metar_distance_limit': self.metar_distance_limit,
-                'max_visibility': self.max_visibility,
-                'max_cloud_height': self.max_cloud_height,
-                'turbulence_probability': self.turbulence_probability,
-                'inputbug': self.inputbug,
-                'metar_updaterate': self.metar_updaterate,
-                'tracker_uid': self.tracker_uid,
-                'tracker_enabled': self.tracker_enabled,
-                'ignore_metar_stations': self.ignore_metar_stations
-                }
+            'version': self.__VERSION__,
+            'set_temp': self.set_temp,
+            'set_clouds': self.set_clouds,
+            'set_wind': self.set_wind,
+            'set_turb': self.set_turb,
+            'set_pressure': self.set_pressure,
+            'enabled': self.enabled,
+            'updaterate': self.updaterate,
+            'metar_source': self.metar_source,
+            'download': self.download,
+            'metar_agl_limit': self.metar_agl_limit,
+            'metar_distance_limit': self.metar_distance_limit,
+            'max_visibility': self.max_visibility,
+            'max_cloud_height': self.max_cloud_height,
+            'turbulence_probability': self.turbulence_probability,
+            'inputbug': self.inputbug,
+            'metar_updaterate': self.metar_updaterate,
+            'tracker_uid': self.tracker_uid,
+            'tracker_enabled': self.tracker_enabled,
+            'ignore_metar_stations': self.ignore_metar_stations
+        }
         self.saveSettings(self.settingsfile, conf)
 
     def pluginLoad(self):
@@ -215,12 +216,12 @@ class Conf:
     def serverSave(self):
         '''Save weather server settings'''
         server_conf = {
-                       'version'   : self.__VERSION__,
-                       'lastgrib': self.lastgrib,
-                       'lastwafsgrib': self.lastwafsgrib,
-                       'ms_update' : self.ms_update,
-                       'weatherServerPid': self.weatherServerPid,
-                       }
+            'version': self.__VERSION__,
+            'lastgrib': self.lastgrib,
+            'lastwafsgrib': self.lastwafsgrib,
+            'ms_update': self.ms_update,
+            'weatherServerPid': self.weatherServerPid,
+        }
         self.saveSettings(self.serverSettingsFile, server_conf)
 
     def serverLoad(self):

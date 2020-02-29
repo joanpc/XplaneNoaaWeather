@@ -16,24 +16,25 @@ from asyncdownload import AsyncDownload
 from c import c
 from util import util
 
+
 class WAFS:
     '''
     World Area Forecast System - Upper Air Forecast
     Download and parse functions
     '''
-    cycles    = [0, 6, 12, 18]
+    cycles = [0, 6, 12, 18]
     forecasts = [6, 9, 12, 15, 18, 21, 24]
     baseurl = 'https://www.ftp.ncep.noaa.gov/data/nccf/com/gfs/prod'
 
-    current_datecycle   = False
-    downloading     = False
+    current_datecycle = False
+    downloading = False
 
     lastgrib = False
     lastlat, lastlon = False, False
     downloadWait = 0
 
     def __init__(self, conf):
-        self.conf        = conf
+        self.conf = conf
         self.downloading = False
 
         # Use last grib stored in config if still avaliable
@@ -95,7 +96,7 @@ class WAFS:
                 forecast = fcast
                 break
 
-        return ( '%d%02d%02d%02d' % (cnow.year, cnow.month, cnow.day, lcycle), lcycle, forecast)
+        return ('%d%02d%02d%02d' % (cnow.year, cnow.month, cnow.day, lcycle), lcycle, forecast)
 
     def parseGribData(self, filepath, lat, lon):
         '''
@@ -109,7 +110,8 @@ class WAFS:
                 ]
 
         if self.conf.spinfo:
-            p = subprocess.Popen([self.conf.wgrib2bin] + args, stdout=subprocess.PIPE, startupinfo=self.conf.spinfo, shell=True)
+            p = subprocess.Popen([self.conf.wgrib2bin] + args, stdout=subprocess.PIPE, startupinfo=self.conf.spinfo,
+                                 shell=True)
         else:
             p = subprocess.Popen([self.conf.wgrib2bin] + args, stdout=subprocess.PIPE)
         it = iter(p.stdout)
@@ -118,9 +120,9 @@ class WAFS:
         for line in it:
             r = line[:-1].split(':')
             # Level, variable, value
-            level, variable, value, maxave = [r[4].split(' '),  r[3],  r[7].split(',')[2].split('=')[1], r[6]]
+            level, variable, value, maxave = [r[4].split(' '), r[3], r[7].split(',')[2].split('=')[1], r[6]]
             if len(level) > 1 and level[1] == 'mb' and maxave == 'spatial max':
-                #print level[1], variable, value
+                # print level[1], variable, value
                 alt = int(c.mb2alt(float(level[0])))
                 value = float(value)
                 if value < 0:
@@ -137,7 +139,7 @@ class WAFS:
 
         turbulence = []
         for key, value in cat.iteritems():
-            turbulence.append([key, value/6.0])
+            turbulence.append([key, value / 6.0])
         turbulence.sort()
 
         return turbulence
@@ -150,5 +152,5 @@ class WAFS:
         path = os.sep.join([self.conf.cachepath, 'wafs'])
         if not os.path.exists(path):
             os.makedirs(path)
-        #print cachefile, url
+        # print cachefile, url
         self.download = AsyncDownload(self.conf, url, cachefile)

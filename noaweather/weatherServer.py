@@ -13,7 +13,7 @@ of the License, or any later version.
 '''
 
 from conf import Conf
-from gfs import  GFS
+from gfs import GFS
 from c import c
 
 import SocketServer
@@ -25,16 +25,18 @@ import time
 
 from datetime import datetime
 
+
 class logFile:
     '''
     File object wrapper, adds timestamp to print output
     '''
+
     def __init__(self, path, options):
         self.f = open(path, options)
 
     def write(self, data):
         if len(data) > 1:
-            self.f.write('%s  %s' % ( datetime.utcnow().strftime('%b %d %H:%M:%S'), data) )
+            self.f.write('%s  %s' % (datetime.utcnow().strftime('%b %d %H:%M:%S'), data))
         else:
             self.f.write(data)
 
@@ -46,6 +48,7 @@ class logFile:
             setattr(self.f, name, value)
         else:
             self.__dict__[name] = value
+
 
 class clientHandler(SocketServer.BaseRequestHandler):
 
@@ -64,7 +67,7 @@ class clientHandler(SocketServer.BaseRequestHandler):
                      'wafs_cycle': 'na',
                      'gfs_cycle': 'na'
                      }
-            }
+        }
 
         lat, lon = float(data[0]), float(data[1])
 
@@ -86,7 +89,6 @@ class clientHandler(SocketServer.BaseRequestHandler):
             response['metar']['latlon'] = (apt[1], apt[2])
             response['metar']['distance'] = c.greatCircleDistance((lat, lon), (apt[1], apt[2]))
 
-
         return response
 
     def shutdown(self):
@@ -94,7 +96,7 @@ class clientHandler(SocketServer.BaseRequestHandler):
         def shutNow(srv):
             srv.shutdown()
 
-        th = threading.Thread(target = shutNow, args = (self.server, ))
+        th = threading.Thread(target=shutNow, args=(self.server,))
         th.start()
 
     def handle(self):
@@ -143,6 +145,7 @@ class clientHandler(SocketServer.BaseRequestHandler):
 
         print '%s:%s: %d bytes sent.' % (self.client_address[0], data, nbytes)
 
+
 if __name__ == "__main__":
     # Get the X-Plane path from the arguments
     if len(sys.argv) > 1:
@@ -156,7 +159,7 @@ if __name__ == "__main__":
 
     conf = Conf(path)
 
-    #logfile = open(os.sep.join([conf.respath, 'weatherServerLog.txt']), 'a')
+    # logfile = open(os.sep.join([conf.respath, 'weatherServerLog.txt']), 'a')
 
     logfile = logFile(os.sep.join([conf.respath, 'weatherServerLog.txt']), 'a')
 

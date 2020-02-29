@@ -60,6 +60,7 @@ from random import random
 
 from noaweather import EasyDref, Conf, c, EasyCommand, Tracker
 
+
 class Weather:
     '''
     Sets x-plane weather from GSF parsed data
@@ -83,31 +84,31 @@ class Weather:
 
         for i in range(3):
             self.winds.append({
-                          'alt':    EasyDref('"sim/weather/wind_altitude_msl_m[%d]"' % (i), 'float'),
-                          'hdg':    EasyDref('"sim/weather/wind_direction_degt[%d]"' % (i), 'float'),
-                          'speed':  EasyDref('"sim/weather/wind_speed_kt[%d]"' % (i), 'float'),
-                          'gust' :  EasyDref('"sim/weather/shear_speed_kt[%d]"' % (i), 'float'),
-                          'gust_hdg' : EasyDref('"sim/weather/shear_direction_degt[%d]"' % (i), 'float'),
-                          'turbulence': EasyDref('"sim/weather/turbulence[%d]"' % (i), 'float'),
+                'alt': EasyDref('"sim/weather/wind_altitude_msl_m[%d]"' % (i), 'float'),
+                'hdg': EasyDref('"sim/weather/wind_direction_degt[%d]"' % (i), 'float'),
+                'speed': EasyDref('"sim/weather/wind_speed_kt[%d]"' % (i), 'float'),
+                'gust': EasyDref('"sim/weather/shear_speed_kt[%d]"' % (i), 'float'),
+                'gust_hdg': EasyDref('"sim/weather/shear_direction_degt[%d]"' % (i), 'float'),
+                'turbulence': EasyDref('"sim/weather/turbulence[%d]"' % (i), 'float'),
             })
 
         for i in range(3):
             self.clouds.append({
-                            'top':      EasyDref('"sim/weather/cloud_tops_msl_m[%d]"' % (i), 'float'),
-                            'bottom':   EasyDref('"sim/weather/cloud_base_msl_m[%d]"' % (i), 'float'),
-                            'coverage': EasyDref('"sim/weather/cloud_type[%d]"' % (i), 'int'),
-                            # XP10 'coverage': EasyDref('"sim/weather/cloud_coverage[%d]"' % (i), 'float'),
-                                })
+                'top': EasyDref('"sim/weather/cloud_tops_msl_m[%d]"' % (i), 'float'),
+                'bottom': EasyDref('"sim/weather/cloud_base_msl_m[%d]"' % (i), 'float'),
+                'coverage': EasyDref('"sim/weather/cloud_type[%d]"' % (i), 'int'),
+                # XP10 'coverage': EasyDref('"sim/weather/cloud_coverage[%d]"' % (i), 'float'),
+            })
 
         self.windata = []
 
         self.xpWeatherOn = EasyDref('sim/weather/use_real_weather_bool', 'int')
         self.xpWeatherDownloadOn = EasyDref('sim/weather/download_real_weather', 'int')
-        self.msltemp     = EasyDref('sim/weather/temperature_sealevel_c', 'float')
-        self.msldewp    = EasyDref('sim/weather/dewpoi_sealevel_c', 'float')
-        self.thermalAlt  = EasyDref('sim/weather/thermal_altitude_msl_m', 'float')
-        self.visibility  = EasyDref('sim/weather/visibility_reported_m', 'float')
-        self.pressure    = EasyDref('sim/weather/barometer_sealevel_inhg', 'float')
+        self.msltemp = EasyDref('sim/weather/temperature_sealevel_c', 'float')
+        self.msldewp = EasyDref('sim/weather/dewpoi_sealevel_c', 'float')
+        self.thermalAlt = EasyDref('sim/weather/thermal_altitude_msl_m', 'float')
+        self.visibility = EasyDref('sim/weather/visibility_reported_m', 'float')
+        self.pressure = EasyDref('sim/weather/barometer_sealevel_inhg', 'float')
 
         self.precipitation = EasyDref('sim/weather/rain_percent', 'float')
         self.thunderstorm = EasyDref('sim/weather/thunderstorm_percent', 'float')
@@ -150,7 +151,7 @@ class Weather:
         self.weatherClientSend('!ping')
 
         while True:
-            received = self.sock.recv(1024*8)
+            received = self.sock.recv(1024 * 8)
             wdata = cPickle.loads(received)
             if self.die.is_set() or wdata == '!bye':
                 break
@@ -163,7 +164,7 @@ class Weather:
 
     def weatherClientSend(self, msg):
         if self.weatherClientThread:
-            self.sock.sendto(msg,('127.0.0.1', self.conf.server_port))
+            self.sock.sendto(msg, ('127.0.0.1', self.conf.server_port))
 
     def startWeatherServer(self):
         DETACHED_PROCESS = 0x00000008
@@ -179,7 +180,6 @@ class Weather:
         self.weatherClientSend('!shutdown')
         self.weatherClientThread = False
 
-
     def setTurbulence(self, turbulence, elapsed):
         '''
         Set turbulence for all wind layers with our own interpolation
@@ -190,7 +190,7 @@ class Weather:
         if len(turbulence) > 1:
             for clayer in turbulence:
                 if clayer[0] > self.alt:
-                    #last layer
+                    # last layer
                     break
                 else:
                     prevlayer = clayer
@@ -201,7 +201,7 @@ class Weather:
 
         # set turbulence
         turb *= self.conf.turbulence_probability
-        turb = c.randPattern('turbulence', turb, elapsed, 20, min_time = 1)
+        turb = c.randPattern('turbulence', turb, elapsed, 20, min_time=1)
 
         self.winds[0]['turbulence'].value = turb
         self.winds[1]['turbulence'].value = turb
@@ -228,10 +228,10 @@ class Weather:
                     var = h2 - h1
 
                 hdg = h1
-                extra['variation'] = c.randPattern('metar_wind_hdg', var, elapsed, min_time = 20, max_time = 50)
+                extra['variation'] = c.randPattern('metar_wind_hdg', var, elapsed, min_time=20, max_time=50)
 
             alt += self.conf.metar_agl_limit
-            alt = c.transition(alt, '0-metar_wind_alt', elapsed, 0.3048) # 1f/s
+            alt = c.transition(alt, '0-metar_wind_alt', elapsed, 0.3048)  # 1f/s
 
             # Fix temperatures
             if 'temperature' in self.weatherData['metar']:
@@ -242,7 +242,7 @@ class Weather:
 
             # remove first wind layer if is too close (for high altitude airports)
             # TODO: This can break transitions in some cases.
-            if len(winds) > 1 and winds[0][0] < alt+ self.conf.metar_agl_limit:
+            if len(winds) > 1 and winds[0][0] < alt + self.conf.metar_agl_limit:
                 winds.pop(0)
 
             winds = [[alt, hdg, speed, extra]] + winds
@@ -262,7 +262,7 @@ class Weather:
             if self.windAlts != tlayer:
                 # Layer change, reset transitions
                 self.windAlts = tlayer
-                c.transitionClearReferences(exclude = [str(blayer), str(tlayer)])
+                c.transitionClearReferences(exclude=[str(blayer), str(tlayer)])
 
             twind = self.transWindLayer(winds[tlayer], str(tlayer), elapsed)
 
@@ -304,7 +304,7 @@ class Weather:
             self.winds[1]['gust_hdg'].value = 0
             self.winds[2]['gust_hdg'].value = 0
 
-    def setWindLayer(self, index,  wlayer, elapsed):
+    def setWindLayer(self, index, wlayer, elapsed):
         alt, hdg, speed, extra = wlayer
 
         wind = self.winds[index]
@@ -327,7 +327,7 @@ class Weather:
         # Extra vars
         for var in ['gust', 'rh', 'dew']:
             if var in extra:
-                extra[var] = c.transition(extra[var], id + '-' + var , elapsed, self.conf.windGustTransSpeed)
+                extra[var] = c.transition(extra[var], id + '-' + var, elapsed, self.conf.windGustTransSpeed)
 
         # Special cases
         if 'gust_hdg' in extra:
@@ -335,7 +335,7 @@ class Weather:
 
         return alt, hdg, speed, extra
 
-    def setDrefIfDiff(self, dref, value, max_diff = False):
+    def setDrefIfDiff(self, dref, value, max_diff=False):
         ''' Set a dateref if the current value differs
             Returns if value was set '''
 
@@ -349,7 +349,7 @@ class Weather:
                 return True
         return False
 
-    def interpolateWindLayer(self, wlayer1, wlayer2, current_altitude, nlayer = 1):
+    def interpolateWindLayer(self, wlayer1, wlayer2, current_altitude, nlayer=1):
         ''' Interpolates 2 wind layers
         layer array: [alt, hdg, speed, extra] '''
 
@@ -367,13 +367,14 @@ class Weather:
             expo = 1
 
         if nlayer:
-            layer[1] = c.expoCosineInterpolateHeading(wlayer1[1], wlayer2[1], wlayer1[0], wlayer2[0], current_altitude, expo)
+            layer[1] = c.expoCosineInterpolateHeading(wlayer1[1], wlayer2[1], wlayer1[0], wlayer2[0], current_altitude,
+                                                      expo)
             layer[2] = c.interpolate(wlayer1[2], wlayer2[2], wlayer1[0], wlayer2[0], current_altitude)
         else:
             # First layer
-            layer[1] = c.expoCosineInterpolateHeading(wlayer1[1], wlayer2[1], wlayer1[0], wlayer2[0], current_altitude, expo)
+            layer[1] = c.expoCosineInterpolateHeading(wlayer1[1], wlayer2[1], wlayer1[0], wlayer2[0], current_altitude,
+                                                      expo)
             layer[2] = c.expoCosineInterpolate(wlayer1[2], wlayer2[2], wlayer1[0], wlayer2[0], current_altitude, expo)
-
 
         if not 'variation' in wlayer1[3]:
             wlayer1[3]['variation'] = 0
@@ -382,9 +383,11 @@ class Weather:
         for key in wlayer1[3]:
             if key in wlayer2[3] and wlayer2[3][key] is not False:
                 if nlayer:
-                    layer[3][key] = c.interpolate(wlayer1[3][key], wlayer2[3][key], wlayer1[0], wlayer2[0], current_altitude)
+                    layer[3][key] = c.interpolate(wlayer1[3][key], wlayer2[3][key], wlayer1[0], wlayer2[0],
+                                                  current_altitude)
                 else:
-                    layer[3][key] = c.expoCosineInterpolate(wlayer1[3][key], wlayer2[3][key], wlayer1[0], wlayer2[0], current_altitude)
+                    layer[3][key] = c.expoCosineInterpolate(wlayer1[3][key], wlayer2[3][key], wlayer1[0], wlayer2[0],
+                                                            current_altitude)
             else:
                 # Leave null temp and dew if we can't interpolate
                 if key not in ('temp', 'dew'):
@@ -407,12 +410,12 @@ class Weather:
         minRedraw = [c.f2m(500), c.f2m(5000), c.f2m(10000)]
 
         xpClouds = {
-                    'FEW': [1, c.f2m(2000)],
-                    'SCT': [2, c.f2m(4000)],
-                    'BKN': [3, c.f2m(4000)],
-                    'OVC': [4, c.f2m(4000)],
-                    'VV': [4, c.f2m(6000)]
-                    }
+            'FEW': [1, c.f2m(2000)],
+            'SCT': [2, c.f2m(4000)],
+            'BKN': [3, c.f2m(4000)],
+            'OVC': [4, c.f2m(4000)],
+            'VV': [4, c.f2m(6000)]
+        }
 
         lastBase = 0
         maxTop = 0
@@ -420,9 +423,10 @@ class Weather:
 
         setClouds = []
 
-        if self.weatherData and 'distance' in self.weatherData['metar'] and self.weatherData['metar']['distance'] < self.conf.metar_distance_limit and 'clouds' in self.weatherData['metar']:
+        if self.weatherData and 'distance' in self.weatherData['metar'] and self.weatherData['metar'][
+            'distance'] < self.conf.metar_distance_limit and 'clouds' in self.weatherData['metar']:
 
-            clouds =  self.weatherData['metar']['clouds'][:]
+            clouds = self.weatherData['metar']['clouds'][:]
 
             gfsCloudLimit += self.weatherData['metar']['elevation']
 
@@ -486,7 +490,7 @@ class Weather:
             if nClouds < 3 and setClouds[0][0] > gfsCloudLimit:
                 setClouds = [[0, minCloud, 0]] + setClouds
             if 1 < len(setClouds) < 3 and setClouds[1][2] > gfsCloudLimit:
-                setClouds = [setClouds[0], [setClouds[0][2], setClouds[0][2] + minCloud, 0 ] , setClouds[1]]
+                setClouds = [setClouds[0], [setClouds[0][2], setClouds[0][2] + minCloud, 0], setClouds[1]]
 
         nClouds = len(setClouds)
 
@@ -494,8 +498,8 @@ class Weather:
             for i in range(3):
                 if nClouds > i:
                     base, top, cover = setClouds[i]
-                    redraw += self.setDrefIfDiff(self.clouds[i]['bottom'], base, minRedraw[i] + self.alt/10)
-                    redraw += self.setDrefIfDiff(self.clouds[i]['top'], top, minRedraw[i] + self.alt/10)
+                    redraw += self.setDrefIfDiff(self.clouds[i]['bottom'], base, minRedraw[i] + self.alt / 10)
+                    redraw += self.setDrefIfDiff(self.clouds[i]['top'], top, minRedraw[i] + self.alt / 10)
                     redraw += self.setDrefIfDiff(self.clouds[i]['coverage'], cover, 1)
                 else:
                     redraw += self.setDrefIfDiff(self.clouds[i]['coverage'], 0)
@@ -520,13 +524,14 @@ class Weather:
 
     @classmethod
     def cc2xp(self, cover):
-        #Cloud cover to X-plane
-        xp = cover/100.0*4
+        # Cloud cover to X-plane
+        xp = cover / 100.0 * 4
         if xp < 1 and cover > 0:
             xp = 1
         elif cover > 89:
             xp = 4
         return xp
+
 
 class Data:
     '''
@@ -540,40 +545,46 @@ class Data:
         self.registerTries = 0
 
         # Overrides
-        self.override_clouds = EasyDref('xjpc/XPNoaaWeather/config/override_clouds', 'int', register = True, writable = True);
-        self.override_winds = EasyDref('xjpc/XPNoaaWeather/config/override_winds', 'int', register = True, writable = True)
-        self.override_visibility = EasyDref('xjpc/XPNoaaWeather/config/override_visibility', 'int', register = True, writable = True)
-        self.override_turbulence = EasyDref('xjpc/XPNoaaWeather/config/override_turbulence', 'int', register = True, writable = True)
-        self.override_pressure = EasyDref('xjpc/XPNoaaWeather/config/override_pressure', 'int', register = True, writable = True)
-        self.override_precipitation = EasyDref('xjpc/XPNoaaWeather/config/override_precipitation', 'int', register = True, writable = True)
-        self.override_runway_friction = EasyDref('xjpc/XPNoaaWeather/config/override_runway_friction', 'int', register = True, writable = True)
+        self.override_clouds = EasyDref('xjpc/XPNoaaWeather/config/override_clouds', 'int', register=True,
+                                        writable=True);
+        self.override_winds = EasyDref('xjpc/XPNoaaWeather/config/override_winds', 'int', register=True, writable=True)
+        self.override_visibility = EasyDref('xjpc/XPNoaaWeather/config/override_visibility', 'int', register=True,
+                                            writable=True)
+        self.override_turbulence = EasyDref('xjpc/XPNoaaWeather/config/override_turbulence', 'int', register=True,
+                                            writable=True)
+        self.override_pressure = EasyDref('xjpc/XPNoaaWeather/config/override_pressure', 'int', register=True,
+                                          writable=True)
+        self.override_precipitation = EasyDref('xjpc/XPNoaaWeather/config/override_precipitation', 'int', register=True,
+                                               writable=True)
+        self.override_runway_friction = EasyDref('xjpc/XPNoaaWeather/config/override_runway_friction', 'int',
+                                                 register=True, writable=True)
 
         # Weather variables
-        self.ready = EasyDref('xjpc/XPNoaaWeather/weather/ready', 'float', register = True)
-        self.visibility = EasyDref('xjpc/XPNoaaWeather/weather/visibility', 'float', register = True)
+        self.ready = EasyDref('xjpc/XPNoaaWeather/weather/ready', 'float', register=True)
+        self.visibility = EasyDref('xjpc/XPNoaaWeather/weather/visibility', 'float', register=True)
 
-        self.nwinds = EasyDref('xjpc/XPNoaaWeather/weather/gfs_nwinds', 'int', register = True)
-        self.wind_alt = EasyDref('xjpc/XPNoaaWeather/weather/gfs_wind_alt[16]', 'float', register = True)
-        self.wind_hdg = EasyDref('xjpc/XPNoaaWeather/weather/gfs_wind_hdg[16]', 'float', register = True)
-        self.wind_speed = EasyDref('xjpc/XPNoaaWeather/weather/gfs_wind_speed[16]', 'float', register = True)
-        self.wind_temp = EasyDref('xjpc/XPNoaaWeather/weather/gfs_wind_temp[16]', 'float', register = True)
+        self.nwinds = EasyDref('xjpc/XPNoaaWeather/weather/gfs_nwinds', 'int', register=True)
+        self.wind_alt = EasyDref('xjpc/XPNoaaWeather/weather/gfs_wind_alt[16]', 'float', register=True)
+        self.wind_hdg = EasyDref('xjpc/XPNoaaWeather/weather/gfs_wind_hdg[16]', 'float', register=True)
+        self.wind_speed = EasyDref('xjpc/XPNoaaWeather/weather/gfs_wind_speed[16]', 'float', register=True)
+        self.wind_temp = EasyDref('xjpc/XPNoaaWeather/weather/gfs_wind_temp[16]', 'float', register=True)
 
-        self.cloud_base = EasyDref('xjpc/XPNoaaWeather/weather/cloud_base[3]', 'float', register = True)
-        self.cloud_top = EasyDref('xjpc/XPNoaaWeather/weather/cloud_top[3]', 'float', register = True)
-        self.cloud_cover = EasyDref('xjpc/XPNoaaWeather/weather/cloud_cover[3]', 'float', register = True)
+        self.cloud_base = EasyDref('xjpc/XPNoaaWeather/weather/cloud_base[3]', 'float', register=True)
+        self.cloud_top = EasyDref('xjpc/XPNoaaWeather/weather/cloud_top[3]', 'float', register=True)
+        self.cloud_cover = EasyDref('xjpc/XPNoaaWeather/weather/cloud_cover[3]', 'float', register=True)
 
-        self.nturbulence =  EasyDref('xjpc/XPNoaaWeather/weather/wafs_nturb', 'int', register = True)
-        self.turbulence_alt = EasyDref('xjpc/XPNoaaWeather/weather/turbulence_alt[16]', 'float', register = True)
-        self.turbulence_sev = EasyDref('xjpc/XPNoaaWeather/weather/turbulence_sev[16]', 'float', register = True)
+        self.nturbulence = EasyDref('xjpc/XPNoaaWeather/weather/wafs_nturb', 'int', register=True)
+        self.turbulence_alt = EasyDref('xjpc/XPNoaaWeather/weather/turbulence_alt[16]', 'float', register=True)
+        self.turbulence_sev = EasyDref('xjpc/XPNoaaWeather/weather/turbulence_sev[16]', 'float', register=True)
 
         # Metar variables
-        self.metar_temperature = EasyDref('xjpc/XPNoaaWeather/weather/metar_temperature', 'float', register = True)
-        self.metar_dewpoint = EasyDref('xjpc/XPNoaaWeather/weather/metar_dewpoint', 'float', register = True)
-        self.metar_pressure = EasyDref('xjpc/XPNoaaWeather/weather/metar_pressure', 'float', register = True)
-        self.metar_visibility = EasyDref('xjpc/XPNoaaWeather/weather/metar_visibility', 'float', register = True)
-        self.metar_precipitation = EasyDref('xjpc/XPNoaaWeather/weather/metar_precipitation', 'int', register = True)
-        self.metar_thunderstorm = EasyDref('xjpc/XPNoaaWeather/weather/metar_thunderstorm', 'int', register = True)
-        self.metar_runwayFriction = EasyDref('xjpc/XPNoaaWeather/weather/metar_runwayFriction', 'float', register = True)
+        self.metar_temperature = EasyDref('xjpc/XPNoaaWeather/weather/metar_temperature', 'float', register=True)
+        self.metar_dewpoint = EasyDref('xjpc/XPNoaaWeather/weather/metar_dewpoint', 'float', register=True)
+        self.metar_pressure = EasyDref('xjpc/XPNoaaWeather/weather/metar_pressure', 'float', register=True)
+        self.metar_visibility = EasyDref('xjpc/XPNoaaWeather/weather/metar_visibility', 'float', register=True)
+        self.metar_precipitation = EasyDref('xjpc/XPNoaaWeather/weather/metar_precipitation', 'int', register=True)
+        self.metar_thunderstorm = EasyDref('xjpc/XPNoaaWeather/weather/metar_thunderstorm', 'int', register=True)
+        self.metar_runwayFriction = EasyDref('xjpc/XPNoaaWeather/weather/metar_runwayFriction', 'float', register=True)
 
     def updateData(self, wdata):
         '''Publish raw dataref data
@@ -591,7 +602,6 @@ class Data:
         else:
             self.ready.value = 1
             if 'metar' in wdata and 'icao' in wdata['metar']:
-
                 self.metar_temperature.value = wdata['metar']['temperature'][0]
                 self.metar_dewpoint.value = wdata['metar']['temperature'][1]
                 self.metar_pressure.value = wdata['metar']['pressure']
@@ -630,10 +640,12 @@ class Data:
                 self.turbulence_alt = turb_fl
                 self.turbulence_sev = turb_sev
 
+
 class PythonInterface:
     '''
     Xplane plugin
     '''
+
     def XPluginStart(self):
         self.syspath = []
         self.conf = Conf(XPLMGetSystemPath(self.syspath)[:-1])
@@ -642,9 +654,9 @@ class PythonInterface:
         self.Sig = "noaWeather.joanpc.PI"
         self.Desc = "NOA GFS in x-plane"
 
-        self.latdr  = EasyDref('sim/flightmodel/position/latitude', 'double')
-        self.londr  = EasyDref('sim/flightmodel/position/longitude', 'double')
-        self.altdr  = EasyDref('sim/flightmodel/position/elevation', 'double')
+        self.latdr = EasyDref('sim/flightmodel/position/latitude', 'double')
+        self.londr = EasyDref('sim/flightmodel/position/longitude', 'double')
+        self.altdr = EasyDref('sim/flightmodel/position/elevation', 'double')
 
         self.data = Data(self)
         self.weather = Weather(self.conf, self.data)
@@ -658,14 +670,15 @@ class PythonInterface:
         self.aboutWindow = False
         self.metarWindow = False
         self.mPluginItem = XPLMAppendMenuItem(XPLMFindPluginsMenu(), 'XP NOAA Weather', 0, 1)
-        self.mMain       = XPLMCreateMenu(self, 'XP NOAA Weather', XPLMFindPluginsMenu(), self.mPluginItem, self.Mmenu, 0)
+        self.mMain = XPLMCreateMenu(self, 'XP NOAA Weather', XPLMFindPluginsMenu(), self.mPluginItem, self.Mmenu, 0)
 
         # Menu Items
         XPLMAppendMenuItem(self.mMain, 'Configuration', 1, 1)
         XPLMAppendMenuItem(self.mMain, 'Metar Query', 2, 1)
 
         # Register commands
-        self.metarWindowCMD = EasyCommand(self, 'metar_query_window_toggle',self.metarQueryWindowToggle, description="Toggle METAR query window.")
+        self.metarWindowCMD = EasyCommand(self, 'metar_query_window_toggle', self.metarQueryWindowToggle,
+                                          description="Toggle METAR query window.")
 
         # Flightloop counters
         self.flcounter = 0
@@ -702,7 +715,6 @@ class PythonInterface:
                 XPShowWidget(self.metarWindowWidget)
                 XPSetKeyboardFocus(self.metarQueryInput)
 
-
     def CreateAboutWindow(self, x, y):
         x2 = x + 780
         y2 = y - 85 - 20 * 16
@@ -710,78 +722,78 @@ class PythonInterface:
         top = y
 
         # Create the Main Widget window
-        self.aboutWindowWidget = XPCreateWidget(x, y, x2, y2, 1, Buffer, 1,0 , xpWidgetClass_MainWindow)
+        self.aboutWindowWidget = XPCreateWidget(x, y, x2, y2, 1, Buffer, 1, 0, xpWidgetClass_MainWindow)
         window = self.aboutWindowWidget
 
         ## MAIN CONFIGURATION ##
 
         # Config Sub Window, style
-        subw = XPCreateWidget(x+10, y-30, x+180 + 10, y2+40 -25, 1, "" ,  0,window, xpWidgetClass_SubWindow)
+        subw = XPCreateWidget(x + 10, y - 30, x + 180 + 10, y2 + 40 - 25, 1, "", 0, window, xpWidgetClass_SubWindow)
         XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
         x += 25
 
         # Main enalbe
-        XPCreateWidget(x, y-40, x+20, y-60, 1, 'Enable XPGFS', 0, window, xpWidgetClass_Caption)
-        self.enableCheck = XPCreateWidget(x+110, y-40, x+120, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        XPCreateWidget(x, y - 40, x + 20, y - 60, 1, 'Enable XPGFS', 0, window, xpWidgetClass_Caption)
+        self.enableCheck = XPCreateWidget(x + 110, y - 40, x + 120, y - 60, 1, '', 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.enableCheck, xpProperty_ButtonType, xpRadioButton)
         XPSetWidgetProperty(self.enableCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
         XPSetWidgetProperty(self.enableCheck, xpProperty_ButtonState, self.conf.enabled)
 
-        y -=25
+        y -= 25
         # Winds enalbe
-        XPCreateWidget(x+5, y-40, x+20, y-60, 1, 'Wind levels', 0, window, xpWidgetClass_Caption)
-        self.windsCheck = XPCreateWidget(x+110, y-40, x+120, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        XPCreateWidget(x + 5, y - 40, x + 20, y - 60, 1, 'Wind levels', 0, window, xpWidgetClass_Caption)
+        self.windsCheck = XPCreateWidget(x + 110, y - 40, x + 120, y - 60, 1, '', 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.windsCheck, xpProperty_ButtonType, xpRadioButton)
         XPSetWidgetProperty(self.windsCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
         XPSetWidgetProperty(self.windsCheck, xpProperty_ButtonState, self.conf.set_wind)
         y -= 20
 
         # Clouds enalbe
-        XPCreateWidget(x+5, y-40, x+20, y-60, 1, 'Cloud levels', 0, window, xpWidgetClass_Caption)
-        self.cloudsCheck = XPCreateWidget(x+110, y-40, x+120, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        XPCreateWidget(x + 5, y - 40, x + 20, y - 60, 1, 'Cloud levels', 0, window, xpWidgetClass_Caption)
+        self.cloudsCheck = XPCreateWidget(x + 110, y - 40, x + 120, y - 60, 1, '', 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.cloudsCheck, xpProperty_ButtonType, xpRadioButton)
         XPSetWidgetProperty(self.cloudsCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
         XPSetWidgetProperty(self.cloudsCheck, xpProperty_ButtonState, self.conf.set_clouds)
         y -= 20
 
         # Temperature enalbe
-        XPCreateWidget(x+5, y-40, x+20, y-60, 1, 'Temperature', 0, window, xpWidgetClass_Caption)
-        self.tempCheck = XPCreateWidget(x+110, y-40, x+120, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        XPCreateWidget(x + 5, y - 40, x + 20, y - 60, 1, 'Temperature', 0, window, xpWidgetClass_Caption)
+        self.tempCheck = XPCreateWidget(x + 110, y - 40, x + 120, y - 60, 1, '', 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.tempCheck, xpProperty_ButtonType, xpRadioButton)
         XPSetWidgetProperty(self.tempCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
         XPSetWidgetProperty(self.tempCheck, xpProperty_ButtonState, self.conf.set_temp)
         y -= 20
 
         # Pressure enalbe
-        XPCreateWidget(x+5, y-40, x+20, y-60, 1, 'Pressure', 0, window, xpWidgetClass_Caption)
-        self.pressureCheck = XPCreateWidget(x+110, y-40, x+120, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        XPCreateWidget(x + 5, y - 40, x + 20, y - 60, 1, 'Pressure', 0, window, xpWidgetClass_Caption)
+        self.pressureCheck = XPCreateWidget(x + 110, y - 40, x + 120, y - 60, 1, '', 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.pressureCheck, xpProperty_ButtonType, xpRadioButton)
         XPSetWidgetProperty(self.pressureCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
         XPSetWidgetProperty(self.pressureCheck, xpProperty_ButtonState, self.conf.set_pressure)
         y -= 20
 
         # Turbulence enable
-        XPCreateWidget(x+5, y-40, x+20, y-60, 1, 'Turbulence', 0, window, xpWidgetClass_Caption)
-        self.turbCheck = XPCreateWidget(x+110, y-40, x+120, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        XPCreateWidget(x + 5, y - 40, x + 20, y - 60, 1, 'Turbulence', 0, window, xpWidgetClass_Caption)
+        self.turbCheck = XPCreateWidget(x + 110, y - 40, x + 120, y - 60, 1, '', 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.turbCheck, xpProperty_ButtonType, xpRadioButton)
         XPSetWidgetProperty(self.turbCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
         XPSetWidgetProperty(self.turbCheck, xpProperty_ButtonState, self.conf.set_turb)
         y -= 28
-        x -=5
+        x -= 5
 
-        x1 = x+5
+        x1 = x + 5
 
         # Metar source radios
-        XPCreateWidget(x, y-40, x+20, y-60, 1, 'METAR SOURCE', 0, window, xpWidgetClass_Caption)
+        XPCreateWidget(x, y - 40, x + 20, y - 60, 1, 'METAR SOURCE', 0, window, xpWidgetClass_Caption)
         y -= 20
-        XPCreateWidget(x1, y-40, x1+20, y-60, 1, 'NOAA', 0, window, xpWidgetClass_Caption)
-        mtNoaCheck = XPCreateWidget(x1+40, y-40, x1+45, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        XPCreateWidget(x1, y - 40, x1 + 20, y - 60, 1, 'NOAA', 0, window, xpWidgetClass_Caption)
+        mtNoaCheck = XPCreateWidget(x1 + 40, y - 40, x1 + 45, y - 60, 1, '', 0, window, xpWidgetClass_Button)
         x1 += 52
-        XPCreateWidget(x1, y-40, x1+20, y-60, 1, 'IVAO', 0, window, xpWidgetClass_Caption)
-        mtIvaoCheck = XPCreateWidget(x1+35, y-40, x1+45, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        XPCreateWidget(x1, y - 40, x1 + 20, y - 60, 1, 'IVAO', 0, window, xpWidgetClass_Caption)
+        mtIvaoCheck = XPCreateWidget(x1 + 35, y - 40, x1 + 45, y - 60, 1, '', 0, window, xpWidgetClass_Button)
         x1 += 50
-        XPCreateWidget(x1, y-40, x1+20, y-60, 1, 'VATSIM', 0, window, xpWidgetClass_Caption)
-        mtVatsimCheck = XPCreateWidget(x1+45, y-40, x1+60, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        XPCreateWidget(x1, y - 40, x1 + 20, y - 60, 1, 'VATSIM', 0, window, xpWidgetClass_Caption)
+        mtVatsimCheck = XPCreateWidget(x1 + 45, y - 40, x1 + 60, y - 60, 1, '', 0, window, xpWidgetClass_Button)
         x1 += 52
 
         self.mtSourceChecks = {mtNoaCheck: 'NOAA',
@@ -792,50 +804,59 @@ class PythonInterface:
         for check in self.mtSourceChecks:
             XPSetWidgetProperty(check, xpProperty_ButtonType, xpRadioButton)
             XPSetWidgetProperty(check, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
-            XPSetWidgetProperty(check, xpProperty_ButtonState, int(self.conf.metar_source == self.mtSourceChecks[check]))
-
+            XPSetWidgetProperty(check, xpProperty_ButtonState,
+                                int(self.conf.metar_source == self.mtSourceChecks[check]))
 
         y -= 25
-        self.turbulenceCaption = XPCreateWidget(x, y-40, x+80, y-60, 1, 'Turbulence probability %d%%' % (self.conf.turbulence_probability * 100), 0, window, xpWidgetClass_Caption)
+        self.turbulenceCaption = XPCreateWidget(x, y - 40, x + 80, y - 60, 1, 'Turbulence probability %d%%' % (
+                    self.conf.turbulence_probability * 100), 0, window, xpWidgetClass_Caption)
         y -= 20
-        self.turbulenceSlider = XPCreateWidget(x+5, y-40, x+160, y-60, 1, '', 0, window, xpWidgetClass_ScrollBar)
+        self.turbulenceSlider = XPCreateWidget(x + 5, y - 40, x + 160, y - 60, 1, '', 0, window,
+                                               xpWidgetClass_ScrollBar)
         XPSetWidgetProperty(self.turbulenceSlider, xpProperty_ScrollBarType, xpScrollBarTypeSlider)
         XPSetWidgetProperty(self.turbulenceSlider, xpProperty_ScrollBarMin, 10)
         XPSetWidgetProperty(self.turbulenceSlider, xpProperty_ScrollBarMax, 1000)
         XPSetWidgetProperty(self.turbulenceSlider, xpProperty_ScrollBarPageAmount, 1)
 
-        XPSetWidgetProperty(self.turbulenceSlider, xpProperty_ScrollBarSliderPosition, int(self.conf.turbulence_probability * 1000))
+        XPSetWidgetProperty(self.turbulenceSlider, xpProperty_ScrollBarSliderPosition,
+                            int(self.conf.turbulence_probability * 1000))
 
         y -= 25
-        XPCreateWidget(x, y-40, x+80, y-60, 1, 'Performance Tweaks', 0, window, xpWidgetClass_Caption)
+        XPCreateWidget(x, y - 40, x + 80, y - 60, 1, 'Performance Tweaks', 0, window, xpWidgetClass_Caption)
         y -= 20
-        XPCreateWidget(x+5, y-40, x+80, y-60, 1, 'Max Visibility (sm)', 0, window, xpWidgetClass_Caption)
-        self.maxVisInput = XPCreateWidget(x+119, y-40, x+160, y-62, 1, c.convertForInput(self.conf.max_visibility, 'm2sm'), 0, window, xpWidgetClass_TextField)
+        XPCreateWidget(x + 5, y - 40, x + 80, y - 60, 1, 'Max Visibility (sm)', 0, window, xpWidgetClass_Caption)
+        self.maxVisInput = XPCreateWidget(x + 119, y - 40, x + 160, y - 62, 1,
+                                          c.convertForInput(self.conf.max_visibility, 'm2sm'), 0, window,
+                                          xpWidgetClass_TextField)
         XPSetWidgetProperty(self.maxVisInput, xpProperty_TextFieldType, xpTextEntryField)
         XPSetWidgetProperty(self.maxVisInput, xpProperty_Enabled, 1)
         y -= 20
-        XPCreateWidget(x+5, y-40, x+80, y-60, 1, 'Max cloud height (ft)', 0, window, xpWidgetClass_Caption)
-        self.maxCloudHeightInput = XPCreateWidget(x+119, y-40, x+160, y-62, 1, c.convertForInput(self.conf.max_cloud_height, 'm2ft'), 0, window, xpWidgetClass_TextField)
+        XPCreateWidget(x + 5, y - 40, x + 80, y - 60, 1, 'Max cloud height (ft)', 0, window, xpWidgetClass_Caption)
+        self.maxCloudHeightInput = XPCreateWidget(x + 119, y - 40, x + 160, y - 62, 1,
+                                                  c.convertForInput(self.conf.max_cloud_height, 'm2ft'), 0, window,
+                                                  xpWidgetClass_TextField)
         XPSetWidgetProperty(self.maxCloudHeightInput, xpProperty_TextFieldType, xpTextEntryField)
         XPSetWidgetProperty(self.maxCloudHeightInput, xpProperty_Enabled, 1)
 
         y -= 25
-        XPCreateWidget(x, y-40, x+80, y-60, 1, 'Metar window bug', 0, window, xpWidgetClass_Caption)
-        self.bugCheck = XPCreateWidget(x+120, y-40, x+140, y-60, 1, '', 0, window, xpWidgetClass_Button)
+        XPCreateWidget(x, y - 40, x + 80, y - 60, 1, 'Metar window bug', 0, window, xpWidgetClass_Caption)
+        self.bugCheck = XPCreateWidget(x + 120, y - 40, x + 140, y - 60, 1, '', 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.bugCheck, xpProperty_ButtonType, xpRadioButton)
         XPSetWidgetProperty(self.bugCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
         XPSetWidgetProperty(self.bugCheck, xpProperty_ButtonState, self.conf.inputbug)
 
         y -= 40
         # Save
-        self.saveButton = XPCreateWidget(x+25, y-20, x+125, y-60, 1, "Apply & Save", 0, window, xpWidgetClass_Button)
+        self.saveButton = XPCreateWidget(x + 25, y - 20, x + 125, y - 60, 1, "Apply & Save", 0, window,
+                                         xpWidgetClass_Button)
         XPSetWidgetProperty(self.saveButton, xpProperty_ButtonType, xpPushButton)
 
         x += 170
         y = top
 
         # ABOUT/ STATUS Sub Window
-        subw = XPCreateWidget(x+10, y-30, x2-20 + 10, y - (19 * self.aboutlines) - 20, 1, "" ,  0,window, xpWidgetClass_SubWindow)
+        subw = XPCreateWidget(x + 10, y - 30, x2 - 20 + 10, y - (19 * self.aboutlines) - 20, 1, "", 0, window,
+                              xpWidgetClass_SubWindow)
         # Set the style to sub window
         XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
         x += 20
@@ -848,60 +869,62 @@ class PythonInterface:
         self.statusBuff = []
         for i in range(self.aboutlines):
             y -= 15
-            self.statusBuff.append(XPCreateWidget(x, y, x+40, y-20, 1, '--', 0, window, xpWidgetClass_Caption))
+            self.statusBuff.append(XPCreateWidget(x, y, x + 40, y - 20, 1, '--', 0, window, xpWidgetClass_Caption))
 
         self.updateStatus()
         # Enable download
 
         y -= 20
-        XPCreateWidget(x, y, x+20, y-20, 1, 'Download latest data', 0, window, xpWidgetClass_Caption)
-        self.downloadCheck = XPCreateWidget(x+127, y, x+130, y-20, 1, '', 0, window, xpWidgetClass_Button)
+        XPCreateWidget(x, y, x + 20, y - 20, 1, 'Download latest data', 0, window, xpWidgetClass_Caption)
+        self.downloadCheck = XPCreateWidget(x + 127, y, x + 130, y - 20, 1, '', 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.downloadCheck, xpProperty_ButtonType, xpRadioButton)
         XPSetWidgetProperty(self.downloadCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
         XPSetWidgetProperty(self.downloadCheck, xpProperty_ButtonState, self.conf.download)
 
-        XPCreateWidget(x+160, y, x+260, y-20, 1, 'Ignore Stations:', 0, window, xpWidgetClass_Caption)
-        self.stationIgnoreInput = XPCreateWidget(x+260, y, x+540, y-20, 1, ' '.join(self.conf.ignore_metar_stations) , 0, window, xpWidgetClass_TextField)
+        XPCreateWidget(x + 160, y, x + 260, y - 20, 1, 'Ignore Stations:', 0, window, xpWidgetClass_Caption)
+        self.stationIgnoreInput = XPCreateWidget(x + 260, y, x + 540, y - 20, 1,
+                                                 ' '.join(self.conf.ignore_metar_stations), 0, window,
+                                                 xpWidgetClass_TextField)
         XPSetWidgetProperty(self.maxVisInput, xpProperty_TextFieldType, xpTextEntryField)
         XPSetWidgetProperty(self.maxVisInput, xpProperty_Enabled, 1)
 
         y -= 20
-        XPCreateWidget(x, y, x+20, y-20, 1, 'Send anonymous stats', 0, window, xpWidgetClass_Caption)
-        self.trackCheck = XPCreateWidget(x+127, y, x+130, y-20, 1, '', 0, window, xpWidgetClass_Button)
+        XPCreateWidget(x, y, x + 20, y - 20, 1, 'Send anonymous stats', 0, window, xpWidgetClass_Caption)
+        self.trackCheck = XPCreateWidget(x + 127, y, x + 130, y - 20, 1, '', 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.trackCheck, xpProperty_ButtonType, xpRadioButton)
         XPSetWidgetProperty(self.trackCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
         XPSetWidgetProperty(self.trackCheck, xpProperty_ButtonState, self.conf.tracker_enabled)
 
         # DumpLog Button
-        self.dumpLogButton = XPCreateWidget(x+160, y, x+260, y-20, 1, "DumpLog", 0, window, xpWidgetClass_Button)
+        self.dumpLogButton = XPCreateWidget(x + 160, y, x + 260, y - 20, 1, "DumpLog", 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.dumpLogButton, xpProperty_ButtonType, xpPushButton)
 
-        self.dumpLabel = XPCreateWidget(x+270, y, x+380, y-20, 1, '', 0, window, xpWidgetClass_Caption)
+        self.dumpLabel = XPCreateWidget(x + 270, y, x + 380, y - 20, 1, '', 0, window, xpWidgetClass_Caption)
 
         y -= 30
-        subw = XPCreateWidget(x-10, y - 5, x2-20 + 10, y2 +15, 1, "" ,  0,window, xpWidgetClass_SubWindow)
+        subw = XPCreateWidget(x - 10, y - 5, x2 - 20 + 10, y2 + 15, 1, "", 0, window, xpWidgetClass_SubWindow)
         x += 10
         # Set the style to sub window
 
         sysinfo = [
-        'X-Plane NOAA Weather: %s' % self.conf.__VERSION__,
-        '(c) joan perez i cauhe 2012-15',
+            'X-Plane NOAA Weather: %s' % self.conf.__VERSION__,
+            '(c) joan perez i cauhe 2012-15',
         ]
         for label in sysinfo:
-            XPCreateWidget(x, y-5, x+120, y-20, 1, label, 0, window, xpWidgetClass_Caption)
+            XPCreateWidget(x, y - 5, x + 120, y - 20, 1, label, 0, window, xpWidgetClass_Caption)
             y -= 15
 
         # Visit site Button
         x += 190
         y += 15
-        self.aboutVisit = XPCreateWidget(x, y, x+100, y-20, 1, "Official site", 0, window, xpWidgetClass_Button)
+        self.aboutVisit = XPCreateWidget(x, y, x + 100, y - 20, 1, "Official site", 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.aboutVisit, xpProperty_ButtonType, xpPushButton)
 
-        self.aboutForum = XPCreateWidget(x+120, y, x+220, y-20, 1, "Support", 0, window, xpWidgetClass_Button)
+        self.aboutForum = XPCreateWidget(x + 120, y, x + 220, y - 20, 1, "Support", 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.aboutForum, xpProperty_ButtonType, xpPushButton)
 
         # Donate Button
-        self.donate = XPCreateWidget(x+240, y, x+340, y-20, 1, "Donate", 0, window, xpWidgetClass_Button)
+        self.donate = XPCreateWidget(x + 240, y, x + 340, y - 20, 1, "Donate", 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.donate, xpProperty_ButtonType, xpPushButton)
 
         # Register our widget handler
@@ -929,7 +952,7 @@ class PythonInterface:
 
         if inMessage == xpMsg_ScrollBarSliderPositionChanged and inParam1 == self.turbulenceSlider:
             val = XPGetWidgetProperty(self.turbulenceSlider, xpProperty_ScrollBarSliderPosition, None)
-            XPSetWidgetDescriptor(self.turbulenceCaption, 'Turbulence probability %d%%' % (val/10))
+            XPSetWidgetDescriptor(self.turbulenceCaption, 'Turbulence probability %d%%' % (val / 10))
             return 1
 
         # Handle any button pushes
@@ -947,34 +970,37 @@ class PythonInterface:
                 return 1
             if (inParam1 == self.aboutForum):
                 from webbrowser import open_new
-                open_new('http://forums.x-plane.org/index.php?/forums/topic/72313-noaa-weather-plugin/&do=getNewComment');
+                open_new(
+                    'http://forums.x-plane.org/index.php?/forums/topic/72313-noaa-weather-plugin/&do=getNewComment');
                 self.tracker.track('Support', 'support button')
                 return 1
             if inParam1 == self.saveButton:
                 # Save configuration
-                self.conf.enabled       = XPGetWidgetProperty(self.enableCheck, xpProperty_ButtonState, None)
-                self.conf.set_wind      = XPGetWidgetProperty(self.windsCheck, xpProperty_ButtonState, None)
-                self.conf.set_clouds    = XPGetWidgetProperty(self.cloudsCheck, xpProperty_ButtonState, None)
-                self.conf.set_temp      = XPGetWidgetProperty(self.tempCheck, xpProperty_ButtonState, None)
-                self.conf.set_pressure  = XPGetWidgetProperty(self.pressureCheck, xpProperty_ButtonState, None)
-                self.conf.inputbug      = XPGetWidgetProperty(self.bugCheck, xpProperty_ButtonState, None)
-                self.conf.turbulence_probability = XPGetWidgetProperty(self.turbulenceSlider, xpProperty_ScrollBarSliderPosition, None) / 1000.0
+                self.conf.enabled = XPGetWidgetProperty(self.enableCheck, xpProperty_ButtonState, None)
+                self.conf.set_wind = XPGetWidgetProperty(self.windsCheck, xpProperty_ButtonState, None)
+                self.conf.set_clouds = XPGetWidgetProperty(self.cloudsCheck, xpProperty_ButtonState, None)
+                self.conf.set_temp = XPGetWidgetProperty(self.tempCheck, xpProperty_ButtonState, None)
+                self.conf.set_pressure = XPGetWidgetProperty(self.pressureCheck, xpProperty_ButtonState, None)
+                self.conf.inputbug = XPGetWidgetProperty(self.bugCheck, xpProperty_ButtonState, None)
+                self.conf.turbulence_probability = XPGetWidgetProperty(self.turbulenceSlider,
+                                                                       xpProperty_ScrollBarSliderPosition,
+                                                                       None) / 1000.0
 
                 # Zero turbulence data if disabled
-                self.conf.set_turb      = XPGetWidgetProperty(self.turbCheck, xpProperty_ButtonState, None)
+                self.conf.set_turb = XPGetWidgetProperty(self.turbCheck, xpProperty_ButtonState, None)
                 if not self.conf.set_turb:
                     for i in range(3): self.weather.winds[i]['turbulence'].value = 0
 
-                self.conf.download      = XPGetWidgetProperty(self.downloadCheck, xpProperty_ButtonState, None)
+                self.conf.download = XPGetWidgetProperty(self.downloadCheck, xpProperty_ButtonState, None)
 
                 self.conf.tracker_enabled = XPGetWidgetProperty(self.trackCheck, xpProperty_ButtonState, None)
-                #buff = []
-                #XPGetWidgetDescriptor(self.transAltInput, buff, 256)
-                #self.conf.metar_agl_limit = c.convertFromInput(buff[0], 'f2m', 900)
+                # buff = []
+                # XPGetWidgetDescriptor(self.transAltInput, buff, 256)
+                # self.conf.metar_agl_limit = c.convertFromInput(buff[0], 'f2m', 900)
 
                 buff = []
                 XPGetWidgetDescriptor(self.maxCloudHeightInput, buff, 256)
-                self.conf.max_cloud_height = c.convertFromInput(buff[0], 'f2m', min = c.f2m(2000))
+                self.conf.max_cloud_height = c.convertFromInput(buff[0], 'f2m', min=c.f2m(2000))
 
                 buff = []
                 XPGetWidgetDescriptor(self.maxVisInput, buff, 256)
@@ -1024,7 +1050,7 @@ class PythonInterface:
         XPSetWidgetProperty(self.cloudsCheck, xpProperty_ButtonState, self.conf.set_clouds)
         XPSetWidgetProperty(self.tempCheck, xpProperty_ButtonState, self.conf.set_temp)
 
-        #XPSetWidgetDescriptor(self.transAltInput, c.convertForInput(self.conf.metar_agl_limit, 'm2ft'))
+        # XPSetWidgetDescriptor(self.transAltInput, c.convertForInput(self.conf.metar_agl_limit, 'm2ft'))
         XPSetWidgetDescriptor(self.maxVisInput, c.convertForInput(self.conf.max_visibility, 'm2sm'))
         XPSetWidgetDescriptor(self.maxCloudHeightInput, c.convertForInput(self.conf.max_cloud_height, 'm2ft'))
         XPSetWidgetDescriptor(self.stationIgnoreInput, ' '.join(self.conf.ignore_metar_stations))
@@ -1039,8 +1065,8 @@ class PythonInterface:
         i = 0
         for label in sysinfo:
             XPSetWidgetDescriptor(self.statusBuff[i], label)
-            i +=1
-            if i > self.aboutlines -1:
+            i += 1
+            if i > self.aboutlines - 1:
                 break
 
     def weatherInfo(self):
@@ -1052,10 +1078,12 @@ class PythonInterface:
             wdata = self.weather.weatherData
             if 'info' in wdata:
                 sysinfo = [
-                           'XPNoaaWeather %s Status:' % self.conf.__VERSION__,
-                           '    LAT: %.2f/%.2f LON: %.2f/%.2f FL: %02.f MAGNETIC DEV: %.2f' % (self.latdr.value , wdata['info']['lat'], self.londr.value, wdata['info']['lon'], c.m2ft(self.altdr.value)/100 , self.weather.mag_deviation.value),
-                           '    GFS Cycle: %s' % (wdata['info']['gfs_cycle']),
-                           '    WAFS Cycle: %s' % (wdata['info']['wafs_cycle']),
+                    'XPNoaaWeather %s Status:' % self.conf.__VERSION__,
+                    '    LAT: %.2f/%.2f LON: %.2f/%.2f FL: %02.f MAGNETIC DEV: %.2f' % (
+                    self.latdr.value, wdata['info']['lat'], self.londr.value, wdata['info']['lon'],
+                    c.m2ft(self.altdr.value) / 100, self.weather.mag_deviation.value),
+                    '    GFS Cycle: %s' % (wdata['info']['gfs_cycle']),
+                    '    WAFS Cycle: %s' % (wdata['info']['wafs_cycle']),
                 ]
 
             if 'metar' in wdata and 'icao' in wdata['metar']:
@@ -1066,20 +1094,24 @@ class PythonInterface:
 
                 if len(metar) > splitlen:
                     icut = metar.rfind(' ', 0, splitlen)
-                    sysinfo += [metar[:icut], metar[icut+1:]]
+                    sysinfo += [metar[:icut], metar[icut + 1:]]
                 else:
                     sysinfo += [metar]
 
                 sysinfo += [
-                            '    Apt altitude: %dft, Apt distance: %.1fkm' % (wdata['metar']['elevation'] * 3.28084, wdata['metar']['distance']/1000),
-                            '    Temp: %s, Dewpoint: %s, ' % (c.strFloat(wdata['metar']['temperature'][0]), c.strFloat(wdata['metar']['temperature'][1])) +
-                            'Visibility: %d m, ' % (wdata['metar']['visibility']) +
-                            'Press: %s inhg ' % (c.strFloat(wdata['metar']['pressure']))
-                            ]
+                    '    Apt altitude: %dft, Apt distance: %.1fkm' % (
+                    wdata['metar']['elevation'] * 3.28084, wdata['metar']['distance'] / 1000),
+                    '    Temp: %s, Dewpoint: %s, ' % (
+                    c.strFloat(wdata['metar']['temperature'][0]), c.strFloat(wdata['metar']['temperature'][1])) +
+                    'Visibility: %d m, ' % (wdata['metar']['visibility']) +
+                    'Press: %s inhg ' % (c.strFloat(wdata['metar']['pressure']))
+                ]
 
-                wind = '    Wind:  %d %dkt, gust +%dkt' % (wdata['metar']['wind'][0], wdata['metar']['wind'][1], wdata['metar']['wind'][2])
+                wind = '    Wind:  %d %dkt, gust +%dkt' % (
+                wdata['metar']['wind'][0], wdata['metar']['wind'][1], wdata['metar']['wind'][2])
                 if 'variable_wind' in wdata['metar'] and wdata['metar']['variable_wind']:
-                    wind += '   Variable: %d-%d' % (wdata['metar']['variable_wind'][0], wdata['metar']['variable_wind'][1])
+                    wind += '   Variable: %d-%d' % (
+                    wdata['metar']['variable_wind'][0], wdata['metar']['variable_wind'][1])
 
                 sysinfo += [wind]
                 if 'precipitation' in wdata['metar'] and len(wdata['metar']['precipitation']):
@@ -1105,7 +1137,8 @@ class PythonInterface:
                     for layer in wdata['gfs']['winds']:
                         i += 1
                         alt, hdg, speed, extra = layer
-                        wlayers += '   %03d|%03d|%02dkt|%02d ' % (alt * 3.28084 / 100, hdg, speed, extra['temp'] - 273.15 )
+                        wlayers += '   %03d|%03d|%02dkt|%02d ' % (
+                        alt * 3.28084 / 100, hdg, speed, extra['temp'] - 273.15)
                         if i > 3:
                             i = 0
                             sysinfo += [wlayers]
@@ -1118,7 +1151,7 @@ class PythonInterface:
                     for layer in wdata['gfs']['clouds']:
                         top, bottom, cover = layer
                         if top > 0:
-                            clouds += '   %03d|%03d|%d%% ' % (top * 3.28084/100, bottom * 3.28084/100, cover)
+                            clouds += '   %03d|%03d|%d%% ' % (top * 3.28084 / 100, bottom * 3.28084 / 100, cover)
                     sysinfo += [clouds]
 
             if 'wafs' in wdata:
@@ -1144,38 +1177,41 @@ class PythonInterface:
         # Create the Main Widget window
         self.metarWindow = True
         self.metarWindowWidget = XPCreateWidget(x, y, x2, y2, 1, windowTitle, 1, 0, xpWidgetClass_MainWindow)
-        XPSetWidgetProperty(self.metarWindowWidget, xpProperty_MainWindowType,  xpMainWindowStyle_Translucent)
+        XPSetWidgetProperty(self.metarWindowWidget, xpProperty_MainWindowType, xpMainWindowStyle_Translucent)
 
         # Config Sub Window, style
-        #subw = XPCreateWidget(x+10, y-30, x2-20 + 10, y2+40 -25, 1, "" ,  0,self.metarWindowWidget , xpWidgetClass_SubWindow)
-        #XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
+        # subw = XPCreateWidget(x+10, y-30, x2-20 + 10, y2+40 -25, 1, "" ,  0,self.metarWindowWidget , xpWidgetClass_SubWindow)
+        # XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
         XPSetWidgetProperty(self.metarWindowWidget, xpProperty_MainWindowHasCloseBoxes, 1)
         x += 10
         y -= 20
 
-        cap = XPCreateWidget(x, y, x+40, y-20, 1, 'Airport ICAO code:', 0, self.metarWindowWidget, xpWidgetClass_Caption)
+        cap = XPCreateWidget(x, y, x + 40, y - 20, 1, 'Airport ICAO code:', 0, self.metarWindowWidget,
+                             xpWidgetClass_Caption)
         XPSetWidgetProperty(cap, xpProperty_CaptionLit, 1)
-
 
         y -= 20
         # Airport input
-        self.metarQueryInput = XPCreateWidget(x+5, y, x+120, y-20, 1, "", 0, self.metarWindowWidget, xpWidgetClass_TextField)
+        self.metarQueryInput = XPCreateWidget(x + 5, y, x + 120, y - 20, 1, "", 0, self.metarWindowWidget,
+                                              xpWidgetClass_TextField)
         XPSetWidgetProperty(self.metarQueryInput, xpProperty_TextFieldType, xpTextEntryField)
         XPSetWidgetProperty(self.metarQueryInput, xpProperty_Enabled, 1)
         XPSetWidgetProperty(self.metarQueryInput, xpProperty_TextFieldType, xpTextTranslucent)
 
-        self.metarQueryButton = XPCreateWidget(x+140, y, x+210, y-20, 1, "Request", 0, self.metarWindowWidget, xpWidgetClass_Button)
+        self.metarQueryButton = XPCreateWidget(x + 140, y, x + 210, y - 20, 1, "Request", 0, self.metarWindowWidget,
+                                               xpWidgetClass_Button)
         XPSetWidgetProperty(self.metarQueryButton, xpProperty_ButtonType, xpPushButton)
         XPSetWidgetProperty(self.metarQueryButton, xpProperty_Enabled, 1)
 
         y -= 20
         # Help caption
-        cap = XPCreateWidget(x, y, x+300, y-20, 1, "METAR:", 0, self.metarWindowWidget, xpWidgetClass_Caption)
+        cap = XPCreateWidget(x, y, x + 300, y - 20, 1, "METAR:", 0, self.metarWindowWidget, xpWidgetClass_Caption)
         XPSetWidgetProperty(cap, xpProperty_CaptionLit, 1)
 
         y -= 20
         # Query output
-        self.metarQueryOutput = XPCreateWidget(x+5, y, x+450, y-20, 1, "", 0, self.metarWindowWidget, xpWidgetClass_TextField)
+        self.metarQueryOutput = XPCreateWidget(x + 5, y, x + 450, y - 20, 1, "", 0, self.metarWindowWidget,
+                                               xpWidgetClass_TextField)
         XPSetWidgetProperty(self.metarQueryOutput, xpProperty_TextFieldType, xpTextEntryField)
         XPSetWidgetProperty(self.metarQueryOutput, xpProperty_Enabled, 1)
         XPSetWidgetProperty(self.metarQueryOutput, xpProperty_TextFieldType, xpTextTranslucent)
@@ -1188,7 +1224,6 @@ class PythonInterface:
         # Register our widget handler
         self.metarWindowHandlerCB = self.metarWindowHandler
         XPAddWidgetCallback(self, self.metarWindowWidget, self.metarWindowHandlerCB)
-
 
         XPSetKeyboardFocus(self.metarQueryInput)
 
@@ -1204,14 +1239,14 @@ class PythonInterface:
                 XPGetWidgetDescriptor(self.metarQueryInput, buff, 256)
                 text = buff[0]
                 if key in (8, 127):
-                    #pass
+                    # pass
                     XPSetWidgetDescriptor(self.metarQueryInput, text[:-1])
                     cursor -= 1
                 elif key == 13:
-                    #Enter
+                    # Enter
                     self.metarQuery()
                 elif key == 27:
-                    #ESC
+                    # ESC
                     XPLoseKeyboardFocus(self.metarQueryInput)
                 elif 65 <= key <= 90 or 97 <= key <= 122 and len(text) < 4:
                     text += chr(key).upper()
@@ -1289,7 +1324,7 @@ class PythonInterface:
         xpver, sdkver, hid = XPLMGetVersions()
         output = ['--- Platform Info ---\n',
                   'Plugin version: %s\n' % self.conf.__VERSION__,
-                  'Xplane Version: %.3f, SDK Version: %.2f\n' % (xpver/1000.0, sdkver/100.0),
+                  'Xplane Version: %.3f, SDK Version: %.2f\n' % (xpver / 1000.0, sdkver / 100.0),
                   'Platform: %s\n' % (platform.platform()),
                   'Python version: %s\n' % (platform.python_version()),
                   '\n--- Weather Status ---\n'
@@ -1307,12 +1342,11 @@ class PythonInterface:
         f.write('\n--- Transition data Data --- \n')
         pprint(c.transrefs, f, width=160)
 
-
         f.write('\n--- Weather Datarefs --- \n')
         # Dump winds datarefs
         datarefs = {'winds': self.weather.winds,
-                     'clouds': self.weather.clouds,
-                     }
+                    'clouds': self.weather.clouds,
+                    }
 
         pdrefs = {}
         for item in datarefs:
@@ -1360,7 +1394,7 @@ class PythonInterface:
 
                 lfsize = os.path.getsize(filepath)
                 lf = open(filepath, 'r')
-                lf.seek(c.limit(1024 * 6, lfsize) * -1 , 2)
+                lf.seek(c.limit(1024 * 6, lfsize) * -1, 2)
                 f.write('\n--- %s ---\n\n' % logfile)
                 for line in lf.readlines():
                     f.write(line.strip('\r'))
@@ -1450,7 +1484,7 @@ class PythonInterface:
 
                 if 'TS' in p:
                     ts = 0.5
-                    if  p['TS']['int'] == '-':
+                    if p['TS']['int'] == '-':
                         ts = 0.25
                     elif p['TS']['int'] == '+':
                         ts = 1
@@ -1460,7 +1494,7 @@ class PythonInterface:
                 self.weather.precipitation.value = rain
 
             self.data.metar_precipitation.value = rain
-            self.data.metar_thunderstorm.value  = ts
+            self.data.metar_thunderstorm.value = ts
 
             if not self.data.override_runway_friction.value:
                 self.weather.runwayFriction.value = friction
@@ -1482,10 +1516,11 @@ class PythonInterface:
             if 'pressure' in wdata['metar'] and wdata['metar']['pressure'] is not False:
                 self.weather.setPressure(wdata['metar']['pressure'], elapsedMe)
             elif self.conf.set_pressure and 'pressure' in wdata['gfs']:
-                    self.weather.setPressure(wdata['gfs']['pressure'], elapsedMe)
+                self.weather.setPressure(wdata['gfs']['pressure'], elapsedMe)
 
         # Set winds
-        if not self.data.override_winds.value and self.conf.set_wind and 'winds' in wdata['gfs'] and len(wdata['gfs']['winds']):
+        if not self.data.override_winds.value and self.conf.set_wind and 'winds' in wdata['gfs'] and len(
+                wdata['gfs']['winds']):
             self.weather.setWinds(wdata['gfs']['winds'], elapsedMe)
 
         # Set turbulence
@@ -1526,6 +1561,6 @@ class PythonInterface:
         if inParam == XPLM_PLUGIN_XPLANE and inMessage == XPLM_MSG_AIRPORT_LOADED:
             self.weather.startWeatherClient()
             self.newAptLoaded = True
-        elif inMessage == (0x8000000 | 8090)  and inParam == 1:
+        elif inMessage == (0x8000000 | 8090) and inParam == 1:
             # inSimUpdater whants to shutdown
             self.XPluginStop()

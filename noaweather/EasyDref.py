@@ -1,7 +1,8 @@
 from XPLMDataAccess import *
-from XPLMUtilities  import *
-from XPLMPlugin     import *
-from XPLMDefs       import *
+from XPLMUtilities import *
+from XPLMPlugin import *
+from XPLMDefs import *
+
 
 class EasyDref:
     '''
@@ -13,7 +14,7 @@ class EasyDref:
     datarefs = []
     plugin = False
 
-    def __init__(self, dataref, type = "float", register = False, writable = False):
+    def __init__(self, dataref, type="float", register=False, writable=False):
         # Clear dataref
         dataref = dataref.strip()
         self.isarray, dref = False, False
@@ -21,17 +22,17 @@ class EasyDref:
 
         if ('"' in dataref):
             dref = dataref.split('"')[1]
-            dataref = dataref[dataref.rfind('"')+1:]
+            dataref = dataref[dataref.rfind('"') + 1:]
 
         if ('(' in dataref):
             # Detect embedded type, and strip it from dataref
-            type = dataref[dataref.find('(')+1:dataref.find(')')]
-            dataref = dataref[:dataref.find('(')] + dataref[dataref.find(')')+1:]
+            type = dataref[dataref.find('(') + 1:dataref.find(')')]
+            dataref = dataref[:dataref.find('(')] + dataref[dataref.find(')') + 1:]
 
         if ('[' in dataref):
             # We have an array
             self.isarray = True
-            range = dataref[dataref.find('[')+1:dataref.find(']')].split(':')
+            range = dataref[dataref.find('[') + 1:dataref.find(']')].split(':')
             dataref = dataref[:dataref.find('[')]
             if (len(range) < 2):
                 range.append(range[0])
@@ -72,14 +73,14 @@ class EasyDref:
                 self.getCB = self.get_cb
 
             self.DataRef = XPLMRegisterDataAccessor(self.plugin, dataref, self.dr_type,
-            writable,
-            self.getCB, self.setCB,
-            self.getCB, self.setCB,
-            self.getCB, self.setCB,
-            self.rgetCB, self.rsetCB,
-            self.rgetCB, self.rsetCB,
-            self.rgetCB, self.rsetCB,
-            0, 0)
+                                                    writable,
+                                                    self.getCB, self.setCB,
+                                                    self.getCB, self.setCB,
+                                                    self.getCB, self.setCB,
+                                                    self.rgetCB, self.rsetCB,
+                                                    self.rgetCB, self.rsetCB,
+                                                    self.rgetCB, self.rsetCB,
+                                                    0, 0)
 
             self.__class__.datarefs.append(self)
 
@@ -105,7 +106,7 @@ class EasyDref:
             self.count = int(first)
         else:
             self.index = int(first)
-            self.count = int(last) - int(first) +1
+            self.count = int(last) - int(first) + 1
             self.last = int(last)
 
         if (type == "int"):
@@ -184,8 +185,8 @@ class EasyDref:
             return i
 
     def rset_cb(self, inRefcon, values, index, count):
-        if self.count >= index+count:
-            self.value_f = self.value_f[:index] + values + self.value_f[index+count:]
+        if self.count >= index + count:
+            self.value_f = self.value_f[:index] + values + self.value_f[index + count:]
         else:
             return False
 
@@ -220,11 +221,13 @@ class EasyDref:
 
         return drefs
 
+
 class EasyCommand:
     '''
     Creates a command with an assigned callback with arguments
     '''
-    def __init__(self, plugin, command, function, args = False, description =''):
+
+    def __init__(self, plugin, command, function, args=False, description=''):
         command = 'xjpc/XPNoaaWeather/' + command
         self.command = XPLMCreateCommand(command, description)
         self.commandCH = self.commandCHandler
@@ -234,6 +237,7 @@ class EasyCommand:
         self.args = args
         self.plugin = plugin
         # Command handlers
+
     def commandCHandler(self, inCommand, inPhase, inRefcon):
         if inPhase == 0:
             if self.args:
@@ -244,5 +248,6 @@ class EasyCommand:
             else:
                 self.function()
         return 0
+
     def destroy(self):
         XPLMUnregisterCommandHandler(self.plugin, self.command, self.commandCH, 1, 0)

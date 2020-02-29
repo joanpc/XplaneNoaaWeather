@@ -18,11 +18,13 @@ import subprocess
 import sys
 from util import util
 
+
 class AsyncDownload():
     '''
     Asyncronous download
     '''
-    def __init__(self, conf, url, cachefile, callback = False, min_size = 500):
+
+    def __init__(self, conf, url, cachefile, callback=False, min_size=500):
 
         self.callback = callback
         self.q = Queue.Queue()
@@ -32,7 +34,7 @@ class AsyncDownload():
         self.cancel = threading.Event()
         self.min_size = min_size
 
-        self.t = threading.Thread(target = self.run, args = (conf, url, cachepath, cachefile))
+        self.t = threading.Thread(target=self.run, args=(conf, url, cachepath, cachefile))
         self.t.start()
 
     def run(self, conf, url, cachepath, cachefile):
@@ -67,7 +69,7 @@ class AsyncDownload():
         isGzip = response.headers.get('content-encoding', '').find('gzip') >= 0
         isGziped = url[-3:] == '.gz'
 
-        gz = zlib.decompressobj(16+zlib.MAX_WBITS)
+        gz = zlib.decompressobj(16 + zlib.MAX_WBITS)
 
         binary = ''
         if filepath.split('.')[-1] == 'grib2':
@@ -79,7 +81,7 @@ class AsyncDownload():
             while True:
                 if self.cancel.isSet():
                     raise Exception()
-                data = response.read(1024*128)
+                data = response.read(1024 * 128)
                 if not data:
                     print 'Downloaded: %s' % (cachefile)
                     break
@@ -104,7 +106,8 @@ class AsyncDownload():
                 args = [self.wgrib2bin, tempfile, '-set_grib_type', 'simple', '-grib_out', filepath]
 
                 if conf.spinfo:
-                    p = subprocess.Popen(args, startupinfo=conf.spinfo, stdout=sys.stdout, stderr=sys.stderr, shell=True)
+                    p = subprocess.Popen(args, startupinfo=conf.spinfo, stdout=sys.stdout, stderr=sys.stderr,
+                                         shell=True)
                 else:
                     p = subprocess.Popen(args, stdout=sys.stdout, stderr=sys.stderr)
                 p.wait()

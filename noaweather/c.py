@@ -11,11 +11,12 @@ of the License, or any later version.
 from math import hypot, atan2, degrees, exp, log, radians, sin, cos, sqrt, pi
 from random import random
 
+
 class c:
     '''
     Conversion tools
     '''
-    #transition references
+    # transition references
     transrefs = {}
 
     randRefs = {}
@@ -30,7 +31,7 @@ class c:
 
     @classmethod
     def c2p(self, x, y):
-        #Cartesian 2 polar conversion
+        # Cartesian 2 polar conversion
         r = hypot(x, y)
         a = degrees(atan2(x, y))
         if a < 0:
@@ -38,12 +39,12 @@ class c:
         if a <= 180:
             a = a + 180
         else:
-            a = a -180
+            a = a - 180
         return a, r
 
     @classmethod
     def mb2alt(self, mb):
-        altpress = (1 - (mb/1013.25)**0.190284) * 44307
+        altpress = (1 - (mb / 1013.25) ** 0.190284) * 44307
         return altpress
 
     @classmethod
@@ -69,8 +70,8 @@ class c:
         dLat = radians(lat2 - lat1)
         dLon = radians(lon2 - lon1)
         a = (sin(dLat / 2) * sin(dLat / 2) +
-        cos(radians(lat1)) * cos(radians(lat2)) *
-        sin(dLon / 2) * sin(dLon / 2))
+             cos(radians(lat1)) * cos(radians(lat2)) *
+             sin(dLon / 2) * sin(dLon / 2))
         c = 2 * atan2(sqrt(a), sqrt(1 - a))
         d = EARTH_RADIUS * c
         return d
@@ -79,19 +80,19 @@ class c:
     def interpolate(self, t1, t2, alt1, alt2, alt):
         if (alt2 - alt1) == 0:
             return t2
-        return t1 + (alt - alt1)*(t2 -t1)/(alt2 -alt1)
+        return t1 + (alt - alt1) * (t2 - t1) / (alt2 - alt1)
 
     @classmethod
-    def expoCosineInterpolate(self, t1, t2, alt1, alt2, alt, expo = 3):
+    def expoCosineInterpolate(self, t1, t2, alt1, alt2, alt, expo=3):
         if alt1 == alt2: return t1
         x = (alt - alt1) / float(alt2 - alt1)
-        return t1 + (t2 - t1) * x**expo
+        return t1 + (t2 - t1) * x ** expo
 
     @classmethod
     def cosineInterpolate(self, t1, t2, alt1, alt2, alt):
         if alt1 == alt2: return t1
         x = (alt - alt1) / float(alt2 - alt1)
-        return t1 + (t2 - t1) * (0.5-cos(pi*x)/2)
+        return t1 + (t2 - t1) * (0.5 - cos(pi * x) / 2)
 
     @classmethod
     def cosineInterpolateHeading(self, hdg1, hdg2, alt1, alt2, alt):
@@ -108,7 +109,7 @@ class c:
             return t2 % 360
 
     @classmethod
-    def expoCosineInterpolateHeading(self, hdg1, hdg2, alt1, alt2, alt, expo = 3):
+    def expoCosineInterpolateHeading(self, hdg1, hdg2, alt1, alt2, alt, expo=3):
 
         if alt1 == alt2: return hdg1
 
@@ -128,7 +129,7 @@ class c:
         t1 = 0
         t2 = self.shortHdg(hdg1, hdg2)
 
-        t2 =  t1 + (alt - alt1)*(t2 - t1)/(alt2 - alt1)
+        t2 = t1 + (alt - alt1) * (t2 - t1) / (alt2 - alt1)
 
         t2 += hdg1
 
@@ -139,10 +140,10 @@ class c:
 
     @classmethod
     def fog2(self, rh):
-        return (80 - rh)/20*24634
+        return (80 - rh) / 20 * 24634
 
     @classmethod
-    def toFloat(self, string, default = 0):
+    def toFloat(self, string, default=0):
         # try to convert to float or return default
         try:
             val = float(string)
@@ -151,7 +152,7 @@ class c:
         return val
 
     @classmethod
-    def toInt(self, string, default = 0):
+    def toInt(self, string, default=0):
         # try to convert to float or return default
         try:
             val = int(string)
@@ -162,15 +163,16 @@ class c:
     @classmethod
     def rh2visibility(self, rh):
         # http://journals.ametsoc.org/doi/pdf/10.1175/2009JAMC1927.1
-        return 1000*(-5.19*10**-10*rh**5.44+40.10)
+        return 1000 * (-5.19 * 10 ** -10 * rh ** 5.44 + 40.10)
 
     @classmethod
     def dewpoint2rh(self, temp, dew):
-        return 100*(exp((17.625*dew)/(243.04+dew))/exp((17.625*temp)/(243.04+temp)))
+        return 100 * (exp((17.625 * dew) / (243.04 + dew)) / exp((17.625 * temp) / (243.04 + temp)))
 
     @classmethod
     def dewpoint(self, temp, rh):
-        return 243.04*(log(rh/100)+((17.625*temp)/(243.04+temp)))/(17.625-log(rh/100)-((17.625*temp)/(243.04+temp)))
+        return 243.04 * (log(rh / 100) + ((17.625 * temp) / (243.04 + temp))) / (
+                    17.625 - log(rh / 100) - ((17.625 * temp) / (243.04 + temp)))
 
     @classmethod
     def shortHdg(self, a, b):
@@ -211,8 +213,8 @@ class c:
             dir = -1
         else:
             dir = 1
-        if abs(current - new) > speed*elapsed + speed:
-            new =  current + dir * speed * elapsed
+        if abs(current - new) > speed * elapsed + speed:
+            new = current + dir * speed * elapsed
 
         self.transrefs[id] = new
         dataref.value = new
@@ -230,15 +232,15 @@ class c:
             dir = -1
         else:
             dir = 1
-        if abs(current - new) > speed*elapsed + speed:
-            new =  current + dir * speed * elapsed
+        if abs(current - new) > speed * elapsed + speed:
+            new = current + dir * speed * elapsed
 
         self.transrefs[id] = new
 
         return new
 
     @classmethod
-    def transitionClearReferences(self, refs = False, exclude = False):
+    def transitionClearReferences(self, refs=False, exclude=False):
         ''' Clear transition references '''
         if exclude:
             for ref in self.transrefs.keys():
@@ -265,7 +267,7 @@ class c:
 
         diff = c.shortHdg(current, float(new))
 
-        if abs(diff) < speed*elapsed:
+        if abs(diff) < speed * elapsed:
             newval = new
         else:
             if diff > 0:
@@ -296,7 +298,7 @@ class c:
         current = self.transrefs[id]
 
         diff = c.shortHdg(current, new)
-        if abs(diff) < vel*elapsed:
+        if abs(diff) < vel * elapsed:
             newval = new
         else:
             if diff > 0:
@@ -313,7 +315,7 @@ class c:
         dataref.value = newval
 
     @classmethod
-    def limit(self, value, max = None, min = None):
+    def limit(self, value, max=None, min=None):
         if max is not False and value > max:
             return max
         elif min is not False and value < min:
@@ -323,8 +325,8 @@ class c:
 
     @classmethod
     def cc2xp_old(self, cover):
-        #Cloud cover to X-plane
-        xp = int(cover/100.0*4)
+        # Cloud cover to X-plane
+        xp = int(cover / 100.0 * 4)
         if xp < 1 and cover > 0:
             xp = 1
         elif cover > 89:
@@ -337,13 +339,12 @@ class c:
         if cover < 1:
             return 0
         if cover < 30:
-            return 1 #'FEW'
+            return 1  # 'FEW'
         if cover < 55:
-            return 2 #'SCT'
+            return 2  # 'SCT'
         if cover < 90:
-            return 3 #'BKN'
-        return 4 #'OVC'
-
+            return 3  # 'BKN'
+        return 4  # 'OVC'
 
     @classmethod
     def metar2xpprecipitation(self, kind, intensity, mod, recent):
@@ -355,18 +356,18 @@ class c:
         precipitation, friction = False, False
 
         precip = {
-         'DZ': [0.1, 0.2 , 0.3],
-         'RA': [0.3 ,0.5, 0.8],
-         'SN': [0.25 ,0.5, 0.8], # Snow
-         'SH': [0.7, 0.8,  1]
-         }
+            'DZ': [0.1, 0.2, 0.3],
+            'RA': [0.3, 0.5, 0.8],
+            'SN': [0.25, 0.5, 0.8],  # Snow
+            'SH': [0.7, 0.8, 1]
+        }
 
         wet = {
-         'DZ': 1,
-         'RA': 1,
-         'SN': 2, # Snow
-         'SH': 1,
-         }
+            'DZ': 1,
+            'RA': 1,
+            'SN': 2,  # Snow
+            'SH': 1,
+        }
 
         if mod == 'SH':
             kind = 'SH'
@@ -381,12 +382,13 @@ class c:
         return precipitation, friction
 
     @classmethod
-    def strFloat(self, i, false_label = 'na'):
+    def strFloat(self, i, false_label='na'):
         'Print a float or na if False'
         if i is False:
             return false_label
         else:
             return '%.2f' % (i)
+
     @classmethod
     def m2ft(cls, n):
         if n is False: return False
@@ -412,7 +414,7 @@ class c:
         return n * 1852
 
     @classmethod
-    def convertForInput(self, value, conversion, toFloat = False, false_str = 'none'):
+    def convertForInput(self, value, conversion, toFloat=False, false_str='none'):
         # Make conversion and transform to int
         if value is False:
             value = False
@@ -428,7 +430,7 @@ class c:
         return str(value)
 
     @classmethod
-    def convertFromInput(self, string, conversion, default = False, toFloat = False, max = False, min = False):
+    def convertFromInput(self, string, conversion, default=False, toFloat=False, max=False, min=False):
         # Convert from str and convert
         value = self.toFloat(string, default)
 
@@ -444,7 +446,7 @@ class c:
             return int(round(value))
 
     @classmethod
-    def randPattern(self, id, max_val, elapsed, max_time = 1, min_val = 0, min_time = 1, heading = False):
+    def randPattern(self, id, max_val, elapsed, max_time=1, min_val=0, min_time=1, heading=False):
         ''' Creates random cosine interpolated "patterns" '''
 
         if id in self.randRefs:
@@ -453,9 +455,9 @@ class c:
             x1, x2, startime, endtime, time = min_val, 0, 0, 0, 0
 
         if heading:
-            ret =  self.cosineInterpolateHeading(x1, x2, startime, endtime, time)
+            ret = self.cosineInterpolateHeading(x1, x2, startime, endtime, time)
         else:
-            ret =  self.cosineInterpolate(x1, x2, startime, endtime, time)
+            ret = self.cosineInterpolate(x1, x2, startime, endtime, time)
 
         time += elapsed
 
@@ -465,7 +467,7 @@ class c:
             t2 = min_time + random() * (max_time - min_time)
 
             x1 = ret
-            startime =  time
+            startime = time
             endtime = time + t2
 
         self.randRefs[id] = x1, x2, startime, endtime, time
@@ -475,6 +477,6 @@ class c:
     @classmethod
     def middleHeading(cls, hd1, hd2):
         if hd2 > hd1:
-            return hd1 + (hd2 - hd1)/2
+            return hd1 + (hd2 - hd1) / 2
         else:
-            return hd2 + (360 + hd1 - hd2)/2
+            return hd2 + (360 + hd1 - hd2) / 2
