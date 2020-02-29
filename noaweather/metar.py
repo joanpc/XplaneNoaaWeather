@@ -71,11 +71,11 @@ class Metar:
         createdb = True
         if os.path.exists(self.database):
             createdb = False
-        self.connection = self.dbConnect(self.database)
+        self.connection = self.db_connect(self.database)
         self.cursor = self.connection.cursor()
         if createdb:
             self.conf.ms_update = 0
-            self.dbCreate(self.connection)
+            self.db_create(self.connection)
 
         # Metar stations update
         if (time.time() - self.conf.ms_update) > self.STATION_UPDATE_RATE * 86400:
@@ -83,16 +83,16 @@ class Metar:
 
         self.last_latlon, self.last_station, self.last_timestamp = [False] * 3
 
-    def dbConnect(self, path):
+    def db_connect(self, path):
         return sqlite3.connect(path, check_same_thread=False)
 
-    def dbCreate(self, db):
+    def db_create(self, db):
         cursor = db.cursor()
         cursor.execute('''CREATE TABLE airports (icao text KEY UNIQUE, lat real, lon real, elevation int,
                         timestamp int KEY, metar text)''')
         db.commit()
 
-    def updateStations(self, db, path):
+    def update_stations(self, db, path):
         ''' Updates aiports db from metar stations file'''
         self.conf.ms_update = time.time()
 
@@ -121,7 +121,7 @@ class Metar:
         db.commit()
         return n
 
-    def updateMetar(self, db, path):
+    def update_metar(self, db, path):
         ''' Updates metar table from Metar file'''
         f = open(path, 'r')
         nupdated = 0
@@ -177,13 +177,14 @@ class Metar:
 
         return nupdated, nparsed
 
-    def clearMetarReports(self, db):
+    @staticmethod
+    def clear_reports(self, db):
         '''Clears all metar reports from the db'''
         cursor = db.cursor()
         cursor.execute('UPDATE airports SET metar = NULL, timestamp = 0')
         db.commit()
 
-    def getClosestStation(self, db, lat, lon, limit=1):
+    def get_closest_station(self, db, lat, lon, limit=1):
         ''' Return closest airport with a metar report'''
 
         cursor = db.cursor()
@@ -198,7 +199,6 @@ class Metar:
 
             res = cursor.execute(q, tuple(self.conf.ignore_metar_stations) + (lat, lat, lon, lon, fudge, limit))
 
-
         else:
             res = cursor.execute('''SELECT * FROM airports
                                     WHERE metar NOT NULL
@@ -210,7 +210,7 @@ class Metar:
             return ret[0]
         return ret
 
-    def getMetar(self, db, icao):
+    def get_metar(self, db, icao):
         ''' Get metar from icao name '''
         cursor = db.cursor()
         res = cursor.execute('''SELECT * FROM airports
@@ -221,7 +221,7 @@ class Metar:
             return ret[0]
         return ret
 
-    def getCycle(self):
+    def get_current_cycle(self):
         now = datetime.utcnow()
         # Cycle is updated until the houre has arrived (ex: 01 cycle updates until 1am)
 
@@ -230,7 +230,7 @@ class Metar:
         timestamp = int(time.time())
         return ('%02d' % cnow.hour, timestamp)
 
-    def parseMetar(self, icao, metar, airport_msl=0):
+    def parse_metar(self, icao, metar, airport_msl=0):
         ''' Parse metar'''
 
         weather = {
@@ -372,7 +372,7 @@ class Metar:
 
         # Worker thread requires it's own db connection and cursor
         if not self.th_db:
-            self.th_db = self.dbConnect(self.database)
+            self.th_db = self.db_connect(self.database)
 
         # Check for new metar dowloaded data
         if self.downloading == True:
@@ -383,7 +383,7 @@ class Metar:
 
                 if metarfile:
                     print 'Parsing METAR download.'
-                    updated, parsed = self.updateMetar(self.th_db, os.sep.join([self.conf.cachepath, metarfile]))
+                    updated, parsed = self.update_metar(self.th_db, os.sep.join([self.conf.cachepath, metarfile]))
                     self.reparse = True
                     print "METAR updated/parsed: %d/%d" % (updated, parsed)
                 else:
@@ -391,28 +391,28 @@ class Metar:
 
         elif self.conf.download:
             # Download new data if required
-            cycle, timestamp = self.getCycle()
+            cycle, timestamp = self.get_current_cycle()
             if (timestamp - self.last_timestamp) > self.conf.metar_updaterate * 60:
                 self.last_timestamp = timestamp
-                self.downloadCycle(cycle, timestamp)
+                self.download_cycle(cycle, timestamp)
 
         # Update stations table if required
         if self.ms_download and not self.ms_download.q.empty():
             print 'Updating metar stations.'
-            nstations = self.updateStations(self.th_db, os.sep.join([self.conf.cachepath, self.ms_download.q.get()]))
+            nstations = self.update_stations(self.th_db, os.sep.join([self.conf.cachepath, self.ms_download.q.get()]))
             self.ms_download = False
             print '%d metar stations updated.' % nstations
 
         # Update METAR.rwx
-        if self.conf.updateMetarRWX and self.next_metarRWX < time.time():
-            if self.updateMetarRWX(self.th_db):
+        if self.conf.update_metar_rwx_file and self.next_metarRWX < time.time():
+            if self.update_metar_rwx_file(self.th_db):
                 self.next_metarRWX = time.time() + 300
                 print 'Updated METAR.rwx file.'
             else:
                 # Retry in 10 sec
                 self.next_metarRWX = time.time() + 10
 
-    def downloadCycle(self, cycle, timestamp):
+    def download_cycle(self, cycle, timestamp):
         self.downloading = True
 
         cachepath = os.sep.join([self.conf.cachepath, 'metar'])
@@ -433,7 +433,7 @@ class Metar:
         cachefile = os.sep.join(['metar', '%s_%d_%sZ.txt' % (prefix, timestamp, cycle)])
         self.download = AsyncDownload(self.conf, url, cachefile)
 
-    def updateMetarRWX(self, db):
+    def update_metar_rwx_file(self, db):
         # Updates metar RWX file.
 
         cursor = db.cursor()

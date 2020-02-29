@@ -83,9 +83,9 @@ class clientHandler(SocketServer.BaseRequestHandler):
             response['info']['wafs_cycle'] = gfs.wafs.lastgrib
 
         # Parse metar
-        apt = gfs.metar.getClosestStation(gfs.metar.connection, lat, lon)
+        apt = gfs.metar.get_closest_station(gfs.metar.connection, lat, lon)
         if apt and len(apt) > 4:
-            response['metar'] = gfs.metar.parseMetar(apt[0], apt[5], apt[3])
+            response['metar'] = gfs.metar.parse_metar(apt[0], apt[5], apt[3])
             response['metar']['latlon'] = (apt[1], apt[2])
             response['metar']['distance'] = c.greatCircleDistance((lat, lon), (apt[1], apt[2]))
 
@@ -112,9 +112,9 @@ class clientHandler(SocketServer.BaseRequestHandler):
                 elif len(data) == 5:
                     # Icao
                     response = {}
-                    apt = gfs.metar.getMetar(gfs.metar.connection, data[1:])
+                    apt = gfs.metar.get_metar(gfs.metar.connection, data[1:])
                     if len(apt) and apt[5]:
-                        response['metar'] = gfs.metar.parseMetar(apt[0], apt[5], apt[3])
+                        response['metar'] = gfs.metar.parse_metar(apt[0], apt[5], apt[3])
                     else:
                         response['metar'] = {'icao': 'METAR STATION',
                                              'metar': 'NOT AVAILABLE'}
@@ -128,7 +128,7 @@ class clientHandler(SocketServer.BaseRequestHandler):
                 conf.pluginLoad()
             elif data == '!resetMetar':
                 # Clear database and force redownload
-                gfs.metar.clearMetarReports(gfs.metar.connection)
+                gfs.metar.clear_reports(gfs.metar.connection)
                 gfs.metar.last_timestamp = 0
             elif data == '!ping':
                 response = '!pong'
