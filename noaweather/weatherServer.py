@@ -16,11 +16,11 @@ from conf import Conf
 from gfs import GFS
 from wafs import WAFS
 from metar import Metar
+from weathersource import Worker
 from c import c
 
 import SocketServer
 import cPickle
-import threading
 import os, sys, signal
 import socket
 import time
@@ -48,27 +48,6 @@ class LogFile:
             setattr(self.f, name, value)
         else:
             self.__dict__[name] = value
-
-
-class Worker(threading.Thread):
-    """Runs worker functions on weather sources to periodically trigger data updating"""
-
-    def __init__(self, workers, rate):
-        self.workers = workers
-        self.die = threading.Event()
-        self.rate = rate
-        threading.Thread.__init__(self)
-
-    def run(self):
-        while not self.die.wait(self.rate):
-            for worker in self.workers:
-                worker.run(self.rate)
-
-        if self.die.isSet():
-            for worker in self.workers:
-                worker.shutdown()
-            sys.stdout.flush()
-
 
 class ClientHandler(SocketServer.BaseRequestHandler):
 
@@ -227,8 +206,9 @@ if __name__ == "__main__":
         pass
 
     # Close gfs worker and save config
-    worker.die.set()
+    worker.shutdown()
     conf.serverSave()
+    sys.stdout.flush()
 
     print 'Server stopped.'
 
