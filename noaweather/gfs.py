@@ -1,4 +1,4 @@
-'''
+"""
 NOAA weather daemon server
 
 ---
@@ -9,7 +9,7 @@ This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or any later version.
-'''
+"""
 
 from datetime import datetime, timedelta
 import os
@@ -22,9 +22,8 @@ from util import util
 
 
 class GFS(WeatherSource):
-    '''
-    NOAA GFS download and parse functions.
-    '''
+    """NOAA GFS weather source"""
+    
     cycles = [0, 6, 12, 18]
     baseurl = 'https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p50.pl?'
 
@@ -89,17 +88,16 @@ class GFS(WeatherSource):
         if not self.conf.enabled:
             pass
 
-        datecycle, cycle, forecast = self.getCycleDate()
+        datecycle, cycle, forecast = self.get_cycle_date()
 
         if self.downloadWait < 1:
-            self.downloadCycle(datecycle, cycle, forecast)
+            self.download_cycle(datecycle, cycle, forecast)
         elif self.downloadWait > 0:
             self.downloadWait -= elapsed
 
-    def getCycleDate(self):
-        '''
-        Returns last cycle date avaliable
-        '''
+    def get_cycle_date(self):
+        """Returns last cycle date available"""
+
         now = datetime.utcnow()
         # cycle is published with 4 hours 25min delay
         cnow = now - timedelta(hours=4, minutes=25)
@@ -115,10 +113,8 @@ class GFS(WeatherSource):
 
         return ('%d%02d%02d%02d' % (cnow.year, cnow.month, cnow.day, lcycle), lcycle, forecast)
 
-    def downloadCycle(self, datecycle, cycle, forecast):
-        '''
-        Downloads the requested grib file
-        '''
+    def download_cycle(self, datecycle, cycle, forecast):
+        """Downloads the grib file for the cycle"""
 
         filename = 'gfs.t%02dz.pgrb2full.0p50.f0%02d' % (cycle, forecast)
 
@@ -175,10 +171,8 @@ class GFS(WeatherSource):
 
         return False
 
-    def parseGribData(self, filepath, lat, lon):
-        '''
-        Executes wgrib2 and parses its output
-        '''
+    def parse_grib_data(self, filepath, lat, lon):
+        """Executes wgrib2 and parses its output"""
         args = ['-s',
                 '-lon',
                 '%f' % (lon),
