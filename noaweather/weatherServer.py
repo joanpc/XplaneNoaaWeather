@@ -75,7 +75,7 @@ class ClientHandler(SocketServer.BaseRequestHandler):
 
         # Parse gfs and wafs
         if gfs.lastgrib:
-            response['gfs'] = gfs.parseGribData(gfs.lastgrib, lat, lon)
+            response['gfs'] = gfs.parse_grib_data(gfs.lastgrib, lat, lon)
             response['info']['gfs_cycle'] = gfs.lastgrib
         if wafs.lastgrib:
             response['wafs'] = wafs.parseGribData(wafs.lastgrib, lat, lon)

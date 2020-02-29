@@ -16,14 +16,13 @@ import os
 import subprocess
 
 from weathersource import WeatherSource
-from asyncdownload import AsyncDownload
+from weathersource import AsyncDownload
 from c import c
 from util import util
 
 
 class GFS(WeatherSource):
     """NOAA GFS weather source"""
-    
     cycles = [0, 6, 12, 18]
     baseurl = 'https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p50.pl?'
 

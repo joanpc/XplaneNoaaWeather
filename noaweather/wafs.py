@@ -12,8 +12,8 @@ import os
 from datetime import datetime, timedelta
 import subprocess
 
-from asyncdownload import AsyncDownload
 from weathersource import WeatherSource
+from weathersource import AsyncDownload
 from c import c
 from util import util
 

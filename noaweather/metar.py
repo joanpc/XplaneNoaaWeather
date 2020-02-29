@@ -13,14 +13,13 @@ import os
 import sqlite3
 import math
 import sys
-import shutil
 from datetime import datetime, timedelta
 import time
 from util import util
 
 from c import c
-from asyncdownload import AsyncDownload
 from weathersource import WeatherSource
+from weathersource import AsyncDownload
 
 
 class Metar(WeatherSource):
