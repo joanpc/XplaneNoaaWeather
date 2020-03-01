@@ -87,14 +87,12 @@ class AsyncDownload:
 
         try:
             response = urllib2.urlopen(request, **params)
-
-        except Exception:
+        except urllib2.URLError:
             print "Download error: %s %s" % (sys.exc_info()[0], sys.exc_info()[1])
             self.q.put(False)
 
-        # Check for gzziped file
-        isGzip = response.headers.get('content-encoding', '').find('gzip') >= 0
-        isGziped = url[-3:] == '.gz'
+        # Check for gzip content
+        is_gzip = url[-3:] == '.gz' or response.headers.get('content-encoding', '').find('gzip') > -1
 
         gz = zlib.decompressobj(16 + zlib.MAX_WBITS)
 
@@ -112,9 +110,7 @@ class AsyncDownload:
                 if not data:
                     print 'Downloaded: %s' % (cachefile)
                     break
-                if isGzip:
-                    data = gz.decompress(data)
-                if isGziped:
+                if is_gzip:
                     data = gz.decompress(data)
                 of.write(data)
         except Exception:
@@ -127,14 +123,13 @@ class AsyncDownload:
         if os.path.exists(tempfile) and os.path.getsize(tempfile) > self.min_size:
             # Downloaded
             if filepath.split('.')[-1] == 'grib2':
-                # Uncompress grib2 file
-                print "Uncompressing grib: %s %s" % (self.wgrib2bin, tempfile)
+
+                print "Decompressing grib: %s %s" % (self.wgrib2bin, tempfile)
 
                 args = [self.wgrib2bin, tempfile, '-set_grib_type', 'simple', '-grib_out', filepath]
 
                 if conf.spinfo:
-                    p = subprocess.Popen(args, startupinfo=conf.spinfo, stdout=sys.stdout, stderr=sys.stderr,
-                                         shell=True)
+                    p = subprocess.Popen(args, startupinfo=conf.spinfo, stdout=sys.stdout, stderr=sys.stderr, shell=True)
                 else:
                     p = subprocess.Popen(args, stdout=sys.stdout, stderr=sys.stderr)
                 p.wait()
@@ -150,7 +145,7 @@ class AsyncDownload:
             else:
                 self.q.put(cachefile)
         else:
-            # File to small, remove file.
+            # Too small, remove file.
             if os.path.exists(tempfile):
                 util.remove(tempfile)
             self.q.put(False)
