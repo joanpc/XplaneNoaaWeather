@@ -1,4 +1,4 @@
-'''
+"""
 X-plane NOAA GFS weather plugin.
 Copyright (C) 2012-2015 Joan Perez i Cauhe
 ---
@@ -6,7 +6,7 @@ This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or any later version.
-'''
+"""
 
 import os
 import shutil
@@ -15,10 +15,9 @@ import sys
 
 class util:
 
-    @classmethod
-    def remove(cls, filepath):
-        '''Try to remove a file. if fails trys to rename-it
-        '''
+    @staticmethod
+    def remove(filepath):
+        """Remove a file or try to rename-it if it fails"""
         try:
             os.remove(filepath)
         except:
@@ -38,21 +37,21 @@ class util:
                     break
                 i += 1
 
-    @classmethod
-    def rename(cls, opath, dpath):
+    @staticmethod
+    def rename(opath, dpath):
         if os.path.exists(dpath):
-            cls.remove(dpath)
+            util.remove(dpath)
         try:
             os.rename(opath, dpath)
         except:
             print "Can't rename: %s to %s, trying to copy/remove" % (opath, dpath)
-            cls.copy(opath, dpath)
-            cls.remove(opath)
+            util.copy(opath, dpath)
+            util.remove(opath)
 
-    @classmethod
-    def copy(cls, opath, dpath):
+    @staticmethod
+    def copy(opath, dpath):
         if os.path.exists(dpath):
-            cls.remove(dpath)
+            util.remove(dpath)
         try:
             shutil.copyfile(opath, dpath)
         except:
