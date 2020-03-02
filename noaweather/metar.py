@@ -23,9 +23,8 @@ from weathersource import AsyncDownload
 
 
 class Metar(WeatherSource):
-    """
-    Provides METAR download and parsing routines.
-    """
+    """ Provides METAR download and parsing routines. """
+
     # Metar parse regex
     RE_CLOUD = re.compile(r'\b(FEW|BKN|SCT|OVC|VV)([0-9]+)([A-Z][A-Z][A-Z]?)?\b')
     RE_WIND = re.compile(r'\b(VRB|[0-9]{3})([0-9]{2,3})(G[0-9]{2,3})?(MPH|KT?|MPS|KMH)\b')
@@ -379,16 +378,16 @@ class Metar(WeatherSource):
         if not self.th_db:
             self.th_db = self.db_connect(self.database)
 
-        # Check for new metar dowloaded data
-        if self.downloading == True:
+        # Check for new metar downloaded data
+        if self.downloading:
             if not self.download.q.empty():
 
                 self.downloading = False
-                metarfile = self.download.q.get()
+                metar_file = self.download.q.get()
 
-                if metarfile:
+                if metar_file:
                     print 'Parsing METAR download.'
-                    updated, parsed = self.update_metar(self.th_db, os.sep.join([self.conf.cachepath, metarfile]))
+                    updated, parsed = self.update_metar(self.th_db, os.sep.join([self.conf.cachepath, metar_file]))
                     self.reparse = True
                     print "METAR updated/parsed: %d/%d" % (updated, parsed)
                 else:
@@ -439,13 +438,13 @@ class Metar(WeatherSource):
         self.download = AsyncDownload(self.conf, url, cachefile)
 
     def update_metar_rwx_file(self, db):
-        # Updates metar RWX file.
+        """Dumps all metar data to the METAR.rwx file"""
 
         cursor = db.cursor()
 
         try:
             f = open(os.sep.join([self.conf.syspath, 'METAR.rwx']), 'w')
-        except:
+        except OSError:
             print "ERROR updating METAR.rwx file: %s %s" % (sys.exc_info()[0], sys.exc_info()[1])
             return False
 
