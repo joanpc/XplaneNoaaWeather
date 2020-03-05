@@ -28,7 +28,14 @@ class WeatherSource(object):
 
 
 class Worker(threading.Thread):
-    """Runs worker functions on weather sources to periodically trigger data updating"""
+    """Creates a new thread to periodically run worker functions on weather sources to trigger
+    data updating or other tasks
+
+    Attributes:
+        workers (list): Worker functions to be called
+        die (threading.Event): Se the flag to end the thread
+        rate (int): wait rate seconds between runs
+    """
 
     def __init__(self, workers, rate):
         self.workers = workers
