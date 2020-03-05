@@ -56,6 +56,40 @@ class Worker(threading.Thread):
         self.die.set()
 
 
+class AsyncTask(threading.Thread):
+    """Run an asynchronous task on a new thread
+
+    Attributes:
+        task (method): Worker method to be called
+        die (threading.Event): Se the flag to end the tasks
+        result (): return of the task method
+    """
+
+    def __init__(self, task, *args, **kwargs):
+
+        self.task = task
+        self.cancel = threading.Event()
+        self.kwargs = kwargs
+        self.args = args
+        self.result = False
+        threading.Thread.__init__(self)
+
+    def run(self):
+        try:
+            self.result = self.task(*self.args, **self.kwargs)
+        except Exception as result:
+            self.result = result
+        return
+
+    def __getattr__(self, name):
+        if name == 'pending':
+            return self.is_alive()
+        return self.__getattribute__(name)
+
+    def cancel(self):
+        self.cancel.set()
+
+
 class AsyncDownload:
     """Asynchronous HTTP/HTTPS downloading and decompressing"""
     def __init__(self, conf, url, cachefile, callback=False, min_size=500):
