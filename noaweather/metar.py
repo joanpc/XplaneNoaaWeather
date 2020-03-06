@@ -98,29 +98,33 @@ class Metar(WeatherSource):
         self.conf.ms_update = time.time()
 
         cursor = db.cursor()
+        parsed = 0
 
-        f = open(path, 'r')
-        n = 0
+        with open(path, 'r') as f:
+            try:
+                for line in f.readlines():
+                    if line[0] != '!' and len(line) > 80:
+                        icao = line[20:24]
+                        lat = float(line[39:41]) + round(float(line[42:44]) / 60, 4)
+                        if line[44] == 'S':
+                            lat *= -1
+                        lon = float(line[47:50]) + round(float(line[51:53]) / 60, 4)
+                        if line[53] == 'W':
+                            lon *= -1
+                        elevation = int(line[55:59])
+                        if line[20] != ' ' and line[51] != '9':
+                            cursor.execute(
+                                'INSERT OR REPLACE INTO airports (icao, lat, lon, elevation, timestamp) \
+                                 VALUES (?,?,?,?,0)',
+                                (icao.strip('"'), lat, lon, elevation))
+                            parsed += 1
+            except (ValueError, IndexError) as e:
+                print "Error parsing METAR station File: %s" % str(e)
 
-        for line in f.readlines():
-            if line[0] != '!' and len(line) > 80:
-                icao = line[20:24]
-                lat = float(line[39:41]) + round(float(line[42:44]) / 60, 4)
-                if line[44] == 'S':
-                    lat *= -1
-                lon = float(line[47:50]) + round(float(line[51:53]) / 60, 4)
-                if line[53] == 'W':
-                    lon *= -1
-                elevation = int(line[55:59])
-                if line[20] != ' ' and line[51] != '9':
-                    cursor.execute(
-                        'INSERT OR REPLACE INTO airports (icao, lat, lon, elevation, timestamp) VALUES (?,?,?,?,0)',
-                        (icao.strip('"'), lat, lon, elevation))
-                    n += 1
+            db.commit()
+            self.conf.ms_update = time.time()
 
-        f.close()
-        db.commit()
-        return n
+        return parsed
 
     def update_metar(self, db, path):
         """Updates metar table from Metar file"""
