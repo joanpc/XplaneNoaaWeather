@@ -26,16 +26,18 @@ class Metar(WeatherSource):
     """ Provides METAR download and parsing routines. """
 
     # Metar parse regex
-    RE_CLOUD = re.compile(r'\b(FEW|BKN|SCT|OVC|VV)([0-9]+)([A-Z][A-Z][A-Z]?)?\b')
-    RE_WIND = re.compile(r'\b(VRB|[0-9]{3})([0-9]{2,3})(G[0-9]{2,3})?(MPH|KT?|MPS|KMH)\b')
-    RE_VARIABLE_WIND = re.compile(r'\b([0-9]{3})V([0-9]{3})\b')
+    RE_CLOUD = re.compile(r'\b(?P<coverage>FEW|BKN|SCT|OVC|VV)(?P<level>[0-9]+)(?P<type>[A-Z]{2,3})?\b')
+    RE_WIND = re.compile(r'\b(?P<heading>VRB|[0-9]{3})(?P<speed>[0-9]{2,3})'
+                         r'(?P<gust>G[0-9]{2,3})?(?P<unit>MPH|KT?|MPS|KMH)\b')
+    RE_VARIABLE_WIND = re.compile(r'\b(?P<from_heading>[0-9]{3})V(?P<to_heading>[0-9]{3})\b')
     RE_VISIBILITY = re.compile(r'\b(CAVOK|[PM]?([0-9]{4})|([0-9] )?([0-9]{1,2})(/[0-9])?(SM|KM))\b')
     RE_PRESSURE = re.compile(r'\b(Q|QNH|SLP|A)[ ]?([0-9]{3,4})\b')
-    RE_TEMPERATURE = re.compile(r'\b(M|-)?([0-9]{1,2})/(M|-)?([0-9]{1,2})\b')
-    RE_TEMPERATURE2 = re.compile(r'\bT(0|1)([0-9]{3})(0|1)([0-9]{3})\b')
-    RE_PRECIPITATION = re.compile('(-|\+)?(RE)?(DZ|SG|IC|PL|SH)?(DZ|RA|SN|TS)(NO|E)?')
-    RE_RVR = re.compile(r'\bR(?P<runway>(?P<rw_number>[0-9]{2})(?P<rw_position>[LCR]))?/'
-                        '(?P<exceed>[PM])?(?P<visibility>[0-9]{4})(?P<change>[UDN])?\b')
+    RE_TEMPERATURE = re.compile(r'\b([M-])?([0-9]{1,2})/([M-])?([0-9]{1,2})\b')
+    RE_TEMPERATURE2 = re.compile(r'\bT([01])([0-9]{3})([01])([0-9]{3})\b')
+    RE_PRECIPITATION = re.compile(r'(?P<intensity>[-+])?(?P<recent>RE)?(?P<modifier>DZ|SG|IC|PL|SH)?'
+                                  r'(?P<kind>DZ|RA|SN|TS)(?P<negation>NO|E)?')
+    RE_RVR = re.compile(r'R(?P<runway>(?P<heading>[0-9]{2})(?P<rw_position>[LCR])?)/'
+                        r'(?P<exceed>[PM])?(?P<visibility>[0-9]{4})(?P<change>[UDN])?')
 
     METAR_STATIONS_URL = 'https://www.aviationweather.gov/docs/metar/stations.txt'
     NOAA_METAR_URL = 'https://aviationweather.gov/adds/dataserver_current/current/metars.cache.csv.gz'
@@ -366,6 +368,12 @@ class Metar(WeatherSource):
                 precipitation[kind] = {'int': intensity, 'mod': mod, 'recent': recent}
 
         weather['precipitation'] = precipitation
+
+        for rvr in cls.RE_RVR.finditer(metar):
+            r = dict(rvr.groupdict())
+            r['heading'] = int(r['heading']) * 10
+            r['visibility'] = int(r['visibility'])
+            weather['rvr'].append(r)
 
         # Extended visibility
         if weather['visibility'] > 9998:
