@@ -43,7 +43,7 @@ class util:
             util.remove(dpath)
         try:
             os.rename(opath, dpath)
-        except:
+        except OSError:
             print "Can't rename: %s to %s, trying to copy/remove" % (opath, dpath)
             util.copy(opath, dpath)
             util.remove(opath)
