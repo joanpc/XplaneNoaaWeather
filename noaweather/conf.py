@@ -1,12 +1,12 @@
-'''
+"""
 X-plane NOAA GFS weather plugin.
-Copyright (C) 2012-2015 Joan Perez i Cauhe
+Copyright (C) 2012-2020 Joan Perez i Cauhe
 ---
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or any later version.
-'''
+"""
 
 import os
 import cPickle
@@ -16,10 +16,9 @@ import json
 
 from c import c
 
+
 class Conf:
-    '''
-    Configuration variables
-    '''
+    """Loads and saves configuration variables"""
     syspath, dirsep = '', os.sep
     printableChars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ '
 
@@ -95,7 +94,7 @@ class Conf:
             pass
 
     def setDefautls(self):
-        # Default and storable settings
+        """Default settings"""
 
         # User settings
         self.enabled = True
@@ -187,7 +186,7 @@ class Conf:
                     self.inputbug = True
 
     def pluginSave(self):
-        '''Save plugin settings'''
+        """Save plugin settings"""
         conf = {
             'version': self.__VERSION__,
             'set_temp': self.set_temp,
@@ -221,7 +220,7 @@ class Conf:
             self.metar_updaterate = 10
 
     def serverSave(self):
-        '''Save weather server settings'''
+        """Save weather server settings"""
         server_conf = {
             'version': self.__VERSION__,
             'lastgrib': self.lastgrib,
@@ -287,7 +286,7 @@ class Conf:
         return d
 
     def save_gfs_levels(self, levels):
-        """Save gfs levels settings to a file"""
+        """Save gfs levels settings to a json file"""
         with open(self.gfsLevelsFile, 'w') as f:
             config = {'comment': [line.strip() for line in iter(self.GFS_JSON_HELP.splitlines())],
                       'config': levels,
