@@ -101,7 +101,6 @@ class GFS(GribWeatherSource):
                 # Temperature
                 if 'TMP' in wind:
                     temp = float(wind['TMP'])
-                    print temp
                 # Relative Humidity
                 if 'RH' in wind:
                     rh = float(wind['RH'])
