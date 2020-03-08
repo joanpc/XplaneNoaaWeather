@@ -391,7 +391,7 @@ class Metar(WeatherSource):
 
         # Check for new metar downloaded data
         if self.download:
-            if not self.download.pending:
+            if not self.download.pending():
 
                 metar_file = self.download.result
                 self.download.join()
@@ -412,7 +412,7 @@ class Metar(WeatherSource):
                 self.download_cycle(cycle, timestamp)
 
         # Update stations table if required
-        if self.ms_download and not self.ms_download.pending:
+        if self.ms_download and not self.ms_download.pending():
             stations = self.ms_download.result
 
             if isinstance(stations, GribDownloaderError):

@@ -114,7 +114,7 @@ class GribWeatherSource(WeatherSource):
                                           decompress=self.conf.wgrib2bin)
                 self.download.start()
         else:
-            if not self.download.pending:
+            if not self.download.pending():
 
                 self.download.join()
                 if isinstance(self.download.result, Exception):
@@ -173,7 +173,9 @@ class Worker(threading.Thread):
                 worker.shutdown()
 
     def shutdown(self):
-        self.die.set()
+        if self.is_alive():
+            self.die.set()
+            self.join(3)
 
 
 class AsyncTask(threading.Thread):
@@ -194,6 +196,8 @@ class AsyncTask(threading.Thread):
         self.result = False
         threading.Thread.__init__(self)
 
+        self.pending = self.is_alive
+
     def run(self):
         try:
             self.result = self.task(*self.args, **self.kwargs)
@@ -201,13 +205,10 @@ class AsyncTask(threading.Thread):
             self.result = result
         return
 
-    def __getattr__(self, name):
-        if name == 'pending':
-            return self.is_alive()
-        return self.__getattribute__(name)
-
-    def cancel(self):
-        self.cancel.set()
+    def stop(self):
+        if self.is_alive():
+            self.cancel.set()
+            self.join(3)
 
 
 class GribDownloader(object):
