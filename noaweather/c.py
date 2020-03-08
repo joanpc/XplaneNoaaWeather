@@ -479,5 +479,4 @@ class c:
     @staticmethod
     def gfs_levels_help_list():
         """Returns a text list of FL levels with corresponding pressure in millibars"""
-        return '\n'.join(["FL%03d %i mb" % (int(c.m2ft(c.mb2alt(i)))/100, i)
-                                for i in reversed(range(100, 1050, 50))])
+        return ["FL%03d %i mb" % (int(c.m2ft(c.mb2alt(i)))/100, i) for i in reversed(range(100, 1050, 50))]

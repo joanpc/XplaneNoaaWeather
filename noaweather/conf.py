@@ -12,7 +12,9 @@ import os
 import cPickle
 import sys
 import subprocess
+import json
 
+from c import c
 
 class Conf:
     '''
@@ -23,12 +25,23 @@ class Conf:
 
     __VERSION__ = '2.4.3'
 
+    GFS_JSON_HELP = '''Here you can edit which wind levels will be downloaded from NOAA without hacking the code.
+                    Keep the list short to optimize the download size and parsing times.
+                    If you mess-up just remove this file, a new one will be created with default values.
+                    
+                    For a full list of levels check:
+                    https://www.nco.ncep.noaa.gov/pmb/products/gfs/gfs.t00z.pgrb2.0p50.f003.shtml
+                    Remove the current cycle from the cache/gfs to trigger a download with new values.
+                        
+                    Refer to the following list for millibar Flight Level conversion:'''
+
     def __init__(self, syspath):
         # Inits conf
         self.syspath = syspath
         self.respath = os.sep.join([self.syspath, 'Resources', 'plugins', 'PythonScripts', 'noaweather'])
         self.settingsfile = os.sep.join([self.respath, 'settings.pkl'])
         self.serverSettingsFile = os.sep.join([self.respath, 'weatherServer.pkl'])
+        self.gfsLevelsFile = os.sep.join([self.respath, 'gfs_levels_config.json'])
 
         self.cachepath = os.sep.join([self.respath, 'cache'])
         if not os.path.exists(self.cachepath):
@@ -41,12 +54,6 @@ class Conf:
         # Config Overrides
         self.parserate = 1
         self.metar_agl_limit = 10
-
-        if self.lastgrib and not os.path.exists(os.sep.join([self.cachepath, self.lastgrib])):
-            self.lastgrib = False
-
-        if self.lastwafsgrib and not os.path.exists(os.sep.join([self.cachepath, self.lastwafsgrib])):
-            self.lastwafsgrib = False
 
         # Selects the apropiate wgrib binary
         platform = sys.platform
@@ -227,3 +234,74 @@ class Conf:
     def serverLoad(self):
         self.pluginLoad()
         self.loadSettings(self.serverSettingsFile)
+
+        # Load the GFS levels file or create a new one.
+        if os.path.isfile(self.gfsLevelsFile):
+            self.gfs_variable_list = self.load_gfs_levels(self.gfsLevelsFile)
+        else:
+            self.gfs_variable_list = self.gfs_levels_defaults()
+            self.save_gfs_levels(self.gfs_variable_list)
+
+    @staticmethod
+    def gfs_levels_defaults():
+        """GFS Levels default config"""
+        d = [
+            {
+                'vars': ['TMP',
+                         'UGRD',
+                         'VGRD',
+                         ],
+                'levels': [
+                    '850 mb',  # FL047
+                    '700 mb',  # FL100
+                    '600 mb',  # FL140
+                    '500 mb',  # FL180
+                    '400 mb',  # FL235
+                    '300 mb',  # FL300
+                    '200 mb',  # FL380
+                    '150 mb',  # FL443
+                ],
+            },
+            {
+                'vars': [
+                    'PRES',
+                    'TCDC'
+                ],
+                'levels': [
+                    'high cloud bottom level',
+                    'high cloud layer',
+                    'high cloud top level',
+                    'low cloud bottom level',
+                    'low cloud layer',
+                    'low cloud top level',
+                    'middle cloud bottom level',
+                    'middle cloud layer',
+                    'middle cloud top level',
+                ],
+            },
+            {
+                'vars': 'PRMSL',
+                'levels': 'mean sea level'
+            }
+        ]
+        return d
+
+    def save_gfs_levels(self, levels):
+        """Save gfs levels settings to a file"""
+        with open(self.gfsLevelsFile, 'w') as f:
+            config = {'comment': [line.strip() for line in iter(self.GFS_JSON_HELP.splitlines())],
+                      'config': levels,
+                      }
+            level = c.gfs_levels_help_list()
+            config['comment'] += [' | '.join(level[i:i + 5]) for i in range(0, len(level), 5)]
+            json.dump(config, f, indent=2)
+
+    def load_gfs_levels(self, json_file):
+        """Load gfs levels configuration from a json file"""
+
+        with open(json_file, 'r') as f:
+            try:
+                return json.load(f)['config']
+            except (KeyError, Exception) as err:
+                print "Format ERROR parsing gfs levels file: %s" % str(err)
+                return self.gfs_levels_defaults()
