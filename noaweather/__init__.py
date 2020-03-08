@@ -1,7 +1,6 @@
 from noaweather.c import c
 from noaweather.conf import Conf
 from noaweather.weathersource import WeatherSource
-from noaweather.weathersource import AsyncDownload
 from noaweather.gfs import GFS
 from noaweather.metar import Metar
 from noaweather.wafs import WAFS

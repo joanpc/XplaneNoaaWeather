@@ -11,164 +11,36 @@ as published by the Free Software Foundation; either version 2
 of the License, or any later version.
 """
 
-from datetime import datetime, timedelta
-import os
 import subprocess
 
-from weathersource import WeatherSource
-from weathersource import AsyncDownload
+from weathersource import GribWeatherSource
 from c import c
-from util import util
 
 
-class GFS(WeatherSource):
+class GFS(GribWeatherSource):
     """NOAA GFS weather source"""
-    cycles = [0, 6, 12, 18]
-    baseurl = 'https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p50.pl?'
 
-    params = [
-        'leftlon=0',
-        'rightlon=360',
-        'toplat=90',
-        'bottomlat=-90',
-    ]
-    levels = [
-        '700_mb',  # FL100
-        '600_mb',  # FL140
-        '500_mb',  # FL180
-        '400_mb',  # FL235
-        '300_mb',  # FL300
-        '200_mb',  # FL380
-        '150_mb',  # FL443
-        '100_mb',  # FL518
-        'high_cloud_bottom_level',
-        'high_cloud_layer',
-        'high_cloud_top_level',
-        'low_cloud_bottom_level',
-        'low_cloud_layer',
-        'low_cloud_top_level',
-        'mean_sea_level',
-        'middle_cloud_bottom_level',
-        'middle_cloud_layer',
-        'middle_cloud_top_level',
-        # 'surface',
-    ]
-    variables = ['PRES',
-                 'TCDC',
-                 'UGRD',
-                 'VGRD',
-                 'TMP',
-                 'PRMSL',
-                 'RH',
-                 ]
-    nwinds, nclouds = 0, 0
+    base_url = 'https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod/gfs.'
 
-    downloading = False
-    downloadWait = 0
-    # wait n seconds to start download
-    lastgrib = False
-
-    lat, lon, lastlat, lastlon = False, False, False, False
-
-    cycle = ''
-    lastcycle = ''
-
-    newGrib = False
-    parsed_latlon = (0, 0)
+    download = False
+    download_wait = 0
 
     def __init__(self, conf):
-        self.lastgrib = conf.lastgrib
-
+        self.variable_list = conf.gfs_variable_list
         super(GFS, self).__init__(conf)
 
-    def run(self, elapsed):
-        # Worker thread
-
-        if not self.conf.enabled:
-            pass
-
-        datecycle, cycle, forecast = self.get_cycle_date()
-
-        if self.downloadWait < 1:
-            self.download_cycle(datecycle, cycle, forecast)
-        elif self.downloadWait > 0:
-            self.downloadWait -= elapsed
-
-    def get_cycle_date(self):
-        """Returns last cycle date available"""
-
-        now = datetime.utcnow()
-        # cycle is published with 4 hours 25min delay
-        cnow = now - timedelta(hours=4, minutes=25)
-        # get last cycle
-        for cycle in self.cycles:
-            if cnow.hour >= cycle:
-                lcycle = cycle
-        # Forecast
-        adjs = 0
-        if cnow.day != now.day:
-            adjs = +24
-        forecast = (adjs + now.hour - lcycle) / 3 * 3
-
-        return ('%d%02d%02d%02d' % (cnow.year, cnow.month, cnow.day, lcycle), lcycle, forecast)
-
-    def download_cycle(self, datecycle, cycle, forecast):
-        """Downloads the grib file for the cycle"""
-
+    @classmethod
+    def get_download_url(cls, datecycle, cycle, forecast):
+        """Returns the GRIB download url add .idx or .grib to the end"""
         filename = 'gfs.t%02dz.pgrb2full.0p50.f0%02d' % (cycle, forecast)
+        url = '%s%s/%02d/%s' % (cls.base_url, datecycle, cycle, filename)
 
-        path = os.sep.join([self.conf.cachepath, 'gfs'])
-        cachefile = os.sep.join(['gfs', '%s_%s.grib2' % (datecycle, filename)])
+        return url
 
-        if cachefile == self.lastgrib:
-            # No need to download
-            return
-
-        if not os.path.exists(path):
-            os.makedirs(path)
-
-        if self.downloading == True:
-            if not self.download.q.empty():
-
-                # Finished downloading
-                lastgrib = self.download.q.get()
-
-                # Dowload success
-                if lastgrib:
-                    if not self.conf.keepOldFiles and self.conf.lastgrib:
-                        util.remove(os.sep.join([self.conf.cachepath, self.conf.lastgrib]))
-                    self.lastgrib = lastgrib
-                    self.conf.lastgrib = self.lastgrib
-                    self.newGrib = True
-                    # print "new grib file: " + self.lastgrib
-                else:
-                    # Wait a minute
-                    self.downloadWait = 60
-
-                self.downloading = False
-
-        elif self.conf.download and self.downloadWait < 1:
-            # Download new grib
-
-            # Build download url
-            params = self.params
-            dir = 'dir=%%2Fgfs.%s/%s' % (datecycle[0:-2], datecycle[-2:])
-            params.append(dir)
-            params.append('file=' + filename)
-
-            # add variables
-            for level in self.levels:
-                params.append('lev_' + level + '=1')
-            for var in self.variables:
-                params.append('var_' + var + '=1')
-
-            url = self.baseurl + '&'.join(params)
-
-            # print('XPGFS: downloading %s' % (url))
-            self.downloading = True
-            self.download = AsyncDownload(self.conf, url, cachefile)
-
-        return False
+    @classmethod
+    def get_cache_filename(cls, datecycle, cycle, forecast):
+        """Returns the proper filename for the cache"""
+        return '%s_gfs.t%02dz.pgrb2full.0p50.f0%02d' % (datecycle, cycle, forecast)
 
     def parse_grib_data(self, filepath, lat, lon):
         """Executes wgrib2 and parses its output"""
@@ -176,13 +48,16 @@ class GFS(WeatherSource):
                 '-lon',
                 '%f' % (lon),
                 '%f' % (lat),
-                os.sep.join([self.conf.cachepath, filepath])
+                filepath
                 ]
+
+        kwargs = {'stdout': subprocess.PIPE}
+
         if self.conf.spinfo:
-            p = subprocess.Popen([self.conf.wgrib2bin] + args, stdout=subprocess.PIPE, startupinfo=self.conf.spinfo,
-                                 shell=True)
-        else:
-            p = subprocess.Popen([self.conf.wgrib2bin] + args, stdout=subprocess.PIPE)
+            kwargs += {'startupinfo': self.conf.spinfo, 'shell': True}
+
+        p = subprocess.Popen([self.conf.wgrib2bin] + args, **kwargs)
+
         it = iter(p.stdout)
         data = {}
         clouds = {}
@@ -220,7 +95,7 @@ class GFS(WeatherSource):
             if 'UGRD' in wind and 'VGRD' in wind:
                 hdg, vel = c.c2p(float(wind['UGRD']), float(wind['VGRD']))
                 # print wind['UGRD'], wind['VGRD'], float(wind['UGRD']), float(wind['VGRD']), hdg, vel
-                alt = c.mb2alt(float(level))
+                alt = int(c.mb2alt(float(level)))
 
                 # Optional varialbes
                 temp, rh, dew = False, False, False

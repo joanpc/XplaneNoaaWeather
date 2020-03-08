@@ -26,6 +26,7 @@ import socket
 import time
 
 from datetime import datetime
+import threading
 
 
 class LogFile:
@@ -74,12 +75,14 @@ class ClientHandler(SocketServer.BaseRequestHandler):
             return False
 
         # Parse gfs and wafs
-        if gfs.lastgrib:
-            response['gfs'] = gfs.parse_grib_data(gfs.lastgrib, lat, lon)
-            response['info']['gfs_cycle'] = gfs.lastgrib
-        if wafs.lastgrib:
-            response['wafs'] = wafs.parseGribData(wafs.lastgrib, lat, lon)
-            response['info']['wafs_cycle'] = wafs.lastgrib
+        if gfs.last_grib:
+            grib_path = os.path.sep.join([gfs.cache_path, gfs.last_grib])
+            response['gfs'] = gfs.parse_grib_data(grib_path, lat, lon)
+            response['info']['gfs_cycle'] = gfs.last_grib
+        if wafs.last_grib:
+            grib_path = os.path.sep.join([wafs.cache_path, wafs.last_grib])
+            response['wafs'] = wafs.parse_grib_data(grib_path, lat, lon)
+            response['info']['wafs_cycle'] = wafs.last_grib
 
         # Parse metar
         apt = metar.get_closest_station(metar.connection, lat, lon)

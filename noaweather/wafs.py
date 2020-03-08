@@ -1,4 +1,4 @@
-'''
+"""
 X-plane NOAA GFS weather plugin.
 Copyright (C) 2012-2015 Joan Perez i Cauhe
 ---
@@ -6,82 +6,38 @@ This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or any later version.
-'''
+"""
 
-import os
-from datetime import datetime, timedelta
 import subprocess
+from datetime import datetime, timedelta
 
-from weathersource import WeatherSource
-from weathersource import AsyncDownload
+from weathersource import GribWeatherSource
+
 from c import c
-from util import util
 
 
-class WAFS(WeatherSource):
-    '''
-    World Area Forecast System - Upper Air Forecast
-    Download and parse functions
-    '''
+class WAFS(GribWeatherSource):
+    """World Area Forecast System - Upper Air Forecast weather source"""
+
     cycles = [0, 6, 12, 18]
     forecasts = [6, 9, 12, 15, 18, 21, 24]
     baseurl = 'https://www.ftp.ncep.noaa.gov/data/nccf/com/gfs/prod'
 
-    current_datecycle = False
-    downloading = False
-
-    lastgrib = False
-    lastlat, lastlon = False, False
-    downloadWait = 0
+    download_wait = 0
+    publish_delay = {'hours': 5, 'minutes': 0}
+    grib_conf_var = 'lastwafsgrib'
 
     def __init__(self, conf):
-        # Use last grib stored in config if still avaliable
-        if conf.lastwafsgrib and os.path.exists(os.sep.join([conf.cachepath, conf.lastwafsgrib])):
-            self.lastgrib = conf.lastwafsgrib
-            self.current_datecycle = conf.lastwafsgrib[5:15]
-
         super(WAFS, self).__init__(conf)
 
-    def run(self, elapsed):
-        # Worker thread
-
-        datecycle, cycle, forecast = self.getCycleDate()
-
-        # Use new grib if dowloaded
-        if self.downloading == True:
-            if not self.download.q.empty():
-                lastgrib = self.download.q.get()
-
-                self.downloading = False
-                if lastgrib:
-                    if not self.conf.keepOldFiles and self.conf.lastwafsgrib:
-                        util.remove(os.sep.join([self.conf.cachepath, self.conf.lastwafsgrib]))
-                    self.lastgrib = lastgrib
-                    self.conf.lastwafsgrib = lastgrib
-                    if len(self.conf.lastwafsgrib.split(os.sep)) > 0:
-                        self.current_datecycle = self.conf.lastwafsgrib.split(os.sep)[1][:10]
-                    else:
-                        self.lastgrib = False
-                else:
-                    # Download fail
-                    self.downloadWait = 60
-
-        if self.downloadWait > 0:
-            self.downloadWait -= elapsed
-
-        # Download new grib if required
-        if self.current_datecycle != datecycle and self.conf.download and not self.downloading and self.downloadWait < 1:
-            self.downloadCycle(datecycle, cycle, forecast)
-
-    def getCycleDate(self):
-        '''
-        Returns last cycle date avaliable
-        '''
+    @classmethod
+    def get_cycle_date(cls):
+        """Returns last cycle date available"""
         now = datetime.utcnow()
-        # cycle is published with 4 hours 33min delay
-        cnow = now - timedelta(hours=5, minutes=0)
+
+        cnow = now - timedelta(**cls.publish_delay)
         # Get last cycle
-        for cycle in self.cycles:
+        for cycle in cls.cycles:
             if cnow.hour >= cycle:
                 lcycle = cycle
         # Forecast
@@ -91,29 +47,30 @@ class WAFS(WeatherSource):
         # Elapsed from cycle
         forecast = (adjs + now.hour - lcycle)
         # Get current forecast
-        for fcast in self.forecasts:
+        for fcast in cls.forecasts:
             if forecast <= fcast:
                 forecast = fcast
                 break
 
-        return ('%d%02d%02d%02d' % (cnow.year, cnow.month, cnow.day, lcycle), lcycle, forecast)
+        return '%d%02d%02d%02d' % (cnow.year, cnow.month, cnow.day, lcycle), lcycle, forecast
 
-    def parseGribData(self, filepath, lat, lon):
-        '''
-        Executes wgrib2 and parses its output
-        '''
+    def parse_grib_data(self, filepath, lat, lon):
+        """Executes wgrib2 and parses its output"""
+
         args = ['-s',
                 '-lon',
                 '%f' % (lon),
                 '%f' % (lat),
-                os.sep.join([self.conf.cachepath, filepath])
+                filepath
                 ]
 
+        kwargs = {'stdout': subprocess.PIPE}
+
         if self.conf.spinfo:
-            p = subprocess.Popen([self.conf.wgrib2bin] + args, stdout=subprocess.PIPE, startupinfo=self.conf.spinfo,
-                                 shell=True)
-        else:
-            p = subprocess.Popen([self.conf.wgrib2bin] + args, stdout=subprocess.PIPE)
+            kwargs += {'startupinfo': self.conf.spinfo, 'shell': True}
+
+        p = subprocess.Popen([self.conf.wgrib2bin] + args, **kwargs)
+
         it = iter(p.stdout)
 
         cat = {}
@@ -144,13 +101,13 @@ class WAFS(WeatherSource):
 
         return turbulence
 
-    def downloadCycle(self, datecycle, cycle, forecast):
-        self.downloading = True
+    @classmethod
+    def get_download_url(cls, datecycle, cycle, forecast):
         filename = "WAFS_blended_%sf%02d.grib2" % (datecycle, forecast)
-        url = "%s/gfs.%s/%s/%s" % (self.baseurl, datecycle[:-2], datecycle[-2:], filename)
-        cachefile = os.sep.join(['wafs', '%s_%s' % (datecycle, filename)])
-        path = os.sep.join([self.conf.cachepath, 'wafs'])
-        if not os.path.exists(path):
-            os.makedirs(path)
-        # print cachefile, url
-        self.download = AsyncDownload(self.conf, url, cachefile)
+        url = "%s/gfs.%s/%s/%s" % (cls.baseurl, datecycle[:-2], datecycle[-2:], filename)
+        return url
+
+    @classmethod
+    def get_cache_filename(cls, datecycle, cycle, forecast):
+        filename = "%s_wafs.WAFS_blended_%sf%02d.grib2" % (datecycle, datecycle, forecast)
+        return filename

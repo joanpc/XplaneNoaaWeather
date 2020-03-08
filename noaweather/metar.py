@@ -1,6 +1,6 @@
 """
 X-plane NOAA GFS weather plugin.
-Copyright (C) 2012-2015 Joan Perez i Cauhe
+Copyright (C) 2012-2020 Joan Perez i Cauhe
 ---
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -19,11 +19,13 @@ from util import util
 
 from c import c
 from weathersource import WeatherSource
-from weathersource import AsyncDownload
+from weathersource import GribDownloaderError
+from weathersource import GribDownloader
+from weathersource import AsyncTask
 
 
 class Metar(WeatherSource):
-    """ Provides METAR download and parsing routines. """
+    """Provides METAR download and parsing routines. """
 
     # Metar parse regex
     RE_CLOUD = re.compile(r'\b(?P<coverage>FEW|BKN|SCT|OVC|VV)(?P<level>[0-9]+)(?P<type>[A-Z]{2,3})?\b')
@@ -48,17 +50,12 @@ class Metar(WeatherSource):
 
     def __init__(self, conf):
 
-        self.cachepath = os.sep.join([conf.cachepath, 'metar'])
-        if not os.path.exists(self.cachepath):
-            os.makedirs(self.cachepath)
+        self.cache_path = os.sep.join([conf.cachepath, 'metar'])
+        self.database = os.sep.join([self.cache_path, 'metar.db'])
 
-        self.database = os.sep.join([self.cachepath, 'metar.db'])
+        super(Metar, self).__init__(conf)
 
         self.th_db = False
-
-        # Weather variables
-        self.weather = None
-        self.reparse = True
 
         # Download flags
         self.ms_download = False
@@ -68,8 +65,9 @@ class Metar(WeatherSource):
 
         # Main db connection, create db if doens't exist
         createdb = True
-        if os.path.exists(self.database):
+        if os.path.isfile(self.database):
             createdb = False
+
         self.connection = self.db_connect(self.database)
         self.cursor = self.connection.cursor()
         if createdb:
@@ -78,11 +76,11 @@ class Metar(WeatherSource):
 
         # Metar stations update
         if (time.time() - conf.ms_update) > self.STATION_UPDATE_RATE * 86400:
-            self.ms_download = AsyncDownload(conf, self.METAR_STATIONS_URL, os.sep.join(['metar', 'stations.txt']))
+            self.ms_download = AsyncTask(GribDownloader.download, self.METAR_STATIONS_URL, 'stations.txt',
+                                         cancel_event=self.die)
+            self.ms_download.start()
 
-        self.last_latlon, self.last_station, self.last_timestamp = [False] * 3
-
-        super(Metar, self).__init__(conf)
+        self.last_timestamp = 0
 
     def db_connect(self, path):
         """Returns an SQLite connection to the metar database"""
@@ -97,7 +95,6 @@ class Metar(WeatherSource):
 
     def update_stations(self, db, path):
         """Updates db's airport information from the METAR station file"""
-        self.conf.ms_update = time.time()
 
         cursor = db.cursor()
         parsed = 0
@@ -217,7 +214,8 @@ class Metar(WeatherSource):
             return ret[0]
         return ret
 
-    def get_metar(self, db, icao):
+    @staticmethod
+    def get_metar(db, icao):
         """Returns the METAR from an airport icao code"""
         cursor = db.cursor()
         res = cursor.execute('''SELECT * FROM airports
@@ -254,6 +252,7 @@ class Metar(WeatherSource):
             'pressure': False,  # space c.pa2inhg(10.1325),
             'visibility': 9998,
             'precipitation': {},
+            'rvr': []
         }
 
         metar = metar.split('TEMPO')[0]
@@ -391,19 +390,19 @@ class Metar(WeatherSource):
             self.th_db = self.db_connect(self.database)
 
         # Check for new metar downloaded data
-        if self.downloading:
-            if not self.download.q.empty():
+        if self.download:
+            if not self.download.pending:
 
-                self.downloading = False
-                metar_file = self.download.q.get()
-
-                if metar_file:
-                    print 'Parsing METAR download.'
-                    updated, parsed = self.update_metar(self.th_db, os.sep.join([self.conf.cachepath, metar_file]))
-                    self.reparse = True
-                    print "METAR updated/parsed: %d/%d" % (updated, parsed)
+                metar_file = self.download.result
+                self.download.join()
+                if isinstance(metar_file, GribDownloaderError):
+                    print "Error downloading METAR: %s" % str(metar_file)
                 else:
-                    pass
+                    print 'Successfully downloaded: %s' % metar_file.split(os.path.sep)[-1]
+                    updated, parsed = self.update_metar(self.th_db, metar_file)
+                    print "METAR updated/parsed: %d/%d" % (updated, parsed)
+
+                self.download = False
 
         elif self.conf.download:
             # Download new data if required
@@ -413,11 +412,17 @@ class Metar(WeatherSource):
                 self.download_cycle(cycle, timestamp)
 
         # Update stations table if required
-        if self.ms_download and not self.ms_download.q.empty():
-            print 'Updating metar stations.'
-            nstations = self.update_stations(self.th_db, os.sep.join([self.conf.cachepath, self.ms_download.q.get()]))
+        if self.ms_download and not self.ms_download.pending:
+            stations = self.ms_download.result
+
+            if isinstance(stations, GribDownloaderError):
+                print "Error downloading metar stations file %s" % stations.message
+
+            else:
+                print 'Updating metar stations.'
+                nstations = self.update_stations(self.th_db, self.ms_download.result)
+                print '%d metar stations updated.' % nstations
             self.ms_download = False
-            print '%d metar stations updated.' % nstations
 
         # Update METAR.rwx
         if self.conf.updateMetarRWX and self.next_metarRWX < time.time():
@@ -431,9 +436,8 @@ class Metar(WeatherSource):
     def download_cycle(self, cycle, timestamp):
         self.downloading = True
 
-        cachepath = os.sep.join([self.conf.cachepath, 'metar'])
-        if not os.path.exists(cachepath):
-            os.makedirs(cachepath)
+        if not os.path.exists(self.cache_path):
+            os.makedirs(self.cache_path)
 
         prefix = self.conf.metar_source
 
@@ -446,8 +450,10 @@ class Metar(WeatherSource):
         elif self.conf.metar_source == 'IVAO':
             url = self.IVAO_METAR_URL
 
-        cachefile = os.sep.join(['metar', '%s_%d_%sZ.txt' % (prefix, timestamp, cycle)])
-        self.download = AsyncDownload(self.conf, url, cachefile)
+        cache_file = os.path.sep.join([self.cache_path, '%s_%d_%sZ.txt' % (prefix, timestamp, cycle)])
+        print "Downloading METAR: %s" % cache_file.split(os.path.sep)[-1]
+        self.download = AsyncTask(GribDownloader.download, url, cache_file, cancel_event=self.die)
+        self.download.start()
 
     def update_metar_rwx_file(self, db):
         """Dumps all metar data to the METAR.rwx file"""
