@@ -109,7 +109,6 @@ class GribWeatherSource(WeatherSource):
                 self.download = AsyncTask(GribDownloader.download,
                                           url,
                                           cache_file_path,
-                                          self.conf.gfs_variable_list,
                                           variable_list=self.variable_list,
                                           cancel_event=self.die,
                                           decompress=self.conf.wgrib2bin)
