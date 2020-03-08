@@ -1,15 +1,10 @@
-'''
+"""
 X-plane NOAA GFS weather plugin.
 
 Sets x-plane wind, temperature, cloud and turbulence layers
 using NOAA real/forecast data and METAR reports.
 
 The plugin downloads all the required data from NOAA servers.
-
-Uses wgrib2 to parse NOAA grib2 data files.
-Wgrib2 binaries for MacOSX Win32 and linux i386glibc6 are
-provided Win32 wgrib2 requires cgywin also included in the
-bin folder.
 
 Official site:
 http://x-plane.joanpc.com/plugins/xpgfs-noaa-weather
@@ -20,7 +15,7 @@ http://forums.x-plane.org/index.php?showtopic=72313
 Github project page:
 https://github.com/joanpc/XplaneNoaaWeather
 
-Copyright (C) 2012-2015 Joan Perez i Cauhe
+Copyright (C) 2012-2020 Joan Perez i Cauhe
 ---
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -31,7 +26,7 @@ This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
-'''
+"""
 
 # X-plane includes
 from XPLMDefs import *
@@ -59,9 +54,8 @@ from noaweather import EasyDref, Conf, c, EasyCommand, Tracker
 
 
 class Weather:
-    '''
-    Sets x-plane weather from GSF parsed data
-    '''
+    """Sets x-plane weather from GSF parsed data"""
+
     alt = 0.0
     ref_winds = {}
     lat, lon, last_lat, last_lon = 99, 99, False, False
@@ -140,9 +134,7 @@ class Weather:
             self.weatherClientThread.start()
 
     def weatherClient(self):
-        '''
-        Wheather client thread fetches weather from the server
-        '''
+        """Weather client thread fetches weather from Weather Server"""
 
         # Send something for windows to bind
         self.weatherClientSend('!ping')
@@ -178,9 +170,7 @@ class Weather:
         self.weatherClientThread = False
 
     def setTurbulence(self, turbulence, elapsed):
-        '''
-        Set turbulence for all wind layers with our own interpolation
-        '''
+        """Set turbulence for all wind layers with our own interpolation"""
         turb = 0
 
         prevlayer = False
@@ -205,7 +195,7 @@ class Weather:
         self.winds[2]['turbulence'].value = turb
 
     def setWinds(self, winds, elapsed):
-        '''Set winds: Interpolate layers and transition new data'''
+        """Set winds: Interpolate layers and transition new data"""
 
         winds = winds[:]
 
@@ -315,7 +305,7 @@ class Weather:
             wind['gust'].value = extra['gust']
 
     def transWindLayer(self, wlayer, id, elapsed):
-        ''' Transition wind layer values'''
+        """Transition wind layer values"""
         alt, hdg, speed, extra = wlayer
 
         hdg = c.transitionHdg(hdg, id + '-hdg', elapsed, self.conf.windHdgTransSpeed)
@@ -333,8 +323,8 @@ class Weather:
         return alt, hdg, speed, extra
 
     def setDrefIfDiff(self, dref, value, max_diff=False):
-        ''' Set a dateref if the current value differs
-            Returns if value was set '''
+        """ Set a Dataref if the current value differs
+            Returns True if value was updated """
 
         if max_diff is not False:
             if abs(dref.value - value) > max_diff:
@@ -347,8 +337,8 @@ class Weather:
         return False
 
     def interpolateWindLayer(self, wlayer1, wlayer2, current_altitude, nlayer=1):
-        ''' Interpolates 2 wind layers
-        layer array: [alt, hdg, speed, extra] '''
+        """Interpolates 2 wind layers
+        layer array: [alt, hdg, speed, extra]"""
 
         if wlayer1[0] == wlayer2[0]:
             return wlayer1
@@ -364,16 +354,16 @@ class Weather:
             expo = 1
 
         if nlayer:
-            layer[1] = c.expoCosineInterpolateHeading(wlayer1[1], wlayer2[1], wlayer1[0], wlayer2[0], current_altitude,
-                                                      expo)
+            layer[1] = c.expoCosineInterpolateHeading(wlayer1[1], wlayer2[1], wlayer1[0], wlayer2[0],
+                                                      current_altitude, expo)
             layer[2] = c.interpolate(wlayer1[2], wlayer2[2], wlayer1[0], wlayer2[0], current_altitude)
         else:
             # First layer
-            layer[1] = c.expoCosineInterpolateHeading(wlayer1[1], wlayer2[1], wlayer1[0], wlayer2[0], current_altitude,
-                                                      expo)
+            layer[1] = c.expoCosineInterpolateHeading(wlayer1[1], wlayer2[1], wlayer1[0], wlayer2[0],
+                                                      current_altitude, expo)
             layer[2] = c.expoCosineInterpolate(wlayer1[2], wlayer2[2], wlayer1[0], wlayer2[0], current_altitude, expo)
 
-        if not 'variation' in wlayer1[3]:
+        if 'variation' not in wlayer1[3]:
             wlayer1[3]['variation'] = 0
 
         # Interpolate extras
@@ -420,8 +410,9 @@ class Weather:
 
         setClouds = []
 
-        if self.weatherData and 'distance' in self.weatherData['metar'] and self.weatherData['metar'][
-            'distance'] < self.conf.metar_distance_limit and 'clouds' in self.weatherData['metar']:
+        if self.weatherData and 'distance' in self.weatherData['metar'] \
+                and self.weatherData['metar']['distance'] < self.conf.metar_distance_limit \
+                and 'clouds' in self.weatherData['metar']:
 
             clouds = self.weatherData['metar']['clouds'][:]
 
@@ -542,17 +533,18 @@ class Data:
         self.registerTries = 0
 
         # Overrides
-        self.override_clouds = EasyDref('xjpc/XPNoaaWeather/config/override_clouds', 'int', register=True,
-                                        writable=True);
-        self.override_winds = EasyDref('xjpc/XPNoaaWeather/config/override_winds', 'int', register=True, writable=True)
-        self.override_visibility = EasyDref('xjpc/XPNoaaWeather/config/override_visibility', 'int', register=True,
-                                            writable=True)
-        self.override_turbulence = EasyDref('xjpc/XPNoaaWeather/config/override_turbulence', 'int', register=True,
-                                            writable=True)
-        self.override_pressure = EasyDref('xjpc/XPNoaaWeather/config/override_pressure', 'int', register=True,
-                                          writable=True)
-        self.override_precipitation = EasyDref('xjpc/XPNoaaWeather/config/override_precipitation', 'int', register=True,
-                                               writable=True)
+        self.override_clouds = EasyDref('xjpc/XPNoaaWeather/config/override_clouds', 'int',
+                                        register=True, writable=True);
+        self.override_winds = EasyDref('xjpc/XPNoaaWeather/config/override_winds', 'int',
+                                       register=True, writable=True)
+        self.override_visibility = EasyDref('xjpc/XPNoaaWeather/config/override_visibility', 'int',
+                                            register=True, writable=True)
+        self.override_turbulence = EasyDref('xjpc/XPNoaaWeather/config/override_turbulence', 'int',
+                                            register=True, writable=True)
+        self.override_pressure = EasyDref('xjpc/XPNoaaWeather/config/override_pressure', 'int',
+                                          register=True, writable=True)
+        self.override_precipitation = EasyDref('xjpc/XPNoaaWeather/config/override_precipitation', 'int',
+                                               register=True, writable=True)
         self.override_runway_friction = EasyDref('xjpc/XPNoaaWeather/config/override_runway_friction', 'int',
                                                  register=True, writable=True)
 
@@ -584,9 +576,9 @@ class Data:
         self.metar_runwayFriction = EasyDref('xjpc/XPNoaaWeather/weather/metar_runwayFriction', 'float', register=True)
 
     def updateData(self, wdata):
-        '''Publish raw dataref data
+        """Publish raw Dataref data
         some data is published elsewhere
-        '''
+        """
 
         if not self.registered:
             self.registered = EasyDref.DataRefEditorRegister()
@@ -695,9 +687,8 @@ class PythonInterface:
         return self.Name, self.Sig, self.Desc
 
     def mainMenuCB(self, menuRef, menuItem):
-        '''
-        Main menu Callback
-        '''
+        """Main menu Callback"""
+
         if menuItem == 1:
             if not self.aboutWindow:
                 self.CreateAboutWindow(221, 640)
@@ -806,7 +797,7 @@ class PythonInterface:
 
         y -= 25
         self.turbulenceCaption = XPCreateWidget(x, y - 40, x + 80, y - 60, 1, 'Turbulence probability %d%%' % (
-                    self.conf.turbulence_probability * 100), 0, window, xpWidgetClass_Caption)
+                self.conf.turbulence_probability * 100), 0, window, xpWidgetClass_Caption)
         y -= 20
         self.turbulenceSlider = XPCreateWidget(x + 5, y - 40, x + 160, y - 60, 1, '', 0, window,
                                                xpWidgetClass_ScrollBar)
@@ -1067,7 +1058,7 @@ class PythonInterface:
                 break
 
     def weatherInfo(self):
-        '''Return an array of strings with formated weather data'''
+        """Return an array of strings with formatted weather data"""
 
         if not self.weather.weatherData:
             sysinfo = ['Data not ready. Please wait.']
@@ -1077,8 +1068,8 @@ class PythonInterface:
                 sysinfo = [
                     'XPNoaaWeather %s Status:' % self.conf.__VERSION__,
                     '    LAT: %.2f/%.2f LON: %.2f/%.2f FL: %02.f MAGNETIC DEV: %.2f' % (
-                    self.latdr.value, wdata['info']['lat'], self.londr.value, wdata['info']['lon'],
-                    c.m2ft(self.altdr.value) / 100, self.weather.mag_deviation.value),
+                        self.latdr.value, wdata['info']['lat'], self.londr.value, wdata['info']['lon'],
+                        c.m2ft(self.altdr.value) / 100, self.weather.mag_deviation.value),
                     '    GFS Cycle: %s' % (wdata['info']['gfs_cycle']),
                     '    WAFS Cycle: %s' % (wdata['info']['wafs_cycle']),
                 ]
@@ -1097,18 +1088,18 @@ class PythonInterface:
 
                 sysinfo += [
                     '    Apt altitude: %dft, Apt distance: %.1fkm' % (
-                    wdata['metar']['elevation'] * 3.28084, wdata['metar']['distance'] / 1000),
+                        wdata['metar']['elevation'] * 3.28084, wdata['metar']['distance'] / 1000),
                     '    Temp: %s, Dewpoint: %s, ' % (
-                    c.strFloat(wdata['metar']['temperature'][0]), c.strFloat(wdata['metar']['temperature'][1])) +
+                        c.strFloat(wdata['metar']['temperature'][0]), c.strFloat(wdata['metar']['temperature'][1])) +
                     'Visibility: %d m, ' % (wdata['metar']['visibility']) +
                     'Press: %s inhg ' % (c.strFloat(wdata['metar']['pressure']))
                 ]
 
                 wind = '    Wind:  %d %dkt, gust +%dkt' % (
-                wdata['metar']['wind'][0], wdata['metar']['wind'][1], wdata['metar']['wind'][2])
+                    wdata['metar']['wind'][0], wdata['metar']['wind'][1], wdata['metar']['wind'][2])
                 if 'variable_wind' in wdata['metar'] and wdata['metar']['variable_wind']:
                     wind += '   Variable: %d-%d' % (
-                    wdata['metar']['variable_wind'][0], wdata['metar']['variable_wind'][1])
+                        wdata['metar']['variable_wind'][0], wdata['metar']['variable_wind'][1])
 
                 sysinfo += [wind]
                 if 'precipitation' in wdata['metar'] and len(wdata['metar']['precipitation']):
@@ -1135,7 +1126,7 @@ class PythonInterface:
                         i += 1
                         alt, hdg, speed, extra = layer
                         wlayers += '   %03d|%03d|%02dkt|%02d ' % (
-                        alt * 3.28084 / 100, hdg, speed, extra['temp'] - 273.15)
+                            alt * 3.28084 / 100, hdg, speed, extra['temp'] - 273.15)
                         if i > 3:
                             i = 0
                             sysinfo += [wlayers]
@@ -1225,7 +1216,7 @@ class PythonInterface:
         XPSetKeyboardFocus(self.metarQueryInput)
 
     def metarQueryInputHandler(self, inMessage, inWidget, inParam1, inParam2):
-        ''' Override texfield keyboard input to be more friendly'''
+        """Override Texfield keyboard input to be more friendly"""
         if inMessage == xpMsg_KeyPress:
 
             key, flags, vkey = PI_GetKeyState(inParam1)
@@ -1281,12 +1272,12 @@ class PythonInterface:
         if len(query) == 4:
             self.weather.weatherClientSend('?' + query)
             self.tracker.track('metar_query/%s' % query, 'query metar', {'search': query})
-            XPSetWidgetDescriptor(self.metarQueryOutput, 'Quering, please wait.')
+            XPSetWidgetDescriptor(self.metarQueryOutput, 'Queering, please wait.')
         else:
             XPSetWidgetDescriptor(self.metarQueryOutput, 'Please insert a valid ICAO code.')
 
     def metarQueryCallback(self, msg):
-        ''' Callback for metar queries '''
+        """Callback for metar queries"""
 
         if self.metarWindow:
             # Filter metar text
@@ -1294,7 +1285,7 @@ class PythonInterface:
             XPSetWidgetDescriptor(self.metarQueryOutput, '%s %s' % (msg['metar']['icao'], metar))
 
     def metarQueryWindowToggle(self):
-        ''' Metar window toggle command '''
+        """Metar window toggle command"""
         if self.metarWindow:
             if XPIsWidgetVisible(self.metarWindowWidget):
                 XPHideWidget(self.metarWindowWidget)
@@ -1304,7 +1295,7 @@ class PythonInterface:
             self.createMetarWindow()
 
     def dumpLog(self):
-        ''' Dumps all the information to a file to report bugs'''
+        """Dumps all the information to a file to report bugs"""
 
         dumpath = os.sep.join([self.conf.cachepath, 'dumplogs'])
 
@@ -1402,9 +1393,7 @@ class PythonInterface:
         return dumplog
 
     def floopCallback(self, elapsedMe, elapsedSim, counter, refcon):
-        '''
-        Floop Callback
-        '''
+        """Flight Loop Callback"""
 
         # Update status window
         if self.aboutWindow and XPIsWidgetVisible(self.aboutWindowWidget):
@@ -1559,5 +1548,5 @@ class PythonInterface:
             self.weather.startWeatherClient()
             self.newAptLoaded = True
         elif inMessage == (0x8000000 | 8090) and inParam == 1:
-            # inSimUpdater whants to shutdown
+            # inSimUpdater wants to shutdown
             self.XPluginStop()
