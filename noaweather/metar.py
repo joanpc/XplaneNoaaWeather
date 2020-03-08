@@ -182,7 +182,7 @@ class Metar(WeatherSource):
         return nupdated, nparsed
 
     @staticmethod
-    def clear_reports(self, db):
+    def clear_reports(db):
         """Clears all metar reports from the db"""
         cursor = db.cursor()
         cursor.execute('UPDATE airports SET metar = NULL, timestamp = 0')
