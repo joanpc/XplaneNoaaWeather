@@ -48,15 +48,12 @@ from XPWidgetDefs import *
 from XPWidgets import *
 from XPStandardWidgets import *
 
-import ctypes
 import cPickle
 import socket
 import threading
 import subprocess
 import os
-import signal
 from datetime import datetime
-from random import random
 
 from noaweather import EasyDref, Conf, c, EasyCommand, Tracker
 
