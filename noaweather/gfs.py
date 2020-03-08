@@ -54,7 +54,7 @@ class GFS(GribWeatherSource):
         kwargs = {'stdout': subprocess.PIPE}
 
         if self.conf.spinfo:
-            kwargs += {'startupinfo': self.conf.spinfo, 'shell': True}
+            kwargs.update({'startupinfo': self.conf.spinfo, 'shell': True})
 
         p = subprocess.Popen([self.conf.wgrib2bin] + args, **kwargs)
 

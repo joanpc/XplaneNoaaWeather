@@ -223,7 +223,7 @@ class GribDownloader(object):
         kwargs = {'stdout': sys.stdout, 'stderr': sys.stderr}
 
         if spinfo:
-            kwargs += {'shell': True, 'startupinfo': spinfo}
+            kwargs.update({'shell': True, 'startupinfo': spinfo})
 
         p = subprocess.Popen(args, **kwargs)
         p.wait()

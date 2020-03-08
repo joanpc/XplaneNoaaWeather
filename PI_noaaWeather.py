@@ -159,10 +159,12 @@ class Weather:
         DETACHED_PROCESS = 0x00000008
         args = [self.conf.pythonpath, os.sep.join([self.conf.respath, 'weatherServer.py']), self.conf.syspath]
 
+        kwargs = {'close_fds': True}
+
         if self.conf.spinfo:
-            p = subprocess.Popen(args, startupinfo=self.conf.spinfo, close_fds=True, creationflags=DETACHED_PROCESS)
-        else:
-            p = subprocess.Popen(args, close_fds=True)
+            kwargs.update({'startupinfo': self.conf.spinfo, 'creationflags': DETACHED_PROCESS})
+
+        subprocess.Popen(args, **kwargs)
 
     def shutdown(self):
         # Shutdown client and server
