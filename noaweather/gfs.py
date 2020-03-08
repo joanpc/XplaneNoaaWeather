@@ -90,8 +90,7 @@ class GFS(GribWeatherSource):
         # Let data ready to push on datarefs.
 
         # Convert wind levels
-        for level in data:
-            wind = data[level]
+        for level, wind in data.iteritems():
             if 'UGRD' in wind and 'VGRD' in wind:
                 hdg, vel = c.c2p(float(wind['UGRD']), float(wind['VGRD']))
                 # print wind['UGRD'], wind['VGRD'], float(wind['UGRD']), float(wind['VGRD']), hdg, vel
@@ -105,8 +104,6 @@ class GFS(GribWeatherSource):
                 # Relative Humidity
                 if 'RH' in wind:
                     rh = float(wind['RH'])
-                else:
-                    temp = False
 
                 if temp and rh:
                     dew = c.dewpoint(temp, rh)
