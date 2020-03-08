@@ -462,7 +462,7 @@ class Metar(WeatherSource):
 
         try:
             f = open(os.sep.join([self.conf.syspath, 'METAR.rwx']), 'w')
-        except OSError:
+        except (OSError, IOError):
             print "ERROR updating METAR.rwx file: %s %s" % (sys.exc_info()[0], sys.exc_info()[1])
             return False
 
