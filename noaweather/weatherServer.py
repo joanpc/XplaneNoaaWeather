@@ -154,10 +154,10 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         path = sys.argv[1]
     else:
-        # Joanpc's personal debuggin options
+        # Joanpc's personal debugging options
         debug = True
         if sys.platform == 'win32':
-            path = 'H:'
+            path = 'c:\\x-plane'
         else:
             path = '/tmp'
             # path = '/Volumes/TO_GO/X-Plane 10'
