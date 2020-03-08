@@ -181,7 +181,7 @@ class AsyncTask(threading.Thread):
 
     Attributes:
         task (method): Worker method to be called
-        die (threading.Event): Se the flag to end the tasks
+        die (threading.Event): Set the flag to end the tasks
         result (): return of the task method
     """
 
