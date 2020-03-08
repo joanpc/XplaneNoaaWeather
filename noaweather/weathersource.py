@@ -381,7 +381,9 @@ class GribDownloader(object):
                 index = cls.parse_grib_index(idx_file)
                 chunk_list = cls.gen_chunk_list(index, variable_list)
 
-        with open(file_path, 'w') as grib_file:
+        flags = 'wb' if binary else 'w'
+
+        with open(file_path, flags) as grib_file:
             if not variable_list:
                 # Fake chunk list for non filtered files
                 chunk_list = [[False, False]]
