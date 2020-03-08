@@ -109,6 +109,7 @@ class GribWeatherSource(WeatherSource):
                 self.download = AsyncTask(GribDownloader.download,
                                           url,
                                           cache_file_path,
+                                          binary=True,
                                           variable_list=self.variable_list,
                                           cancel_event=self.die,
                                           decompress=self.conf.wgrib2bin)
@@ -346,12 +347,13 @@ class GribDownloader(object):
         return index
 
     @classmethod
-    def download(cls, url, file_path, *args, **kwargs):
+    def download(cls, url, file_path, binary=False, **kwargs):
         """Download grib for the specified variable_lists
 
             Args:
                 url (str): URL to the grib file excluding the extension
                 file_path (str): Path to the output file
+                binary (bool): Set to True for binary files or files will get corrupted on Windows.
 
             Kwargs:
                 cancel_event (threading.Event): Set the flat to cancel the download at any time
