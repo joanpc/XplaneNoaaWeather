@@ -58,7 +58,6 @@ class Conf:
         platform = sys.platform
         self.spinfo = False
 
-        self.pythonpath = sys.executable
         self.win32 = False
 
         if platform == 'darwin':
@@ -69,21 +68,19 @@ class Conf:
                 wgbin = 'OSX106wgrib2'
         elif platform == 'win32':
             self.win32 = True
+
             # Set environ for cygwin
             os.environ['CYGWIN'] = 'nodosfilewarning'
             wgbin = 'WIN32wgrib2.exe'
-            self.pythonpath = os.sep.join([sys.exec_prefix, 'python.exe'])
+
             # Hide wgrib window for windows users
             self.spinfo = subprocess.STARTUPINFO()
-
             self.spinfo.dwFlags |= 1  # STARTF_USESHOWWINDOW
             self.spinfo.wShowWindow = 0  # 0 or SW_HIDE 0
 
         else:
             # Linux?
             wgbin = 'linux-glib2.5-i686-wgrib2'
-            if os.path.exists(self.pythonpath + '2.7'):
-                self.pythonpath = self.pythonpath + '2.7'
 
         self.wgrib2bin = os.sep.join([self.respath, 'bin', wgbin])
 
@@ -92,6 +89,28 @@ class Conf:
             os.chmod(self.wgrib2bin, 0775)
         except:
             pass
+
+        self.pythonpath = self.find_python_path('python2.7')
+
+        if not self.pythonpath:
+            raise Exception('Unable to find the python binary.')
+
+    def find_python_path(self, filename="python2.7"):
+        """Where's the fish"""
+        path = sys.executable
+
+        if Conf.can_exec(path):
+            return path
+        elif self.win32:
+            filename = 'python.exe'
+            path = os.sep.join([sys.exec_prefix, filename])
+            if Conf.can_exec(path):
+                return path
+            separator = ';'
+        else:
+            separator = ':'
+
+        return Conf.find_in_path(filename, separator)
 
     def setDefautls(self):
         """Default settings"""
@@ -304,3 +323,16 @@ class Conf:
             except (KeyError, Exception) as err:
                 print "Format ERROR parsing gfs levels file: %s" % str(err)
                 return self.gfs_levels_defaults()
+
+    @staticmethod
+    def can_exec(file_path):
+        return os.path.isfile(file_path) and os.access(file_path, os.X_OK)
+
+    @staticmethod
+    def find_in_path(filename, path_separator=':'):
+        if 'PATH' in os.environ:
+            for path in os.environ['PATH'].split(path_separator):
+                full_path = os.path.sep.join([path, filename])
+                if Conf.can_exec(full_path):
+                    return full_path
+        return False
