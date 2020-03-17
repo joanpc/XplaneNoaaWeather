@@ -19,6 +19,7 @@ from datetime import datetime, timedelta
 from tempfile import TemporaryFile
 
 from util import util
+from conf import Conf
 
 
 class WeatherSource(object):
@@ -248,8 +249,9 @@ class GribDownloader(object):
 
         req = urllib2.Request(url)
         req.add_header('Accept-encoding', 'gzip, deflate')
-        if 'user_agent' in kwargs:
-            req.add_header('User-Agent', kwargs['user_agent'])
+
+        user_agent = kwargs.pop('user_agent', 'XPNOAAWeather/%s' % Conf.__VERSION__)
+        req.add_header('User-Agent', user_agent)
 
         # Partial download headers
         if start or end:
