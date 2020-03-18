@@ -28,7 +28,6 @@ class WeatherSource(object):
     cache_path = False
 
     def __init__(self, conf):
-        self.downloading = False
         self.download = False
         self.conf = conf
         self.die = threading.Event()
