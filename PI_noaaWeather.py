@@ -678,7 +678,7 @@ class PythonInterface:
 
         self.newAptLoaded = False
 
-        self.aboutlines = 17
+        self.aboutlines = 26
 
         # Tracker
         self.tracker = Tracker(self.conf, 4, 'http://x-plane.joanpc.com/NOAAWeather')
@@ -707,7 +707,7 @@ class PythonInterface:
 
     def CreateAboutWindow(self, x, y):
         x2 = x + 780
-        y2 = y - 85 - 20 * 16
+        y2 = y - 85 - 20 * 24
         Buffer = "X-Plane NOAA GFS Weather - %s  -- Thanks to all betatesters! --" % (self.conf.__VERSION__)
         top = y
 
@@ -722,7 +722,7 @@ class PythonInterface:
         XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
         x += 25
 
-        # Main enalbe
+        # Main enable
         XPCreateWidget(x, y - 40, x + 20, y - 60, 1, 'Enable XPGFS', 0, window, xpWidgetClass_Caption)
         self.enableCheck = XPCreateWidget(x + 110, y - 40, x + 120, y - 60, 1, '', 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.enableCheck, xpProperty_ButtonType, xpRadioButton)
@@ -730,7 +730,7 @@ class PythonInterface:
         XPSetWidgetProperty(self.enableCheck, xpProperty_ButtonState, self.conf.enabled)
 
         y -= 25
-        # Winds enalbe
+        # Winds enable
         XPCreateWidget(x + 5, y - 40, x + 20, y - 60, 1, 'Wind levels', 0, window, xpWidgetClass_Caption)
         self.windsCheck = XPCreateWidget(x + 110, y - 40, x + 120, y - 60, 1, '', 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.windsCheck, xpProperty_ButtonType, xpRadioButton)
@@ -738,7 +738,7 @@ class PythonInterface:
         XPSetWidgetProperty(self.windsCheck, xpProperty_ButtonState, self.conf.set_wind)
         y -= 20
 
-        # Clouds enalbe
+        # Clouds enable
         XPCreateWidget(x + 5, y - 40, x + 20, y - 60, 1, 'Cloud levels', 0, window, xpWidgetClass_Caption)
         self.cloudsCheck = XPCreateWidget(x + 110, y - 40, x + 120, y - 60, 1, '', 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.cloudsCheck, xpProperty_ButtonType, xpRadioButton)
@@ -746,7 +746,7 @@ class PythonInterface:
         XPSetWidgetProperty(self.cloudsCheck, xpProperty_ButtonState, self.conf.set_clouds)
         y -= 20
 
-        # Temperature enalbe
+        # Temperature enable
         XPCreateWidget(x + 5, y - 40, x + 20, y - 60, 1, 'Temperature', 0, window, xpWidgetClass_Caption)
         self.tempCheck = XPCreateWidget(x + 110, y - 40, x + 120, y - 60, 1, '', 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.tempCheck, xpProperty_ButtonType, xpRadioButton)
@@ -754,7 +754,7 @@ class PythonInterface:
         XPSetWidgetProperty(self.tempCheck, xpProperty_ButtonState, self.conf.set_temp)
         y -= 20
 
-        # Pressure enalbe
+        # Pressure enable
         XPCreateWidget(x + 5, y - 40, x + 20, y - 60, 1, 'Pressure', 0, window, xpWidgetClass_Caption)
         self.pressureCheck = XPCreateWidget(x + 110, y - 40, x + 120, y - 60, 1, '', 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.pressureCheck, xpProperty_ButtonType, xpRadioButton)
@@ -845,7 +845,7 @@ class PythonInterface:
         y = top
 
         # ABOUT/ STATUS Sub Window
-        subw = XPCreateWidget(x + 10, y - 30, x2 - 20 + 10, y - (19 * self.aboutlines) - 20, 1, "", 0, window,
+        subw = XPCreateWidget(x + 10, y - 30, x2 - 20 + 10, y - (18 * self.aboutlines) - 20, 1, "", 0, window,
                               xpWidgetClass_SubWindow)
         # Set the style to sub window
         XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
@@ -866,7 +866,7 @@ class PythonInterface:
 
         y -= 20
         XPCreateWidget(x, y, x + 20, y - 20, 1, 'Download latest data', 0, window, xpWidgetClass_Caption)
-        self.downloadCheck = XPCreateWidget(x + 127, y, x + 130, y - 20, 1, '', 0, window, xpWidgetClass_Button)
+        self.downloadCheck = XPCreateWidget(x + 130, y, x + 134, y - 20, 1, '', 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.downloadCheck, xpProperty_ButtonType, xpRadioButton)
         XPSetWidgetProperty(self.downloadCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
         XPSetWidgetProperty(self.downloadCheck, xpProperty_ButtonState, self.conf.download)
@@ -880,7 +880,7 @@ class PythonInterface:
 
         y -= 20
         XPCreateWidget(x, y, x + 20, y - 20, 1, 'Send anonymous stats', 0, window, xpWidgetClass_Caption)
-        self.trackCheck = XPCreateWidget(x + 127, y, x + 130, y - 20, 1, '', 0, window, xpWidgetClass_Button)
+        self.trackCheck = XPCreateWidget(x + 130, y, x + 134, y - 20, 1, '', 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.trackCheck, xpProperty_ButtonType, xpRadioButton)
         XPSetWidgetProperty(self.trackCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
         XPSetWidgetProperty(self.trackCheck, xpProperty_ButtonState, self.conf.tracker_enabled)
@@ -892,21 +892,22 @@ class PythonInterface:
         self.dumpLabel = XPCreateWidget(x + 270, y, x + 380, y - 20, 1, '', 0, window, xpWidgetClass_Caption)
 
         y -= 30
-        subw = XPCreateWidget(x - 10, y - 5, x2 - 20 + 10, y2 + 15, 1, "", 0, window, xpWidgetClass_SubWindow)
+        subw = XPCreateWidget(x - 10, y - 15, x2 - 20 + 10, y2 + 15, 1, "", 0, window, xpWidgetClass_SubWindow)
         x += 10
         # Set the style to sub window
 
+        y -= 10
         sysinfo = [
             'X-Plane NOAA Weather: %s' % self.conf.__VERSION__,
-            '(c) joan perez i cauhe 2012-15',
+            '(c) joan perez i cauhe 2012-20',
         ]
         for label in sysinfo:
-            XPCreateWidget(x, y - 5, x + 120, y - 20, 1, label, 0, window, xpWidgetClass_Caption)
+            XPCreateWidget(x, y - 20, x + 120, y - 30, 1, label, 0, window, xpWidgetClass_Caption)
             y -= 15
 
         # Visit site Button
         x += 190
-        y += 15
+        y += 5
         self.aboutVisit = XPCreateWidget(x, y, x + 100, y - 20, 1, "Official site", 0, window, xpWidgetClass_Button)
         XPSetWidgetProperty(self.aboutVisit, xpProperty_ButtonType, xpPushButton)
 
