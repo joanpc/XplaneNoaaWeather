@@ -34,10 +34,14 @@ class Conf:
                         
                     Refer to the following list for millibar Flight Level conversion:'''
 
-    def __init__(self, syspath):
-        # Inits conf
-        self.syspath = syspath
-        self.respath = os.sep.join([self.syspath, 'Resources', 'plugins', 'PythonScripts', 'noaweather'])
+    def __init__(self, xplane_path=False):
+
+        if xplane_path:
+            self.syspath = xplane_path
+            self.respath = os.sep.join([xplane_path, 'Resources', 'plugins', 'PythonScripts', 'noaweather'])
+        else:
+            self.respath = os.path.dirname(os.path.abspath(__file__))
+
         self.settingsfile = os.sep.join([self.respath, 'settings.pkl'])
         self.serverSettingsFile = os.sep.join([self.respath, 'weatherServer.pkl'])
         self.gfsLevelsFile = os.sep.join([self.respath, 'gfs_levels_config.json'])

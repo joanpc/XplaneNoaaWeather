@@ -425,7 +425,7 @@ class Metar(WeatherSource):
             self.ms_download = False
 
         # Update METAR.rwx
-        if self.conf.updateMetarRWX and self.next_metarRWX < time.time():
+        if self.conf.updateMetarRWX and self.conf.syspath and self.next_metarRWX < time.time():
             if self.update_metar_rwx_file(self.th_db):
                 self.next_metarRWX = time.time() + 300
                 print 'Updated METAR.rwx file.'

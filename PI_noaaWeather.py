@@ -1374,13 +1374,13 @@ class PythonInterface:
         pprint(vars, f, width=160)
 
         # Append tail of PythonInterface log files
-        logfiles = ['PythonInterfaceLog.txt',
-                    'PythonInterfaceOutput.txt',
-                    os.path.join('noaweather', 'weatherServerLog.txt'),
+        logfiles = [os.path.sep.join(['..', 'PythonInterfaceLog.txt']),
+                    os.path.sep.join(['..', 'PythonInterfaceOutput.txt']),
+                    'weatherServerLog.txt',
                     ]
 
         for logfile in logfiles:
-            filepath = os.sep.join([self.conf.syspath, 'Resources', 'plugins', 'PythonScripts', logfile])
+            filepath = os.path.sep.join([self.conf.respath, logfile])
             if os.path.exists(filepath):
 
                 lfsize = os.path.getsize(filepath)
