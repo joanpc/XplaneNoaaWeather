@@ -103,7 +103,7 @@ class Conf:
         """Where's the fish"""
         path = sys.executable
 
-        if Conf.can_exec(path):
+        if Conf.can_exec(path) and 'python' in path.lower():
             return path
         elif self.win32:
             filename = 'python.exe'
