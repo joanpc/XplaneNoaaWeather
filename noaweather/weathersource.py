@@ -407,8 +407,8 @@ class GribDownloader(object):
                 os.rename(file_path, tmp_file)
                 cls.decompress_grib(tmp_file, file_path, wgrib2, spinfo)
                 util.remove(tmp_file)
-            except OSError:
-                raise GribDownloaderError('Unable to decompress: %s' % file_path)
+            except OSError as err:
+                raise GribDownloaderError('Unable to decompress: %s \n\t%s' % (file_path, str(err)))
 
         return file_path
 
