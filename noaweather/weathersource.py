@@ -112,7 +112,8 @@ class GribWeatherSource(WeatherSource):
                                           binary=True,
                                           variable_list=self.variable_list,
                                           cancel_event=self.die,
-                                          decompress=self.conf.wgrib2bin)
+                                          decompress=self.conf.wgrib2bin,
+                                          spinfo=self.conf.spinfo)
                 self.download.start()
         else:
             if not self.download.pending():
@@ -399,11 +400,12 @@ class GribDownloader(object):
                     raise GribDownloaderError('Unable to open url: %s\n\t%s' % (url, str(err)))
 
         wgrib2 = kwargs.pop('decompress', False)
+        spinfo = kwargs.pop('spinfo', False)
         if wgrib2:
             tmp_file = "%s.tmp" % file_path
             try:
                 os.rename(file_path, tmp_file)
-                cls.decompress_grib(tmp_file, file_path, wgrib2)
+                cls.decompress_grib(tmp_file, file_path, wgrib2, spinfo)
                 util.remove(tmp_file)
             except OSError:
                 raise GribDownloaderError('Unable to decompress: %s' % file_path)
