@@ -239,13 +239,13 @@ class c:
     def transitionClearReferences(cls, refs=False, exclude=False):
         """Clear transition references"""
         if exclude:
-            for ref in cls.transrefs.keys():
+            for ref in list(cls.transrefs.keys()):
                 if ref.split('-')[0] not in exclude:
                     cls.transrefs.pop(ref)
             return
 
         elif refs:
-            for ref in cls.transrefs.keys():
+            for ref in list(cls.transrefs.keys()):
                 if ref.split('-')[0] in refs:
                     cls.transrefs.pop(ref)
         else:
@@ -310,9 +310,9 @@ class c:
 
     @staticmethod
     def limit(value, max=None, min=None):
-        if max is not False and value > max:
+        if max is not False and max is not None and value > max:
             return max
-        elif min is not False and value < min:
+        elif min is not False and min is not None and value < min:
             return min
         else:
             return value
