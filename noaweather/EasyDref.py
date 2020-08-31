@@ -1,3 +1,4 @@
+import sys
 from XPLMDataAccess import *
 from XPLMUtilities import *
 from XPLMPlugin import *
@@ -55,7 +56,7 @@ class EasyDref:
             self.dr_type = xplmType_Double
             self.cast = float
         else:
-            print "ERROR: invalid DataRef type", type
+            print("ERROR: invalid DataRef type: {}".format(type))
 
         if dref: dataref = dref
 
@@ -72,15 +73,26 @@ class EasyDref:
                 if writable: self.setCB = self.set_cb
                 self.getCB = self.get_cb
 
-            self.DataRef = XPLMRegisterDataAccessor(self.plugin, dataref, self.dr_type,
-                                                    writable,
-                                                    self.getCB, self.setCB,
-                                                    self.getCB, self.setCB,
-                                                    self.getCB, self.setCB,
-                                                    self.rgetCB, self.rsetCB,
-                                                    self.rgetCB, self.rsetCB,
-                                                    self.rgetCB, self.rsetCB,
-                                                    0, 0)
+            if sys.version_info.major == 2:
+                self.DataRef = XPLMRegisterDataAccessor(self.plugin, dataref, self.dr_type,
+                                                        writable,
+                                                        self.getCB, self.setCB,
+                                                        self.getCB, self.setCB,
+                                                        self.getCB, self.setCB,
+                                                        self.rgetCB, self.rsetCB,
+                                                        self.rgetCB, self.rsetCB,
+                                                        self.rgetCB, self.rsetCB,
+                                                        0, 0)
+            else:
+                self.DataRef = XPLMRegisterDataAccessor(dataref, self.dr_type,
+                                                        writable,
+                                                        self.getCB, self.setCB,
+                                                        self.getCB, self.setCB,
+                                                        self.getCB, self.setCB,
+                                                        self.rgetCB, self.rsetCB,
+                                                        self.rgetCB, self.rsetCB,
+                                                        self.rgetCB, self.rsetCB,
+                                                        0, 0)
 
             self.__class__.datarefs.append(self)
 
@@ -98,7 +110,7 @@ class EasyDref:
         else:
             self.DataRef = XPLMFindDataRef(dataref)
             if self.DataRef == False:
-                print "Can't find " + dataref + " DataRef"
+                print("Can't find " + dataref + " DataRef")
 
     def initArrayDref(self, first, last, type):
         if self.register:
@@ -125,7 +137,7 @@ class EasyDref:
             self.dr_type = xplmType_DataArray
             self.cast = float
         else:
-            print "ERROR: invalid DataRef type", type
+            print("ERROR: invalid DataRef type: {}".format(type))
         pass
 
     def set(self, value):
@@ -205,7 +217,10 @@ class EasyDref:
     @classmethod
     def cleanup(cls):
         for dataref in cls.datarefs:
-            XPLMUnregisterDataAccessor(cls.plugin, dataref.DataRef)
+            if sys.version_info.major == 2:
+                XPLMUnregisterDataAccessor(cls.plugin, dataref.DataRef)
+            else:
+                XPLMUnregisterDataAccessor(dataref.DataRef)
             pass
 
     @classmethod
@@ -231,7 +246,10 @@ class EasyCommand:
         command = 'xjpc/XPNoaaWeather/' + command
         self.command = XPLMCreateCommand(command, description)
         self.commandCH = self.commandCHandler
-        XPLMRegisterCommandHandler(plugin, self.command, self.commandCH, 1, 0)
+        if sys.version_info.major == 2:
+            XPLMRegisterCommandHandler(plugin, self.command, self.commandCH, 1, 0)
+        else:
+            XPLMRegisterCommandHandler(self.command, self.commandCH, 1, 0)
 
         self.function = function
         self.args = args
@@ -250,4 +268,7 @@ class EasyCommand:
         return 0
 
     def destroy(self):
-        XPLMUnregisterCommandHandler(self.plugin, self.command, self.commandCH, 1, 0)
+        if sys.version_info.major == 2:
+            XPLMUnregisterCommandHandler(self.plugin, self.command, self.commandCH, 1, 0)
+        else:
+            XPLMUnregisterCommandHandler(self.command, self.commandCH, 1, 0)

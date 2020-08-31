@@ -8,12 +8,17 @@ as published by the Free Software Foundation; either version 2
 of the License, or any later version.
 """
 
+import sys
 import subprocess
 from datetime import datetime, timedelta
 
-from weathersource import GribWeatherSource
+try:
+    from weathersource import GribWeatherSource
+    from c import c
+except ImportError:
+    from .weathersource import GribWeatherSource
+    from .c import c
 
-from c import c
 
 
 class WAFS(GribWeatherSource):
@@ -75,7 +80,10 @@ class WAFS(GribWeatherSource):
 
         cat = {}
         for line in it:
-            r = line[:-1].split(':')
+            if sys.version_info.major == 2:
+                r = line[:-1].split(':')
+            else:
+                r = line.decode('utf-8')[:-1].split(':')
             # Level, variable, value
             level, variable, value, maxave = [r[4].split(' '), r[3], r[7].split(',')[2].split('=')[1], r[6]]
             if len(level) > 1 and level[1] == 'mb' and maxave == 'spatial max':
@@ -95,7 +103,11 @@ class WAFS(GribWeatherSource):
                         cat[alt] = value
 
         turbulence = []
-        for key, value in cat.iteritems():
+        if sys.version_info.major == 2:
+            turb_items = cat.iteritems()
+        else:
+            turb_items = iter(cat.items())
+        for key, value in turb_items:
             turbulence.append([key, value / 6.0])
         turbulence.sort()
 

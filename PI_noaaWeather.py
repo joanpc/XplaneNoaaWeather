@@ -35,19 +35,20 @@ from XPLMDataAccess import *
 from XPLMUtilities import *
 from XPLMPlanes import *
 from XPLMNavigation import *
-from SandyBarbourUtilities import *
-from PythonScriptMessaging import *
+# from SandyBarbourUtilities import *
+# from PythonScriptMessaging import *
 from XPLMPlugin import *
 from XPLMMenus import *
 from XPWidgetDefs import *
 from XPWidgets import *
 from XPStandardWidgets import *
 
-import cPickle
+import pickle
 import socket
 import threading
 import subprocess
 import os
+import sys
 from datetime import datetime
 
 from noaweather import EasyDref, Conf, c, EasyCommand, Tracker
@@ -141,7 +142,7 @@ class Weather:
 
         while True:
             received = self.sock.recv(1024 * 8)
-            wdata = cPickle.loads(received)
+            wdata = pickle.loads(received)
             if self.die.is_set() or wdata == '!bye':
                 break
             elif not 'info' in wdata:
@@ -153,7 +154,10 @@ class Weather:
 
     def weatherClientSend(self, msg):
         if self.weatherClientThread:
-            self.sock.sendto(msg, ('127.0.0.1', self.conf.server_port))
+            if sys.version_info.major == 2:
+                self.sock.sendto(msg, ('127.0.0.1', self.conf.server_port))
+            else:
+                self.sock.sendto(msg.encode('utf-8'), ('127.0.0.1', self.conf.server_port))
 
     def startWeatherServer(self):
         DETACHED_PROCESS = 0x00000008
@@ -161,10 +165,14 @@ class Weather:
 
         kwargs = {'close_fds': True}
 
-        if self.conf.spinfo:
-            kwargs.update({'startupinfo': self.conf.spinfo, 'creationflags': DETACHED_PROCESS})
+        try:
+            if self.conf.spinfo:
+                kwargs.update({'startupinfo': self.conf.spinfo, 'creationflags': DETACHED_PROCESS})
+            print("start weather server {} {}".format(args, kwargs))
+            subprocess.Popen(args, **kwargs)
+        except Exception as e:
+            print("Exception while executing subprocess: {}".format(e))
 
-        subprocess.Popen(args, **kwargs)
 
     def shutdown(self):
         # Shutdown client and server
@@ -640,6 +648,7 @@ class PythonInterface:
     def XPluginStart(self):
         self.syspath = []
         self.conf = Conf(XPLMGetSystemPath(self.syspath)[:-1])
+        print("Conf is {}".format(self.conf))
 
         self.Name = "noaWeather - " + self.conf.__VERSION__
         self.Sig = "noaWeather.joanpc.PI"
@@ -654,18 +663,28 @@ class PythonInterface:
 
         # floop
         self.floop = self.floopCallback
-        XPLMRegisterFlightLoopCallback(self, self.floop, -1, 0)
+        if sys.version_info.major == 2:
+            XPLMRegisterFlightLoopCallback(self, self.floop, -1, 0)
+        else:
+            XPLMRegisterFlightLoopCallback(self.floop, -1, 0)
 
         # Menu / About
         self.Mmenu = self.mainMenuCB
         self.aboutWindow = False
         self.metarWindow = False
-        self.mPluginItem = XPLMAppendMenuItem(XPLMFindPluginsMenu(), 'XP NOAA Weather', 0, 1)
-        self.mMain = XPLMCreateMenu(self, 'XP NOAA Weather', XPLMFindPluginsMenu(), self.mPluginItem, self.Mmenu, 0)
+        if sys.version_info.major == 2:
+            self.mPluginItem = XPLMAppendMenuItem(XPLMFindPluginsMenu(), 'XP NOAA Weather', 0, 1)
+            self.mMain = XPLMCreateMenu(self, 'XP NOAA Weather', XPLMFindPluginsMenu(), self.mPluginItem, self.Mmenu, 0)
+            # Menu Items
+            XPLMAppendMenuItem(self.mMain, 'Configuration', 1, 1)
+            XPLMAppendMenuItem(self.mMain, 'Metar Query', 2, 1)
+        else:
+            self.mPluginItem = XPLMAppendMenuItem(XPLMFindPluginsMenu(), 'XP NOAA Weather', 0)
+            self.mMain = XPLMCreateMenu('XP NOAA Weather', XPLMFindPluginsMenu(), self.mPluginItem, self.Mmenu, 0)
+            # Menu Items
+            XPLMAppendMenuItem(self.mMain, 'Configuration', 1)
+            XPLMAppendMenuItem(self.mMain, 'Metar Query', 2)
 
-        # Menu Items
-        XPLMAppendMenuItem(self.mMain, 'Configuration', 1, 1)
-        XPLMAppendMenuItem(self.mMain, 'Metar Query', 2, 1)
 
         # Register commands
         self.metarWindowCMD = EasyCommand(self, 'metar_query_window_toggle', self.metarQueryWindowToggle,
@@ -822,6 +841,7 @@ class PythonInterface:
         XPSetWidgetProperty(self.maxVisInput, xpProperty_Enabled, 1)
         y -= 20
         XPCreateWidget(x + 5, y - 40, x + 80, y - 60, 1, 'Max cloud height (ft)', 0, window, xpWidgetClass_Caption)
+        print("Setting maccloud high widget value to {}".format(self.conf.max_cloud_height))
         self.maxCloudHeightInput = XPCreateWidget(x + 119, y - 40, x + 160, y - 62, 1,
                                                   c.convertForInput(self.conf.max_cloud_height, 'm2ft'), 0, window,
                                                   xpWidgetClass_TextField)
@@ -920,7 +940,10 @@ class PythonInterface:
 
         # Register our widget handler
         self.aboutWindowHandlerCB = self.aboutWindowHandler
-        XPAddWidgetCallback(self, window, self.aboutWindowHandlerCB)
+        if sys.version_info.major == 2:
+            XPAddWidgetCallback(self, window, self.aboutWindowHandlerCB)
+        else:
+            XPAddWidgetCallback(window, self.aboutWindowHandlerCB)
 
         self.aboutWindow = window
 
@@ -928,7 +951,10 @@ class PythonInterface:
         # About window events
         if (inMessage == xpMessage_CloseButtonPushed):
             if self.aboutWindow:
-                XPDestroyWidget(self, self.aboutWindowWidget, 1)
+                if sys.version_info.major == 2:
+                    XPDestroyWidget(self, self.aboutWindowWidget, 1)
+                else:
+                    XPDestroyWidget(self.aboutWindowWidget, 1)
                 self.aboutWindow = False
             return 1
 
@@ -989,21 +1015,37 @@ class PythonInterface:
                 # XPGetWidgetDescriptor(self.transAltInput, buff, 256)
                 # self.conf.metar_agl_limit = c.convertFromInput(buff[0], 'f2m', 900)
 
-                buff = []
-                XPGetWidgetDescriptor(self.maxCloudHeightInput, buff, 256)
-                self.conf.max_cloud_height = c.convertFromInput(buff[0], 'f2m', min=c.f2m(2000))
+                if sys.version_info.major == 2:
+                    buff = []
+                    XPGetWidgetDescriptor(self.maxCloudHeightInput, buff, 256)
+                    self.conf.max_cloud_height = c.convertFromInput(buff[0], 'f2m', min=c.f2m(2000))
+                else:
+                    buff = XPGetWidgetDescriptor(self.maxCloudHeightInput)
+                    print("Max cloud hieght is {}".format(buff))
+                    self.conf.max_cloud_height = c.convertFromInput(buff, 'f2m', min=c.f2m(2000))
 
-                buff = []
-                XPGetWidgetDescriptor(self.maxVisInput, buff, 256)
-                self.conf.max_visibility = c.convertFromInput(buff[0], 'sm2m')
+                if sys.version_info.major == 2:
+                    buff = []
+                    XPGetWidgetDescriptor(self.maxVisInput, buff, 256)
+                    self.conf.max_visibility = c.convertFromInput(buff[0], 'sm2m')
+                else:
+                    buff = XPGetWidgetDescriptor(self.maxVisInput)
+                    self.conf.max_visibility = c.convertFromInput(buff, 'sm2m')
 
                 # Metar station ignore
-                buff = []
-                XPGetWidgetDescriptor(self.stationIgnoreInput, buff, 256)
-                ignore_stations = []
-                for icao in buff[0].split(' '):
-                    if len(icao) == 4:
-                        ignore_stations.append(icao.upper())
+                if sys.version_info.major == 2:
+                    buff = []
+                    XPGetWidgetDescriptor(self.stationIgnoreInput, buff, 256)
+                    ignore_stations = []
+                    for icao in buff[0].split(' '):
+                        if len(icao) == 4:
+                            ignore_stations.append(icao.upper())
+                else:
+                    buff = XPGetWidgetDescriptor(self.stationIgnoreInput)
+                    ignore_stations = []
+                    for icao in buff.split(' '):
+                        if len(icao) == 4:
+                            ignore_stations.append(icao.upper())
 
                 self.conf.ignore_metar_stations = ignore_stations
 
@@ -1210,11 +1252,17 @@ class PythonInterface:
         if not self.conf.inputbug:
             # Register our sometimes buggy widget handler
             self.metarQueryInputHandlerCB = self.metarQueryInputHandler
-            XPAddWidgetCallback(self, self.metarQueryInput, self.metarQueryInputHandlerCB)
+            if sys.version_info.major == 2:
+                XPAddWidgetCallback(self, self.metarQueryInput, self.metarQueryInputHandlerCB)
+            else:
+                XPAddWidgetCallback(self.metarQueryInput, self.metarQueryInputHandlerCB)
 
         # Register our widget handler
         self.metarWindowHandlerCB = self.metarWindowHandler
-        XPAddWidgetCallback(self, self.metarWindowWidget, self.metarWindowHandlerCB)
+        if sys.version_info.major == 2:
+            XPAddWidgetCallback(self, self.metarWindowWidget, self.metarWindowHandlerCB)
+        else:
+            XPAddWidgetCallback(self.metarWindowWidget, self.metarWindowHandlerCB)
 
         XPSetKeyboardFocus(self.metarQueryInput)
 
@@ -1222,13 +1270,19 @@ class PythonInterface:
         """Override Texfield keyboard input to be more friendly"""
         if inMessage == xpMsg_KeyPress:
 
-            key, flags, vkey = PI_GetKeyState(inParam1)
+            if sys.version_info.major == 2:
+                key, flags, vkey = PI_GetKeyState(inParam1)
+            else:
+                key, flags, vkey = inParam1
 
             if flags == 8:
-                buff = []
                 cursor = XPGetWidgetProperty(self.metarQueryInput, xpProperty_EditFieldSelStart, None)
-                XPGetWidgetDescriptor(self.metarQueryInput, buff, 256)
-                text = buff[0]
+                if sys.version_info.major == 2:
+                    buff = []
+                    XPGetWidgetDescriptor(self.metarQueryInput, buff, 256)
+                    text = buff[0]
+                else:
+                    text = XPGetWidgetDescriptor(self.metarQueryInput).strip()
                 if key in (8, 127):
                     # pass
                     XPSetWidgetDescriptor(self.metarQueryInput, text[:-1])
@@ -1269,13 +1323,16 @@ class PythonInterface:
         return 0
 
     def metarQuery(self):
-        buff = []
-        XPGetWidgetDescriptor(self.metarQueryInput, buff, 256)
-        query = buff[0].strip()
+        if sys.version_info.major == 2:
+            buff = []
+            XPGetWidgetDescriptor(self.metarQueryInput, buff, 256)
+            query = buff[0].strip()
+        else:
+            query = XPGetWidgetDescriptor(self.metarQueryInput).strip()
         if len(query) == 4:
             self.weather.weatherClientSend('?' + query)
             self.tracker.track('metar_query/%s' % query, 'query metar', {'search': query})
-            XPSetWidgetDescriptor(self.metarQueryOutput, 'Queering, please wait.')
+            XPSetWidgetDescriptor(self.metarQueryOutput, 'Querying, please wait.')
         else:
             XPSetWidgetDescriptor(self.metarQueryOutput, 'Please insert a valid ICAO code.')
 
@@ -1284,7 +1341,10 @@ class PythonInterface:
 
         if self.metarWindow:
             # Filter metar text
-            metar = filter(lambda x: x in self.conf.printableChars, msg['metar']['metar'])
+            if sys.version_info.major == 2:
+                metar = filter(lambda x: x in self.conf.printableChars, msg['metar']['metar'])
+            else:
+                metar = ''.join(filter(lambda x: x in self.conf.printableChars, msg['metar']['metar']))
             XPSetWidgetDescriptor(self.metarQueryOutput, '%s %s' % (msg['metar']['icao'], metar))
 
     def metarQueryWindowToggle(self):
@@ -1380,12 +1440,20 @@ class PythonInterface:
                     ]
 
         for logfile in logfiles:
-            filepath = os.path.sep.join([self.conf.syspath, 'Resources', 'plugins', 'PythonScripts', logfile])
+            try:
+                import XPPython
+                filepath = os.path.sep.join([XPPython.PLUGINSPATH, logfile])
+            except ImportError:
+                filepath = os.path.sep.join([self.conf.syspath, 'Resources', 'plugins', 'PythonScripts', logfile])
             if os.path.exists(filepath):
 
                 lfsize = os.path.getsize(filepath)
                 lf = open(filepath, 'r')
-                lf.seek(c.limit(1024 * 6, lfsize) * -1, 2)
+                if sys.version_info.major == 2:
+                    lf.seek(c.limit(1024 * 6, lfsize) * -1, 2)
+                else:
+                    lf.seek(0, os.SEEK_END)
+                    lf.seek(lf.tell() - c.limit(1024 * 6, lfsize), os.SEEK_SET)
                 f.write('\n--- %s ---\n\n' % logfile)
                 for line in lf.readlines():
                     f.write(line.strip('\r'))
@@ -1523,18 +1591,30 @@ class PythonInterface:
 
         # Destroy windows
         if self.aboutWindow:
-            XPDestroyWidget(self, self.aboutWindowWidget, 1)
+            if sys.version_info.major == 2:
+                XPDestroyWidget(self, self.aboutWindowWidget, 1)
+            else:
+                XPDestroyWidget(self.aboutWindowWidget, 1)
         if self.metarWindow:
-            XPDestroyWidget(self, self.metarWindowWidget, 1)
+            if sys.version_info.major == 2:
+                XPDestroyWidget(self, self.metarWindowWidget, 1)
+            else:
+                XPDestroyWidget(self.metarWindowWidget, 1)
 
         self.metarWindowCMD.destroy()
 
-        XPLMUnregisterFlightLoopCallback(self, self.floop, 0)
+        if sys.version_info.major == 2:
+            XPLMUnregisterFlightLoopCallback(self, self.floop, 0)
+        else:
+            XPLMUnregisterFlightLoopCallback(self.floop, 0)
 
         # kill weather server/client
         self.weather.shutdown()
 
-        XPLMDestroyMenu(self, self.mMain)
+        if sys.version_info.major == 2:
+            XPLMDestroyMenu(self, self.mMain)
+        else:
+            XPLMDestroyMenu(self.mMain)
         self.conf.pluginSave()
 
         # Unregister datarefs
@@ -1547,7 +1627,7 @@ class PythonInterface:
         pass
 
     def XPluginReceiveMessage(self, inFromWho, inMessage, inParam):
-        if inParam == XPLM_PLUGIN_XPLANE and inMessage == XPLM_MSG_AIRPORT_LOADED:
+        if (inParam is None or inParam == XPLM_PLUGIN_XPLANE) and inMessage == XPLM_MSG_AIRPORT_LOADED:
             self.weather.startWeatherClient()
             self.newAptLoaded = True
         elif inMessage == (0x8000000 | 8090) and inParam == 1:

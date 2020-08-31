@@ -15,13 +15,20 @@ import math
 import sys
 from datetime import datetime, timedelta
 import time
-from util import util
+try:
+    from util import util
+except ImportError:
+    from . util import util
 
-from c import c
-from weathersource import WeatherSource
-from weathersource import GribDownloaderError
-from weathersource import GribDownloader
-from weathersource import AsyncTask
+try:
+    from c import c
+    from weathersource import WeatherSource
+    from weathersource import GribDownloaderError
+    from weathersource import GribDownloader
+    from weathersource import AsyncTask
+except ImportError:
+    from . c import c
+    from . weathersource import WeatherSource, GribDownloaderError, GribDownloader, AsyncTask
 
 
 class Metar(WeatherSource):
@@ -99,6 +106,7 @@ class Metar(WeatherSource):
         cursor = db.cursor()
         parsed = 0
 
+        print("Opening stations path as {}".format(path))
         with open(path, 'r') as f:
             try:
                 for line in f.readlines():
@@ -118,7 +126,7 @@ class Metar(WeatherSource):
                                 (icao.strip('"'), lat, lon, elevation))
                             parsed += 1
             except (ValueError, IndexError) as e:
-                print "Error parsing METAR station File: %s" % str(e)
+                print("Error parsing METAR station File: %s" % str(e))
 
             db.commit()
             self.conf.ms_update = time.time()
@@ -127,6 +135,7 @@ class Metar(WeatherSource):
 
     def update_metar(self, db, path):
         """Updates metar table from Metar file"""
+        print("Updating from metar file {}".format(path))
         f = open(path, 'r')
         nupdated = 0
         nparsed = 0
@@ -396,11 +405,11 @@ class Metar(WeatherSource):
                 metar_file = self.download.result
                 self.download.join()
                 if isinstance(metar_file, GribDownloaderError):
-                    print "Error downloading METAR: %s" % str(metar_file)
+                    print("Error downloading METAR: %s" % str(metar_file))
                 else:
-                    print 'Successfully downloaded: %s' % metar_file.split(os.path.sep)[-1]
+                    print('Successfully downloaded: %s' % metar_file.split(os.path.sep)[-1])
                     updated, parsed = self.update_metar(self.th_db, metar_file)
-                    print "METAR updated/parsed: %d/%d" % (updated, parsed)
+                    print("METAR updated/parsed: %d/%d" % (updated, parsed))
 
                 self.download = False
 
@@ -414,21 +423,22 @@ class Metar(WeatherSource):
         # Update stations table if required
         if self.ms_download and not self.ms_download.pending():
             stations = self.ms_download.result
+            print("ms_dwonload result is: '{}'".format(self.ms_download.result))
 
             if isinstance(stations, GribDownloaderError):
-                print "Error downloading metar stations file %s" % stations.message
+                print("Error downloading metar stations file %s" % stations.message)
 
             else:
-                print 'Updating metar stations.'
+                print('Updating metar stations.')
                 nstations = self.update_stations(self.th_db, self.ms_download.result)
-                print '%d metar stations updated.' % nstations
+                print('%d metar stations updated.' % nstations)
             self.ms_download = False
 
         # Update METAR.rwx
         if self.conf.updateMetarRWX and self.conf.syspath and self.next_metarRWX < time.time():
             if self.update_metar_rwx_file(self.th_db):
                 self.next_metarRWX = time.time() + 300
-                print 'Updated METAR.rwx file.'
+                print('Updated METAR.rwx file.')
             else:
                 # Retry in 10 sec
                 self.next_metarRWX = time.time() + 10
@@ -451,7 +461,7 @@ class Metar(WeatherSource):
             url = self.IVAO_METAR_URL
 
         cache_file = os.path.sep.join([self.cache_path, '%s_%d_%sZ.txt' % (prefix, timestamp, cycle)])
-        print "Downloading METAR: %s" % cache_file.split(os.path.sep)[-1]
+        print("Downloading METAR: %s" % cache_file.split(os.path.sep)[-1])
         self.download = AsyncTask(GribDownloader.download, url, cache_file, cancel_event=self.die)
         self.download.start()
 
@@ -463,7 +473,7 @@ class Metar(WeatherSource):
         try:
             f = open(os.sep.join([self.conf.syspath, 'METAR.rwx']), 'w')
         except (OSError, IOError):
-            print "ERROR updating METAR.rwx file: %s %s" % (sys.exc_info()[0], sys.exc_info()[1])
+            print("ERROR updating METAR.rwx file: %s %s" % (sys.exc_info()[0], sys.exc_info()[1]))
             return False
 
         res = cursor.execute('SELECT icao, metar FROM airports WHERE metar NOT NULL')

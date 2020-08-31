@@ -10,10 +10,18 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or any later version.
 """
-import thread
+try:
+    import thread
+except ImportError:
+    import _thread as thread
+
 import ssl
-import urllib
-import urllib2
+try:
+    from urllib2 import Request, urlopen
+    from urllib import urlencode
+except ImportError:
+    from urllib.request import Request, urlopen
+    from urllib.parse import urlencode
 import platform
 import json
 import struct
@@ -69,7 +77,7 @@ class Tracker:
                    }
         tparams.update(params)
 
-        req = urllib2.Request(self.TRACKER_URL, urllib.urlencode(tparams), {'User-Agent': self.userAgent})
+        req = Request(self.TRACKER_URL, urlencode(tparams), {'User-Agent': self.userAgent})
 
         if hasattr(ssl, '_create_unverified_context'):
             ctx = {'context': ssl._create_unverified_context()}
@@ -77,6 +85,6 @@ class Tracker:
             ctx = {}
 
         try:
-            urllib2.urlopen(req, **ctx)
+            urlopen(req, **ctx)
         except Exception:
             pass
