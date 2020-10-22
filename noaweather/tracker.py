@@ -28,7 +28,7 @@ import struct
 import string
 import random
 
-from XPLMUtilities import *
+import XPLMUtilities as UL
 
 
 class Tracker:
@@ -45,7 +45,7 @@ class Tracker:
 
         self.site_id = site_id
 
-        xpver, sdkver, hid = XPLMGetVersions()
+        xpver, sdkver, hid = UL.XPLMGetVersions()
         uname = platform.uname()
 
         self.cvars = json.dumps({

@@ -1,8 +1,8 @@
 import sys
-from XPLMDataAccess import *
-from XPLMUtilities import *
-from XPLMPlugin import *
-from XPLMDefs import *
+import XPLMDataAccess as DA
+import XPLMUtilities as UL
+import XPLMPlugin as PL
+import XPLMDefs as DF
 
 
 class EasyDref:
@@ -41,19 +41,19 @@ class EasyDref:
             self.initArrayDref(range[0], range[1], type)
 
         elif (type == "int"):
-            self.dr_get = XPLMGetDatai
-            self.dr_set = XPLMSetDatai
-            self.dr_type = xplmType_Int
+            self.dr_get = DA.XPLMGetDatai
+            self.dr_set = DA.XPLMSetDatai
+            self.dr_type = DA.xplmType_Int
             self.cast = int
         elif (type == "float"):
-            self.dr_get = XPLMGetDataf
-            self.dr_set = XPLMSetDataf
-            self.dr_type = xplmType_Float
+            self.dr_get = DA.XPLMGetDataf
+            self.dr_set = DA.XPLMSetDataf
+            self.dr_type = DA.xplmType_Float
             self.cast = float
         elif (type == "double"):
-            self.dr_get = XPLMGetDatad
-            self.dr_set = XPLMSetDatad
-            self.dr_type = xplmType_Double
+            self.dr_get = DA.XPLMGetDatad
+            self.dr_set = DA.XPLMSetDatad
+            self.dr_type = DA.xplmType_Double
             self.cast = float
         else:
             print("ERROR: invalid DataRef type: {}".format(type))
@@ -74,7 +74,7 @@ class EasyDref:
                 self.getCB = self.get_cb
 
             if sys.version_info.major == 2:
-                self.DataRef = XPLMRegisterDataAccessor(self.plugin, dataref, self.dr_type,
+                self.DataRef = DA.XPLMRegisterDataAccessor(self.plugin, dataref, self.dr_type,
                                                         writable,
                                                         self.getCB, self.setCB,
                                                         self.getCB, self.setCB,
@@ -84,7 +84,7 @@ class EasyDref:
                                                         self.rgetCB, self.rsetCB,
                                                         0, 0)
             else:
-                self.DataRef = XPLMRegisterDataAccessor(dataref, self.dr_type,
+                self.DataRef = DA.XPLMRegisterDataAccessor(dataref, self.dr_type,
                                                         writable,
                                                         self.getCB, self.setCB,
                                                         self.getCB, self.setCB,
@@ -108,7 +108,7 @@ class EasyDref:
                 self.value_f = self.cast(0)
 
         else:
-            self.DataRef = XPLMFindDataRef(dataref)
+            self.DataRef = DA.XPLMFindDataRef(dataref)
             if self.DataRef == False:
                 print("Can't find " + dataref + " DataRef")
 
@@ -122,19 +122,19 @@ class EasyDref:
             self.last = int(last)
 
         if (type == "int"):
-            self.rget = XPLMGetDatavi
-            self.rset = XPLMSetDatavi
-            self.dr_type = xplmType_IntArray
+            self.rget = DA.XPLMGetDatavi
+            self.rset = DA.XPLMSetDatavi
+            self.dr_type = DA.xplmType_IntArray
             self.cast = int
         elif (type == "float"):
-            self.rget = XPLMGetDatavf
-            self.rset = XPLMSetDatavf
-            self.dr_type = xplmType_FloatArray
+            self.rget = DA.XPLMGetDatavf
+            self.rset = DA.XPLMSetDatavf
+            self.dr_type = DA.xplmType_FloatArray
             self.cast = float
         elif (type == "bit"):
-            self.rget = XPLMGetDatab
-            self.rset = XPLMSetDatab
-            self.dr_type = xplmType_DataArray
+            self.rget = DA.XPLMGetDatab
+            self.rset = DA.XPLMSetDatab
+            self.dr_type = DA.xplmType_DataArray
             self.cast = float
         else:
             print("ERROR: invalid DataRef type: {}".format(type))
@@ -218,20 +218,20 @@ class EasyDref:
     def cleanup(cls):
         for dataref in cls.datarefs:
             if sys.version_info.major == 2:
-                XPLMUnregisterDataAccessor(cls.plugin, dataref.DataRef)
+                DA.XPLMUnregisterDataAccessor(cls.plugin, dataref.DataRef)
             else:
-                XPLMUnregisterDataAccessor(dataref.DataRef)
+                DA.XPLMUnregisterDataAccessor(dataref.DataRef)
             pass
 
     @classmethod
     def DataRefEditorRegister(cls):
         MSG_ADD_DATAREF = 0x01000000
-        PluginID = XPLMFindPluginBySignature("xplanesdk.examples.DataRefEditor")
+        PluginID = DA.XPLMFindPluginBySignature("xplanesdk.examples.DataRefEditor")
 
         drefs = 0
-        if PluginID != XPLM_NO_PLUGIN_ID:
+        if PluginID != DF.XPLM_NO_PLUGIN_ID:
             for dataref in cls.datarefs:
-                XPLMSendMessageToPlugin(PluginID, MSG_ADD_DATAREF, dataref.dataref)
+                PL.XPLMSendMessageToPlugin(PluginID, MSG_ADD_DATAREF, dataref.dataref)
                 drefs += 1
 
         return drefs
@@ -244,12 +244,12 @@ class EasyCommand:
 
     def __init__(self, plugin, command, function, args=False, description=''):
         command = 'xjpc/XPNoaaWeather/' + command
-        self.command = XPLMCreateCommand(command, description)
+        self.command = UL.XPLMCreateCommand(command, description)
         self.commandCH = self.commandCHandler
         if sys.version_info.major == 2:
-            XPLMRegisterCommandHandler(plugin, self.command, self.commandCH, 1, 0)
+            UL.XPLMRegisterCommandHandler(plugin, self.command, self.commandCH, 1, 0)
         else:
-            XPLMRegisterCommandHandler(self.command, self.commandCH, 1, 0)
+            UL.XPLMRegisterCommandHandler(self.command, self.commandCH, 1, 0)
 
         self.function = function
         self.args = args
@@ -269,6 +269,6 @@ class EasyCommand:
 
     def destroy(self):
         if sys.version_info.major == 2:
-            XPLMUnregisterCommandHandler(self.plugin, self.command, self.commandCH, 1, 0)
+            UL.XPLMUnregisterCommandHandler(self.plugin, self.command, self.commandCH, 1, 0)
         else:
-            XPLMUnregisterCommandHandler(self.command, self.commandCH, 1, 0)
+            UL.XPLMUnregisterCommandHandler(self.command, self.commandCH, 1, 0)

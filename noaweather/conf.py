@@ -33,11 +33,11 @@ class Conf:
     GFS_JSON_HELP = '''Here you can edit which wind levels will be downloaded from NOAA without hacking the code.
                     Keep the list short to optimize the download size and parsing times.
                     If you mess-up just remove this file, a new one will be created with default values.
-                    
+
                     For a full list of levels check:
                     https://www.nco.ncep.noaa.gov/pmb/products/gfs/gfs.t00z.pgrb2.0p50.f003.shtml
                     Remove the current cycle from the cache/gfs to trigger a download with new values.
-                        
+
                     Refer to the following list for millibar Flight Level conversion:'''
 
     def __init__(self, xplane_path=False):
@@ -179,8 +179,8 @@ class Conf:
         self.metar_source = 'NOAA'
         self.metar_updaterate = 5  # minutes
 
-        self.tracker_uid = False
-        self.tracker_enabled = True
+        # self.tracker_uid = False
+        # self.tracker_enabled = True
 
         self.ignore_metar_stations = []
 
@@ -243,8 +243,8 @@ class Conf:
             'turbulence_probability': self.turbulence_probability,
             'inputbug': self.inputbug,
             'metar_updaterate': self.metar_updaterate,
-            'tracker_uid': self.tracker_uid,
-            'tracker_enabled': self.tracker_enabled,
+            # 'tracker_uid': self.tracker_uid,
+            # 'tracker_enabled': self.tracker_enabled,
             'ignore_metar_stations': self.ignore_metar_stations
         }
         self.saveSettings(self.settingsfile, conf)

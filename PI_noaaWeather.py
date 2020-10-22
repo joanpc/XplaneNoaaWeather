@@ -29,19 +29,19 @@ GNU General Public License for more details.
 """
 
 # X-plane includes
-from XPLMDefs import *
-from XPLMProcessing import *
-from XPLMDataAccess import *
-from XPLMUtilities import *
-from XPLMPlanes import *
-from XPLMNavigation import *
+import XPLMDefs as DF
+import XPLMProcessing as PR
+# import XPLMDataAccess as DA
+import XPLMUtilities as UL
+# import XPLMPlanes as PA
+# import XPLMNavigation as NA
 # from SandyBarbourUtilities import *
 # from PythonScriptMessaging import *
-from XPLMPlugin import *
-from XPLMMenus import *
-from XPWidgetDefs import *
-from XPWidgets import *
-from XPStandardWidgets import *
+import XPLMPlugin as PL
+import XPLMMenus as MN
+import XPWidgetDefs as WD
+import XPWidgets as WI
+import XPStandardWidgets as SW
 
 import pickle
 import socket
@@ -51,7 +51,7 @@ import os
 import sys
 from datetime import datetime
 
-from noaweather import EasyDref, Conf, c, EasyCommand, Tracker
+from noaweather import EasyDref, Conf, c, EasyCommand  # , Tracker
 
 
 class Weather:
@@ -647,7 +647,7 @@ class PythonInterface:
 
     def XPluginStart(self):
         self.syspath = []
-        self.conf = Conf(XPLMGetSystemPath(self.syspath)[:-1])
+        self.conf = Conf(UL.XPLMGetSystemPath(self.syspath)[:-1])
         print("Conf is {}".format(self.conf))
 
         self.Name = "noaWeather - " + self.conf.__VERSION__
@@ -664,26 +664,26 @@ class PythonInterface:
         # floop
         self.floop = self.floopCallback
         if sys.version_info.major == 2:
-            XPLMRegisterFlightLoopCallback(self, self.floop, -1, 0)
+            PR.XPLMRegisterFlightLoopCallback(self, self.floop, -1, 0)
         else:
-            XPLMRegisterFlightLoopCallback(self.floop, -1, 0)
+            PR.XPLMRegisterFlightLoopCallback(self.floop, -1, 0)
 
         # Menu / About
         self.Mmenu = self.mainMenuCB
         self.aboutWindow = False
         self.metarWindow = False
         if sys.version_info.major == 2:
-            self.mPluginItem = XPLMAppendMenuItem(XPLMFindPluginsMenu(), 'XP NOAA Weather', 0, 1)
-            self.mMain = XPLMCreateMenu(self, 'XP NOAA Weather', XPLMFindPluginsMenu(), self.mPluginItem, self.Mmenu, 0)
+            self.mPluginItem = MN.XPLMAppendMenuItem(MN.XPLMFindPluginsMenu(), 'XP NOAA Weather', 0, 1)
+            self.mMain = MN.XPLMCreateMenu(self, 'XP NOAA Weather', MN.XPLMFindPluginsMenu(), self.mPluginItem, self.Mmenu, 0)
             # Menu Items
-            XPLMAppendMenuItem(self.mMain, 'Configuration', 1, 1)
-            XPLMAppendMenuItem(self.mMain, 'Metar Query', 2, 1)
+            MN.XPLMAppendMenuItem(self.mMain, 'Configuration', 1, 1)
+            MN.XPLMAppendMenuItem(self.mMain, 'Metar Query', 2, 1)
         else:
-            self.mPluginItem = XPLMAppendMenuItem(XPLMFindPluginsMenu(), 'XP NOAA Weather', 0)
-            self.mMain = XPLMCreateMenu('XP NOAA Weather', XPLMFindPluginsMenu(), self.mPluginItem, self.Mmenu, 0)
+            self.mPluginItem = MN.XPLMAppendMenuItem(MN.XPLMFindPluginsMenu(), 'XP NOAA Weather', 0)
+            self.mMain = MN.XPLMCreateMenu('XP NOAA Weather', MN.XPLMFindPluginsMenu(), self.mPluginItem, self.Mmenu, 0)
             # Menu Items
-            XPLMAppendMenuItem(self.mMain, 'Configuration', 1)
-            XPLMAppendMenuItem(self.mMain, 'Metar Query', 2)
+            MN.XPLMAppendMenuItem(self.mMain, 'Configuration', 1)
+            MN.XPLMAppendMenuItem(self.mMain, 'Metar Query', 2)
 
 
         # Register commands
@@ -700,10 +700,10 @@ class PythonInterface:
         self.aboutlines = 26
 
         # Tracker
-        self.tracker = Tracker(self.conf, 4, 'http://x-plane.joanpc.com/NOAAWeather')
+        # self.tracker = Tracker(self.conf, 4, 'http://x-plane.joanpc.com/NOAAWeather')
 
-        self.tracker.track('start', 'start x-plane')
-        self.last_track = 0
+        # self.tracker.track('start', 'start x-plane')
+        # self.last_track = 0
 
         return self.Name, self.Sig, self.Desc
 
@@ -714,15 +714,15 @@ class PythonInterface:
             if not self.aboutWindow:
                 self.CreateAboutWindow(221, 640)
                 self.aboutWindow = True
-            elif (not XPIsWidgetVisible(self.aboutWindowWidget)):
-                XPShowWidget(self.aboutWindowWidget)
+            elif (not WI.XPIsWidgetVisible(self.aboutWindowWidget)):
+                WI.XPShowWidget(self.aboutWindowWidget)
 
         elif menuItem == 2:
             if not self.metarWindow:
                 self.createMetarWindow()
-            elif not XPIsWidgetVisible(self.metarWindowWidget):
-                XPShowWidget(self.metarWindowWidget)
-                XPSetKeyboardFocus(self.metarQueryInput)
+            elif not WI.XPIsWidgetVisible(self.metarWindowWidget):
+                WI.XPShowWidget(self.metarWindowWidget)
+                WI.XPSetKeyboardFocus(self.metarQueryInput)
 
     def CreateAboutWindow(self, x, y):
         x2 = x + 780
@@ -731,78 +731,78 @@ class PythonInterface:
         top = y
 
         # Create the Main Widget window
-        self.aboutWindowWidget = XPCreateWidget(x, y, x2, y2, 1, Buffer, 1, 0, xpWidgetClass_MainWindow)
+        self.aboutWindowWidget = WI.XPCreateWidget(x, y, x2, y2, 1, Buffer, 1, 0, SW.xpWidgetClass_MainWindow)
         window = self.aboutWindowWidget
 
         ## MAIN CONFIGURATION ##
 
         # Config Sub Window, style
-        subw = XPCreateWidget(x + 10, y - 30, x + 180 + 10, y2 + 40 - 25, 1, "", 0, window, xpWidgetClass_SubWindow)
-        XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
+        subw = WI.XPCreateWidget(x + 10, y - 30, x + 180 + 10, y2 + 40 - 25, 1, "", 0, window, SW.xpWidgetClass_SubWindow)
+        WI.XPSetWidgetProperty(subw, SW.xpProperty_SubWindowType, SW.xpSubWindowStyle_SubWindow)
         x += 25
 
         # Main enable
-        XPCreateWidget(x, y - 40, x + 20, y - 60, 1, 'Enable XPGFS', 0, window, xpWidgetClass_Caption)
-        self.enableCheck = XPCreateWidget(x + 110, y - 40, x + 120, y - 60, 1, '', 0, window, xpWidgetClass_Button)
-        XPSetWidgetProperty(self.enableCheck, xpProperty_ButtonType, xpRadioButton)
-        XPSetWidgetProperty(self.enableCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
-        XPSetWidgetProperty(self.enableCheck, xpProperty_ButtonState, self.conf.enabled)
+        WI.XPCreateWidget(x, y - 40, x + 20, y - 60, 1, 'Enable XPGFS', 0, window, SW.xpWidgetClass_Caption)
+        self.enableCheck = WI.XPCreateWidget(x + 110, y - 40, x + 120, y - 60, 1, '', 0, window, SW.xpWidgetClass_Button)
+        WI.XPSetWidgetProperty(self.enableCheck, SW.xpProperty_ButtonType, SW.xpRadioButton)
+        WI.XPSetWidgetProperty(self.enableCheck, SW.xpProperty_ButtonBehavior, SW.xpButtonBehaviorCheckBox)
+        WI.XPSetWidgetProperty(self.enableCheck, SW.xpProperty_ButtonState, self.conf.enabled)
 
         y -= 25
         # Winds enable
-        XPCreateWidget(x + 5, y - 40, x + 20, y - 60, 1, 'Wind levels', 0, window, xpWidgetClass_Caption)
-        self.windsCheck = XPCreateWidget(x + 110, y - 40, x + 120, y - 60, 1, '', 0, window, xpWidgetClass_Button)
-        XPSetWidgetProperty(self.windsCheck, xpProperty_ButtonType, xpRadioButton)
-        XPSetWidgetProperty(self.windsCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
-        XPSetWidgetProperty(self.windsCheck, xpProperty_ButtonState, self.conf.set_wind)
+        WI.XPCreateWidget(x + 5, y - 40, x + 20, y - 60, 1, 'Wind levels', 0, window, SW.xpWidgetClass_Caption)
+        self.windsCheck = WI.XPCreateWidget(x + 110, y - 40, x + 120, y - 60, 1, '', 0, window, SW.xpWidgetClass_Button)
+        WI.XPSetWidgetProperty(self.windsCheck, SW.xpProperty_ButtonType, SW.xpRadioButton)
+        WI.XPSetWidgetProperty(self.windsCheck, SW.xpProperty_ButtonBehavior, SW.xpButtonBehaviorCheckBox)
+        WI.XPSetWidgetProperty(self.windsCheck, SW.xpProperty_ButtonState, self.conf.set_wind)
         y -= 20
 
         # Clouds enable
-        XPCreateWidget(x + 5, y - 40, x + 20, y - 60, 1, 'Cloud levels', 0, window, xpWidgetClass_Caption)
-        self.cloudsCheck = XPCreateWidget(x + 110, y - 40, x + 120, y - 60, 1, '', 0, window, xpWidgetClass_Button)
-        XPSetWidgetProperty(self.cloudsCheck, xpProperty_ButtonType, xpRadioButton)
-        XPSetWidgetProperty(self.cloudsCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
-        XPSetWidgetProperty(self.cloudsCheck, xpProperty_ButtonState, self.conf.set_clouds)
+        WI.XPCreateWidget(x + 5, y - 40, x + 20, y - 60, 1, 'Cloud levels', 0, window, SW.xpWidgetClass_Caption)
+        self.cloudsCheck = WI.XPCreateWidget(x + 110, y - 40, x + 120, y - 60, 1, '', 0, window, SW.xpWidgetClass_Button)
+        WI.XPSetWidgetProperty(self.cloudsCheck, SW.xpProperty_ButtonType, SW.xpRadioButton)
+        WI.XPSetWidgetProperty(self.cloudsCheck, SW.xpProperty_ButtonBehavior, SW.xpButtonBehaviorCheckBox)
+        WI.XPSetWidgetProperty(self.cloudsCheck, SW.xpProperty_ButtonState, self.conf.set_clouds)
         y -= 20
 
         # Temperature enable
-        XPCreateWidget(x + 5, y - 40, x + 20, y - 60, 1, 'Temperature', 0, window, xpWidgetClass_Caption)
-        self.tempCheck = XPCreateWidget(x + 110, y - 40, x + 120, y - 60, 1, '', 0, window, xpWidgetClass_Button)
-        XPSetWidgetProperty(self.tempCheck, xpProperty_ButtonType, xpRadioButton)
-        XPSetWidgetProperty(self.tempCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
-        XPSetWidgetProperty(self.tempCheck, xpProperty_ButtonState, self.conf.set_temp)
+        WI.XPCreateWidget(x + 5, y - 40, x + 20, y - 60, 1, 'Temperature', 0, window, SW.xpWidgetClass_Caption)
+        self.tempCheck = WI.XPCreateWidget(x + 110, y - 40, x + 120, y - 60, 1, '', 0, window, SW.xpWidgetClass_Button)
+        WI.XPSetWidgetProperty(self.tempCheck, SW.xpProperty_ButtonType, SW.xpRadioButton)
+        WI.XPSetWidgetProperty(self.tempCheck, SW.xpProperty_ButtonBehavior, SW.xpButtonBehaviorCheckBox)
+        WI.XPSetWidgetProperty(self.tempCheck, SW.xpProperty_ButtonState, self.conf.set_temp)
         y -= 20
 
         # Pressure enable
-        XPCreateWidget(x + 5, y - 40, x + 20, y - 60, 1, 'Pressure', 0, window, xpWidgetClass_Caption)
-        self.pressureCheck = XPCreateWidget(x + 110, y - 40, x + 120, y - 60, 1, '', 0, window, xpWidgetClass_Button)
-        XPSetWidgetProperty(self.pressureCheck, xpProperty_ButtonType, xpRadioButton)
-        XPSetWidgetProperty(self.pressureCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
-        XPSetWidgetProperty(self.pressureCheck, xpProperty_ButtonState, self.conf.set_pressure)
+        WI.XPCreateWidget(x + 5, y - 40, x + 20, y - 60, 1, 'Pressure', 0, window, SW.xpWidgetClass_Caption)
+        self.pressureCheck = WI.XPCreateWidget(x + 110, y - 40, x + 120, y - 60, 1, '', 0, window, SW.xpWidgetClass_Button)
+        WI.XPSetWidgetProperty(self.pressureCheck, SW.xpProperty_ButtonType, SW.xpRadioButton)
+        WI.XPSetWidgetProperty(self.pressureCheck, SW.xpProperty_ButtonBehavior, SW.xpButtonBehaviorCheckBox)
+        WI.XPSetWidgetProperty(self.pressureCheck, SW.xpProperty_ButtonState, self.conf.set_pressure)
         y -= 20
 
         # Turbulence enable
-        XPCreateWidget(x + 5, y - 40, x + 20, y - 60, 1, 'Turbulence', 0, window, xpWidgetClass_Caption)
-        self.turbCheck = XPCreateWidget(x + 110, y - 40, x + 120, y - 60, 1, '', 0, window, xpWidgetClass_Button)
-        XPSetWidgetProperty(self.turbCheck, xpProperty_ButtonType, xpRadioButton)
-        XPSetWidgetProperty(self.turbCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
-        XPSetWidgetProperty(self.turbCheck, xpProperty_ButtonState, self.conf.set_turb)
+        WI.XPCreateWidget(x + 5, y - 40, x + 20, y - 60, 1, 'Turbulence', 0, window, SW.xpWidgetClass_Caption)
+        self.turbCheck = WI.XPCreateWidget(x + 110, y - 40, x + 120, y - 60, 1, '', 0, window, SW.xpWidgetClass_Button)
+        WI.XPSetWidgetProperty(self.turbCheck, SW.xpProperty_ButtonType, SW.xpRadioButton)
+        WI.XPSetWidgetProperty(self.turbCheck, SW.xpProperty_ButtonBehavior, SW.xpButtonBehaviorCheckBox)
+        WI.XPSetWidgetProperty(self.turbCheck, SW.xpProperty_ButtonState, self.conf.set_turb)
         y -= 28
         x -= 5
 
         x1 = x + 5
 
         # Metar source radios
-        XPCreateWidget(x, y - 40, x + 20, y - 60, 1, 'METAR SOURCE', 0, window, xpWidgetClass_Caption)
+        WI.XPCreateWidget(x, y - 40, x + 20, y - 60, 1, 'METAR SOURCE', 0, window, SW.xpWidgetClass_Caption)
         y -= 20
-        XPCreateWidget(x1, y - 40, x1 + 20, y - 60, 1, 'NOAA', 0, window, xpWidgetClass_Caption)
-        mtNoaCheck = XPCreateWidget(x1 + 40, y - 40, x1 + 45, y - 60, 1, '', 0, window, xpWidgetClass_Button)
+        WI.XPCreateWidget(x1, y - 40, x1 + 20, y - 60, 1, 'NOAA', 0, window, SW.xpWidgetClass_Caption)
+        mtNoaCheck = WI.XPCreateWidget(x1 + 40, y - 40, x1 + 45, y - 60, 1, '', 0, window, SW.xpWidgetClass_Button)
         x1 += 52
-        XPCreateWidget(x1, y - 40, x1 + 20, y - 60, 1, 'IVAO', 0, window, xpWidgetClass_Caption)
-        mtIvaoCheck = XPCreateWidget(x1 + 35, y - 40, x1 + 45, y - 60, 1, '', 0, window, xpWidgetClass_Button)
+        WI.XPCreateWidget(x1, y - 40, x1 + 20, y - 60, 1, 'IVAO', 0, window, SW.xpWidgetClass_Caption)
+        mtIvaoCheck = WI.XPCreateWidget(x1 + 35, y - 40, x1 + 45, y - 60, 1, '', 0, window, SW.xpWidgetClass_Button)
         x1 += 50
-        XPCreateWidget(x1, y - 40, x1 + 20, y - 60, 1, 'VATSIM', 0, window, xpWidgetClass_Caption)
-        mtVatsimCheck = XPCreateWidget(x1 + 45, y - 40, x1 + 60, y - 60, 1, '', 0, window, xpWidgetClass_Button)
+        WI.XPCreateWidget(x1, y - 40, x1 + 20, y - 60, 1, 'VATSIM', 0, window, SW.xpWidgetClass_Caption)
+        mtVatsimCheck = WI.XPCreateWidget(x1 + 45, y - 40, x1 + 60, y - 60, 1, '', 0, window, SW.xpWidgetClass_Button)
         x1 += 52
 
         self.mtSourceChecks = {mtNoaCheck: 'NOAA',
@@ -811,108 +811,108 @@ class PythonInterface:
                                }
 
         for check in self.mtSourceChecks:
-            XPSetWidgetProperty(check, xpProperty_ButtonType, xpRadioButton)
-            XPSetWidgetProperty(check, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
-            XPSetWidgetProperty(check, xpProperty_ButtonState,
+            WI.XPSetWidgetProperty(check, SW.xpProperty_ButtonType, SW.xpRadioButton)
+            WI.XPSetWidgetProperty(check, SW.xpProperty_ButtonBehavior, SW.xpButtonBehaviorCheckBox)
+            WI.XPSetWidgetProperty(check, SW.xpProperty_ButtonState,
                                 int(self.conf.metar_source == self.mtSourceChecks[check]))
 
         y -= 25
-        self.turbulenceCaption = XPCreateWidget(x, y - 40, x + 80, y - 60, 1, 'Turbulence probability %d%%' % (
-                self.conf.turbulence_probability * 100), 0, window, xpWidgetClass_Caption)
+        self.turbulenceCaption = WI.XPCreateWidget(x, y - 40, x + 80, y - 60, 1, 'Turbulence probability %d%%' % (
+                self.conf.turbulence_probability * 100), 0, window, SW.xpWidgetClass_Caption)
         y -= 20
-        self.turbulenceSlider = XPCreateWidget(x + 5, y - 40, x + 160, y - 60, 1, '', 0, window,
-                                               xpWidgetClass_ScrollBar)
-        XPSetWidgetProperty(self.turbulenceSlider, xpProperty_ScrollBarType, xpScrollBarTypeSlider)
-        XPSetWidgetProperty(self.turbulenceSlider, xpProperty_ScrollBarMin, 10)
-        XPSetWidgetProperty(self.turbulenceSlider, xpProperty_ScrollBarMax, 1000)
-        XPSetWidgetProperty(self.turbulenceSlider, xpProperty_ScrollBarPageAmount, 1)
+        self.turbulenceSlider = WI.XPCreateWidget(x + 5, y - 40, x + 160, y - 60, 1, '', 0, window,
+                                               SW.xpWidgetClass_ScrollBar)
+        WI.XPSetWidgetProperty(self.turbulenceSlider, SW.xpProperty_ScrollBarType, SW.xpScrollBarTypeSlider)
+        WI.XPSetWidgetProperty(self.turbulenceSlider, SW.xpProperty_ScrollBarMin, 10)
+        WI.XPSetWidgetProperty(self.turbulenceSlider, SW.xpProperty_ScrollBarMax, 1000)
+        WI.XPSetWidgetProperty(self.turbulenceSlider, SW.xpProperty_ScrollBarPageAmount, 1)
 
-        XPSetWidgetProperty(self.turbulenceSlider, xpProperty_ScrollBarSliderPosition,
+        WI.XPSetWidgetProperty(self.turbulenceSlider, SW.xpProperty_ScrollBarSliderPosition,
                             int(self.conf.turbulence_probability * 1000))
 
         y -= 25
-        XPCreateWidget(x, y - 40, x + 80, y - 60, 1, 'Performance Tweaks', 0, window, xpWidgetClass_Caption)
+        WI.XPCreateWidget(x, y - 40, x + 80, y - 60, 1, 'Performance Tweaks', 0, window, SW.xpWidgetClass_Caption)
         y -= 20
-        XPCreateWidget(x + 5, y - 40, x + 80, y - 60, 1, 'Max Visibility (sm)', 0, window, xpWidgetClass_Caption)
-        self.maxVisInput = XPCreateWidget(x + 119, y - 40, x + 160, y - 62, 1,
+        WI.XPCreateWidget(x + 5, y - 40, x + 80, y - 60, 1, 'Max Visibility (sm)', 0, window, SW.xpWidgetClass_Caption)
+        self.maxVisInput = WI.XPCreateWidget(x + 119, y - 40, x + 160, y - 62, 1,
                                           c.convertForInput(self.conf.max_visibility, 'm2sm'), 0, window,
-                                          xpWidgetClass_TextField)
-        XPSetWidgetProperty(self.maxVisInput, xpProperty_TextFieldType, xpTextEntryField)
-        XPSetWidgetProperty(self.maxVisInput, xpProperty_Enabled, 1)
+                                          SW.xpWidgetClass_TextField)
+        WI.XPSetWidgetProperty(self.maxVisInput, SW.xpProperty_TextFieldType, SW.xpTextEntryField)
+        WI.XPSetWidgetProperty(self.maxVisInput, SW.xpProperty_Enabled, 1)
         y -= 20
-        XPCreateWidget(x + 5, y - 40, x + 80, y - 60, 1, 'Max cloud height (ft)', 0, window, xpWidgetClass_Caption)
+        WI.XPCreateWidget(x + 5, y - 40, x + 80, y - 60, 1, 'Max cloud height (ft)', 0, window, SW.xpWidgetClass_Caption)
         print("Setting maccloud high widget value to {}".format(self.conf.max_cloud_height))
-        self.maxCloudHeightInput = XPCreateWidget(x + 119, y - 40, x + 160, y - 62, 1,
+        self.maxCloudHeightInput = WI.XPCreateWidget(x + 119, y - 40, x + 160, y - 62, 1,
                                                   c.convertForInput(self.conf.max_cloud_height, 'm2ft'), 0, window,
-                                                  xpWidgetClass_TextField)
-        XPSetWidgetProperty(self.maxCloudHeightInput, xpProperty_TextFieldType, xpTextEntryField)
-        XPSetWidgetProperty(self.maxCloudHeightInput, xpProperty_Enabled, 1)
+                                                  SW.xpWidgetClass_TextField)
+        WI.XPSetWidgetProperty(self.maxCloudHeightInput, SW.xpProperty_TextFieldType, SW.xpTextEntryField)
+        WI.XPSetWidgetProperty(self.maxCloudHeightInput, SW.xpProperty_Enabled, 1)
 
         y -= 25
-        XPCreateWidget(x, y - 40, x + 80, y - 60, 1, 'Metar window bug', 0, window, xpWidgetClass_Caption)
-        self.bugCheck = XPCreateWidget(x + 120, y - 40, x + 140, y - 60, 1, '', 0, window, xpWidgetClass_Button)
-        XPSetWidgetProperty(self.bugCheck, xpProperty_ButtonType, xpRadioButton)
-        XPSetWidgetProperty(self.bugCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
-        XPSetWidgetProperty(self.bugCheck, xpProperty_ButtonState, self.conf.inputbug)
+        WI.XPCreateWidget(x, y - 40, x + 80, y - 60, 1, 'Metar window bug', 0, window, SW.xpWidgetClass_Caption)
+        self.bugCheck = WI.XPCreateWidget(x + 120, y - 40, x + 140, y - 60, 1, '', 0, window, SW.xpWidgetClass_Button)
+        WI.XPSetWidgetProperty(self.bugCheck, SW.xpProperty_ButtonType, SW.xpRadioButton)
+        WI.XPSetWidgetProperty(self.bugCheck, SW.xpProperty_ButtonBehavior, SW.xpButtonBehaviorCheckBox)
+        WI.XPSetWidgetProperty(self.bugCheck, SW.xpProperty_ButtonState, self.conf.inputbug)
 
         y -= 40
         # Save
-        self.saveButton = XPCreateWidget(x + 25, y - 20, x + 125, y - 60, 1, "Apply & Save", 0, window,
-                                         xpWidgetClass_Button)
-        XPSetWidgetProperty(self.saveButton, xpProperty_ButtonType, xpPushButton)
+        self.saveButton = WI.XPCreateWidget(x + 25, y - 20, x + 125, y - 60, 1, "Apply & Save", 0, window,
+                                         SW.xpWidgetClass_Button)
+        WI.XPSetWidgetProperty(self.saveButton, SW.xpProperty_ButtonType, SW.xpPushButton)
 
         x += 170
         y = top
 
         # ABOUT/ STATUS Sub Window
-        subw = XPCreateWidget(x + 10, y - 30, x2 - 20 + 10, y - (18 * self.aboutlines) - 20, 1, "", 0, window,
-                              xpWidgetClass_SubWindow)
+        subw = WI.XPCreateWidget(x + 10, y - 30, x2 - 20 + 10, y - (18 * self.aboutlines) - 20, 1, "", 0, window,
+                              SW.xpWidgetClass_SubWindow)
         # Set the style to sub window
-        XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
+        WI.XPSetWidgetProperty(subw, SW.xpProperty_SubWindowType, SW.xpSubWindowStyle_SubWindow)
         x += 20
         y -= 20
 
         # Add Close Box decorations to the Main Widget
-        XPSetWidgetProperty(window, xpProperty_MainWindowHasCloseBoxes, 1)
+        WI.XPSetWidgetProperty(window, SW.xpProperty_MainWindowHasCloseBoxes, 1)
 
         # Create status captions
         self.statusBuff = []
         for i in range(self.aboutlines):
             y -= 15
-            self.statusBuff.append(XPCreateWidget(x, y, x + 40, y - 20, 1, '--', 0, window, xpWidgetClass_Caption))
+            self.statusBuff.append(WI.XPCreateWidget(x, y, x + 40, y - 20, 1, '--', 0, window, SW.xpWidgetClass_Caption))
 
         self.updateStatus()
         # Enable download
 
         y -= 20
-        XPCreateWidget(x, y, x + 20, y - 20, 1, 'Download latest data', 0, window, xpWidgetClass_Caption)
-        self.downloadCheck = XPCreateWidget(x + 130, y, x + 134, y - 20, 1, '', 0, window, xpWidgetClass_Button)
-        XPSetWidgetProperty(self.downloadCheck, xpProperty_ButtonType, xpRadioButton)
-        XPSetWidgetProperty(self.downloadCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
-        XPSetWidgetProperty(self.downloadCheck, xpProperty_ButtonState, self.conf.download)
+        WI.XPCreateWidget(x, y, x + 20, y - 20, 1, 'Download latest data', 0, window, SW.xpWidgetClass_Caption)
+        self.downloadCheck = WI.XPCreateWidget(x + 130, y, x + 134, y - 20, 1, '', 0, window, SW.xpWidgetClass_Button)
+        WI.XPSetWidgetProperty(self.downloadCheck, SW.xpProperty_ButtonType, SW.xpRadioButton)
+        WI.XPSetWidgetProperty(self.downloadCheck, SW.xpProperty_ButtonBehavior, SW.xpButtonBehaviorCheckBox)
+        WI.XPSetWidgetProperty(self.downloadCheck, SW.xpProperty_ButtonState, self.conf.download)
 
-        XPCreateWidget(x + 160, y, x + 260, y - 20, 1, 'Ignore Stations:', 0, window, xpWidgetClass_Caption)
-        self.stationIgnoreInput = XPCreateWidget(x + 260, y, x + 540, y - 20, 1,
+        WI.XPCreateWidget(x + 160, y, x + 260, y - 20, 1, 'Ignore Stations:', 0, window, SW.xpWidgetClass_Caption)
+        self.stationIgnoreInput = WI.XPCreateWidget(x + 260, y, x + 540, y - 20, 1,
                                                  ' '.join(self.conf.ignore_metar_stations), 0, window,
-                                                 xpWidgetClass_TextField)
-        XPSetWidgetProperty(self.maxVisInput, xpProperty_TextFieldType, xpTextEntryField)
-        XPSetWidgetProperty(self.maxVisInput, xpProperty_Enabled, 1)
+                                                 SW.xpWidgetClass_TextField)
+        WI.XPSetWidgetProperty(self.maxVisInput, SW.xpProperty_TextFieldType, SW.xpTextEntryField)
+        WI.XPSetWidgetProperty(self.maxVisInput, SW.xpProperty_Enabled, 1)
 
         y -= 20
-        XPCreateWidget(x, y, x + 20, y - 20, 1, 'Send anonymous stats', 0, window, xpWidgetClass_Caption)
-        self.trackCheck = XPCreateWidget(x + 130, y, x + 134, y - 20, 1, '', 0, window, xpWidgetClass_Button)
-        XPSetWidgetProperty(self.trackCheck, xpProperty_ButtonType, xpRadioButton)
-        XPSetWidgetProperty(self.trackCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
-        XPSetWidgetProperty(self.trackCheck, xpProperty_ButtonState, self.conf.tracker_enabled)
+        # XPCreateWidget(x, y, x + 20, y - 20, 1, 'Send anonymous stats', 0, window, xpWidgetClass_Caption)
+        # self.trackCheck = XPCreateWidget(x + 130, y, x + 134, y - 20, 1, '', 0, window, xpWidgetClass_Button)
+        # XPSetWidgetProperty(self.trackCheck, xpProperty_ButtonType, xpRadioButton)
+        # XPSetWidgetProperty(self.trackCheck, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
+        # XPSetWidgetProperty(self.trackCheck, xpProperty_ButtonState, self.conf.tracker_enabled)
 
         # DumpLog Button
-        self.dumpLogButton = XPCreateWidget(x + 160, y, x + 260, y - 20, 1, "DumpLog", 0, window, xpWidgetClass_Button)
-        XPSetWidgetProperty(self.dumpLogButton, xpProperty_ButtonType, xpPushButton)
+        self.dumpLogButton = WI.XPCreateWidget(x + 160, y, x + 260, y - 20, 1, "DumpLog", 0, window, SW.xpWidgetClass_Button)
+        WI.XPSetWidgetProperty(self.dumpLogButton, SW.xpProperty_ButtonType, SW.xpPushButton)
 
-        self.dumpLabel = XPCreateWidget(x + 270, y, x + 380, y - 20, 1, '', 0, window, xpWidgetClass_Caption)
+        self.dumpLabel = WI.XPCreateWidget(x + 270, y, x + 380, y - 20, 1, '', 0, window, SW.xpWidgetClass_Caption)
 
         y -= 30
-        subw = XPCreateWidget(x - 10, y - 15, x2 - 20 + 10, y2 + 15, 1, "", 0, window, xpWidgetClass_SubWindow)
+        subw = WI.XPCreateWidget(x - 10, y - 15, x2 - 20 + 10, y2 + 15, 1, "", 0, window, SW.xpWidgetClass_SubWindow)
         x += 10
         # Set the style to sub window
 
@@ -922,126 +922,126 @@ class PythonInterface:
             '(c) joan perez i cauhe 2012-20',
         ]
         for label in sysinfo:
-            XPCreateWidget(x, y - 20, x + 120, y - 30, 1, label, 0, window, xpWidgetClass_Caption)
+            WI.XPCreateWidget(x, y - 20, x + 120, y - 30, 1, label, 0, window, SW.xpWidgetClass_Caption)
             y -= 15
 
         # Visit site Button
         x += 190
         y += 5
-        self.aboutVisit = XPCreateWidget(x, y, x + 100, y - 20, 1, "Official site", 0, window, xpWidgetClass_Button)
-        XPSetWidgetProperty(self.aboutVisit, xpProperty_ButtonType, xpPushButton)
+        self.aboutVisit = WI.XPCreateWidget(x, y, x + 100, y - 20, 1, "Official site", 0, window, SW.xpWidgetClass_Button)
+        WI.XPSetWidgetProperty(self.aboutVisit, SW.xpProperty_ButtonType, SW.xpPushButton)
 
-        self.aboutForum = XPCreateWidget(x + 120, y, x + 220, y - 20, 1, "Support", 0, window, xpWidgetClass_Button)
-        XPSetWidgetProperty(self.aboutForum, xpProperty_ButtonType, xpPushButton)
+        self.aboutForum = WI.XPCreateWidget(x + 120, y, x + 220, y - 20, 1, "Support", 0, window, SW.xpWidgetClass_Button)
+        WI.XPSetWidgetProperty(self.aboutForum, SW.xpProperty_ButtonType, SW.xpPushButton)
 
         # Donate Button
-        self.donate = XPCreateWidget(x + 240, y, x + 340, y - 20, 1, "Donate", 0, window, xpWidgetClass_Button)
-        XPSetWidgetProperty(self.donate, xpProperty_ButtonType, xpPushButton)
+        self.donate = WI.XPCreateWidget(x + 240, y, x + 340, y - 20, 1, "Donate", 0, window, SW.xpWidgetClass_Button)
+        WI.XPSetWidgetProperty(self.donate, SW.xpProperty_ButtonType, SW.xpPushButton)
 
         # Register our widget handler
         self.aboutWindowHandlerCB = self.aboutWindowHandler
         if sys.version_info.major == 2:
-            XPAddWidgetCallback(self, window, self.aboutWindowHandlerCB)
+            WI.XPAddWidgetCallback(self, window, self.aboutWindowHandlerCB)
         else:
-            XPAddWidgetCallback(window, self.aboutWindowHandlerCB)
+            WI.XPAddWidgetCallback(window, self.aboutWindowHandlerCB)
 
         self.aboutWindow = window
 
     def aboutWindowHandler(self, inMessage, inWidget, inParam1, inParam2):
         # About window events
-        if (inMessage == xpMessage_CloseButtonPushed):
+        if (inMessage == SW.xpMessage_CloseButtonPushed):
             if self.aboutWindow:
                 if sys.version_info.major == 2:
-                    XPDestroyWidget(self, self.aboutWindowWidget, 1)
+                    WI.XPDestroyWidget(self, self.aboutWindowWidget, 1)
                 else:
-                    XPDestroyWidget(self.aboutWindowWidget, 1)
+                    WI.XPDestroyWidget(self.aboutWindowWidget, 1)
                 self.aboutWindow = False
             return 1
 
-        if inMessage == xpMsg_ButtonStateChanged and inParam1 in self.mtSourceChecks:
+        if inMessage == SW.xpMsg_ButtonStateChanged and inParam1 in self.mtSourceChecks:
             if inParam2:
                 for i in self.mtSourceChecks:
                     if i != inParam1:
-                        XPSetWidgetProperty(i, xpProperty_ButtonState, 0)
+                        WI.XPSetWidgetProperty(i, SW.xpProperty_ButtonState, 0)
             else:
-                XPSetWidgetProperty(inParam1, xpProperty_ButtonState, 1)
+                WI.XPSetWidgetProperty(inParam1, SW.xpProperty_ButtonState, 1)
             return 1
 
-        if inMessage == xpMsg_ScrollBarSliderPositionChanged and inParam1 == self.turbulenceSlider:
-            val = XPGetWidgetProperty(self.turbulenceSlider, xpProperty_ScrollBarSliderPosition, None)
-            XPSetWidgetDescriptor(self.turbulenceCaption, 'Turbulence probability %d%%' % (val / 10))
+        if inMessage == SW.xpMsg_ScrollBarSliderPositionChanged and inParam1 == self.turbulenceSlider:
+            val = WI.XPGetWidgetProperty(self.turbulenceSlider, SW.xpProperty_ScrollBarSliderPosition, None)
+            WI.XPSetWidgetDescriptor(self.turbulenceCaption, 'Turbulence probability %d%%' % (val / 10))
             return 1
 
         # Handle any button pushes
-        if (inMessage == xpMsg_PushButtonPressed):
+        if (inMessage == SW.xpMsg_PushButtonPressed):
 
             if (inParam1 == self.aboutVisit):
                 from webbrowser import open_new
                 open_new('http://x-plane.joanpc.com/');
-                self.tracker.track('Homepage', 'homepage button')
+                # self.tracker.track('Homepage', 'homepage button')
                 return 1
             if (inParam1 == self.donate):
                 from webbrowser import open_new
                 open_new('https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=GH6YPFGSS5UEU');
-                self.tracker.track('donate', 'donate button')
+                # self.tracker.track('donate', 'donate button')
                 return 1
             if (inParam1 == self.aboutForum):
                 from webbrowser import open_new
                 open_new(
                     'http://forums.x-plane.org/index.php?/forums/topic/72313-noaa-weather-plugin/&do=getNewComment');
-                self.tracker.track('Support', 'support button')
+                # self.tracker.track('Support', 'support button')
                 return 1
             if inParam1 == self.saveButton:
                 # Save configuration
-                self.conf.enabled = XPGetWidgetProperty(self.enableCheck, xpProperty_ButtonState, None)
-                self.conf.set_wind = XPGetWidgetProperty(self.windsCheck, xpProperty_ButtonState, None)
-                self.conf.set_clouds = XPGetWidgetProperty(self.cloudsCheck, xpProperty_ButtonState, None)
-                self.conf.set_temp = XPGetWidgetProperty(self.tempCheck, xpProperty_ButtonState, None)
-                self.conf.set_pressure = XPGetWidgetProperty(self.pressureCheck, xpProperty_ButtonState, None)
-                self.conf.inputbug = XPGetWidgetProperty(self.bugCheck, xpProperty_ButtonState, None)
-                self.conf.turbulence_probability = XPGetWidgetProperty(self.turbulenceSlider,
-                                                                       xpProperty_ScrollBarSliderPosition,
+                self.conf.enabled = WI.XPGetWidgetProperty(self.enableCheck, SW.xpProperty_ButtonState, None)
+                self.conf.set_wind = WI.XPGetWidgetProperty(self.windsCheck, SW.xpProperty_ButtonState, None)
+                self.conf.set_clouds = WI.XPGetWidgetProperty(self.cloudsCheck, SW.xpProperty_ButtonState, None)
+                self.conf.set_temp = WI.XPGetWidgetProperty(self.tempCheck, SW.xpProperty_ButtonState, None)
+                self.conf.set_pressure = WI.XPGetWidgetProperty(self.pressureCheck, SW.xpProperty_ButtonState, None)
+                self.conf.inputbug = WI.XPGetWidgetProperty(self.bugCheck, SW.xpProperty_ButtonState, None)
+                self.conf.turbulence_probability = WI.XPGetWidgetProperty(self.turbulenceSlider,
+                                                                       SW.xpProperty_ScrollBarSliderPosition,
                                                                        None) / 1000.0
 
                 # Zero turbulence data if disabled
-                self.conf.set_turb = XPGetWidgetProperty(self.turbCheck, xpProperty_ButtonState, None)
+                self.conf.set_turb = WI.XPGetWidgetProperty(self.turbCheck, SW.xpProperty_ButtonState, None)
                 if not self.conf.set_turb:
                     for i in range(3): self.weather.winds[i]['turbulence'].value = 0
 
-                self.conf.download = XPGetWidgetProperty(self.downloadCheck, xpProperty_ButtonState, None)
+                self.conf.download = WI.XPGetWidgetProperty(self.downloadCheck, SW.xpProperty_ButtonState, None)
 
-                self.conf.tracker_enabled = XPGetWidgetProperty(self.trackCheck, xpProperty_ButtonState, None)
+                # self.conf.tracker_enabled = XPGetWidgetProperty(self.trackCheck, xpProperty_ButtonState, None)
                 # buff = []
                 # XPGetWidgetDescriptor(self.transAltInput, buff, 256)
                 # self.conf.metar_agl_limit = c.convertFromInput(buff[0], 'f2m', 900)
 
                 if sys.version_info.major == 2:
                     buff = []
-                    XPGetWidgetDescriptor(self.maxCloudHeightInput, buff, 256)
+                    WI.XPGetWidgetDescriptor(self.maxCloudHeightInput, buff, 256)
                     self.conf.max_cloud_height = c.convertFromInput(buff[0], 'f2m', min=c.f2m(2000))
                 else:
-                    buff = XPGetWidgetDescriptor(self.maxCloudHeightInput)
+                    buff = WI.XPGetWidgetDescriptor(self.maxCloudHeightInput)
                     print("Max cloud hieght is {}".format(buff))
                     self.conf.max_cloud_height = c.convertFromInput(buff, 'f2m', min=c.f2m(2000))
 
                 if sys.version_info.major == 2:
                     buff = []
-                    XPGetWidgetDescriptor(self.maxVisInput, buff, 256)
+                    WI.XPGetWidgetDescriptor(self.maxVisInput, buff, 256)
                     self.conf.max_visibility = c.convertFromInput(buff[0], 'sm2m')
                 else:
-                    buff = XPGetWidgetDescriptor(self.maxVisInput)
+                    buff = WI.XPGetWidgetDescriptor(self.maxVisInput)
                     self.conf.max_visibility = c.convertFromInput(buff, 'sm2m')
 
                 # Metar station ignore
                 if sys.version_info.major == 2:
                     buff = []
-                    XPGetWidgetDescriptor(self.stationIgnoreInput, buff, 256)
+                    WI.XPGetWidgetDescriptor(self.stationIgnoreInput, buff, 256)
                     ignore_stations = []
                     for icao in buff[0].split(' '):
                         if len(icao) == 4:
                             ignore_stations.append(icao.upper())
                 else:
-                    buff = XPGetWidgetDescriptor(self.stationIgnoreInput)
+                    buff = WI.XPGetWidgetDescriptor(self.stationIgnoreInput)
                     ignore_stations = []
                     for icao in buff.split(' '):
                         if len(icao) == 4:
@@ -1052,7 +1052,7 @@ class PythonInterface:
                 # Check metar source
                 prev_metar_source = self.conf.metar_source
                 for check in self.mtSourceChecks:
-                    if XPGetWidgetProperty(check, xpProperty_ButtonState, None):
+                    if WI.XPGetWidgetProperty(check, SW.xpProperty_ButtonState, None):
                         self.conf.metar_source = self.mtSourceChecks[check]
 
                 # Save config and tell server to reload it
@@ -1073,20 +1073,20 @@ class PythonInterface:
                 return 1
             if inParam1 == self.dumpLogButton:
                 dumpfile = self.dumpLog()
-                XPSetWidgetDescriptor(self.dumpLabel, os.sep.join(dumpfile.split(os.sep)[-3:]))
+                WI.XPSetWidgetDescriptor(self.dumpLabel, os.sep.join(dumpfile.split(os.sep)[-3:]))
                 return 1
         return 0
 
     def aboutWindowUpdate(self):
-        XPSetWidgetProperty(self.enableCheck, xpProperty_ButtonState, self.conf.enabled)
-        XPSetWidgetProperty(self.windsCheck, xpProperty_ButtonState, self.conf.set_wind)
-        XPSetWidgetProperty(self.cloudsCheck, xpProperty_ButtonState, self.conf.set_clouds)
-        XPSetWidgetProperty(self.tempCheck, xpProperty_ButtonState, self.conf.set_temp)
+        WI.XPSetWidgetProperty(self.enableCheck, SW.xpProperty_ButtonState, self.conf.enabled)
+        WI.XPSetWidgetProperty(self.windsCheck, SW.xpProperty_ButtonState, self.conf.set_wind)
+        WI.XPSetWidgetProperty(self.cloudsCheck, SW.xpProperty_ButtonState, self.conf.set_clouds)
+        WI.XPSetWidgetProperty(self.tempCheck, SW.xpProperty_ButtonState, self.conf.set_temp)
 
         # XPSetWidgetDescriptor(self.transAltInput, c.convertForInput(self.conf.metar_agl_limit, 'm2ft'))
-        XPSetWidgetDescriptor(self.maxVisInput, c.convertForInput(self.conf.max_visibility, 'm2sm'))
-        XPSetWidgetDescriptor(self.maxCloudHeightInput, c.convertForInput(self.conf.max_cloud_height, 'm2ft'))
-        XPSetWidgetDescriptor(self.stationIgnoreInput, ' '.join(self.conf.ignore_metar_stations))
+        WI.XPSetWidgetDescriptor(self.maxVisInput, c.convertForInput(self.conf.max_visibility, 'm2sm'))
+        WI.XPSetWidgetDescriptor(self.maxCloudHeightInput, c.convertForInput(self.conf.max_cloud_height, 'm2ft'))
+        WI.XPSetWidgetDescriptor(self.stationIgnoreInput, ' '.join(self.conf.ignore_metar_stations))
 
         self.updateStatus()
 
@@ -1097,7 +1097,7 @@ class PythonInterface:
 
         i = 0
         for label in sysinfo:
-            XPSetWidgetDescriptor(self.statusBuff[i], label)
+            WI.XPSetWidgetDescriptor(self.statusBuff[i], label)
             i += 1
             if i > self.aboutlines - 1:
                 break
@@ -1209,114 +1209,115 @@ class PythonInterface:
 
         # Create the Main Widget window
         self.metarWindow = True
-        self.metarWindowWidget = XPCreateWidget(x, y, x2, y2, 1, windowTitle, 1, 0, xpWidgetClass_MainWindow)
-        XPSetWidgetProperty(self.metarWindowWidget, xpProperty_MainWindowType, xpMainWindowStyle_Translucent)
+        self.metarWindowWidget = WI.XPCreateWidget(x, y, x2, y2, 1, windowTitle, 1, 0, SW.xpWidgetClass_MainWindow)
+        WI.XPSetWidgetProperty(self.metarWindowWidget, SW.xpProperty_MainWindowType, SW.xpMainWindowStyle_Translucent)
 
         # Config Sub Window, style
         # subw = XPCreateWidget(x+10, y-30, x2-20 + 10, y2+40 -25, 1, "" ,  0,self.metarWindowWidget , xpWidgetClass_SubWindow)
         # XPSetWidgetProperty(subw, xpProperty_SubWindowType, xpSubWindowStyle_SubWindow)
-        XPSetWidgetProperty(self.metarWindowWidget, xpProperty_MainWindowHasCloseBoxes, 1)
+        WI.XPSetWidgetProperty(self.metarWindowWidget, SW.xpProperty_MainWindowHasCloseBoxes, 1)
         x += 10
         y -= 20
 
-        cap = XPCreateWidget(x, y, x + 40, y - 20, 1, 'Airport ICAO code:', 0, self.metarWindowWidget,
-                             xpWidgetClass_Caption)
-        XPSetWidgetProperty(cap, xpProperty_CaptionLit, 1)
+        cap = WI.XPCreateWidget(x, y, x + 40, y - 20, 1, 'Airport ICAO code:', 0, self.metarWindowWidget,
+                             SW.xpWidgetClass_Caption)
+        WI.XPSetWidgetProperty(cap, SW.xpProperty_CaptionLit, 1)
 
         y -= 20
         # Airport input
-        self.metarQueryInput = XPCreateWidget(x + 5, y, x + 120, y - 20, 1, "", 0, self.metarWindowWidget,
-                                              xpWidgetClass_TextField)
-        XPSetWidgetProperty(self.metarQueryInput, xpProperty_TextFieldType, xpTextEntryField)
-        XPSetWidgetProperty(self.metarQueryInput, xpProperty_Enabled, 1)
-        XPSetWidgetProperty(self.metarQueryInput, xpProperty_TextFieldType, xpTextTranslucent)
+        self.metarQueryInput = WI.XPCreateWidget(x + 5, y, x + 120, y - 20, 1, "", 0, self.metarWindowWidget,
+                                              SW.xpWidgetClass_TextField)
+        WI.XPSetWidgetProperty(self.metarQueryInput, SW.xpProperty_TextFieldType, SW.xpTextEntryField)
+        WI.XPSetWidgetProperty(self.metarQueryInput, SW.xpProperty_Enabled, 1)
+        WI.XPSetWidgetProperty(self.metarQueryInput, SW.xpProperty_TextFieldType, SW.xpTextTranslucent)
 
-        self.metarQueryButton = XPCreateWidget(x + 140, y, x + 210, y - 20, 1, "Request", 0, self.metarWindowWidget,
-                                               xpWidgetClass_Button)
-        XPSetWidgetProperty(self.metarQueryButton, xpProperty_ButtonType, xpPushButton)
-        XPSetWidgetProperty(self.metarQueryButton, xpProperty_Enabled, 1)
+        self.metarQueryButton = WI.XPCreateWidget(x + 140, y, x + 210, y - 20, 1, "Request", 0, self.metarWindowWidget,
+                                               SW.xpWidgetClass_Button)
+        WI.XPSetWidgetProperty(self.metarQueryButton, SW.xpProperty_ButtonType, SW.xpPushButton)
+        WI.XPSetWidgetProperty(self.metarQueryButton, SW.xpProperty_Enabled, 1)
 
         y -= 20
         # Help caption
-        cap = XPCreateWidget(x, y, x + 300, y - 20, 1, "METAR:", 0, self.metarWindowWidget, xpWidgetClass_Caption)
-        XPSetWidgetProperty(cap, xpProperty_CaptionLit, 1)
+        cap = WI.XPCreateWidget(x, y, x + 300, y - 20, 1, "METAR:", 0, self.metarWindowWidget, SW.xpWidgetClass_Caption)
+        WI.XPSetWidgetProperty(cap, SW.xpProperty_CaptionLit, 1)
 
         y -= 20
         # Query output
-        self.metarQueryOutput = XPCreateWidget(x + 5, y, x + 450, y - 20, 1, "", 0, self.metarWindowWidget,
-                                               xpWidgetClass_TextField)
-        XPSetWidgetProperty(self.metarQueryOutput, xpProperty_TextFieldType, xpTextEntryField)
-        XPSetWidgetProperty(self.metarQueryOutput, xpProperty_Enabled, 1)
-        XPSetWidgetProperty(self.metarQueryOutput, xpProperty_TextFieldType, xpTextTranslucent)
+        self.metarQueryOutput = WI.XPCreateWidget(x + 5, y, x + 450, y - 20, 1, "", 0, self.metarWindowWidget,
+                                               SW.xpWidgetClass_TextField)
+        WI.XPSetWidgetProperty(self.metarQueryOutput, SW.xpProperty_TextFieldType, SW.xpTextEntryField)
+        WI.XPSetWidgetProperty(self.metarQueryOutput, SW.xpProperty_Enabled, 1)
+        WI.XPSetWidgetProperty(self.metarQueryOutput, SW.xpProperty_TextFieldType, SW.xpTextTranslucent)
 
         if not self.conf.inputbug:
             # Register our sometimes buggy widget handler
             self.metarQueryInputHandlerCB = self.metarQueryInputHandler
             if sys.version_info.major == 2:
-                XPAddWidgetCallback(self, self.metarQueryInput, self.metarQueryInputHandlerCB)
+                WI.XPAddWidgetCallback(self, self.metarQueryInput, self.metarQueryInputHandlerCB)
             else:
-                XPAddWidgetCallback(self.metarQueryInput, self.metarQueryInputHandlerCB)
+                WI.XPAddWidgetCallback(self.metarQueryInput, self.metarQueryInputHandlerCB)
 
         # Register our widget handler
         self.metarWindowHandlerCB = self.metarWindowHandler
         if sys.version_info.major == 2:
-            XPAddWidgetCallback(self, self.metarWindowWidget, self.metarWindowHandlerCB)
+            WI.XPAddWidgetCallback(self, self.metarWindowWidget, self.metarWindowHandlerCB)
         else:
-            XPAddWidgetCallback(self.metarWindowWidget, self.metarWindowHandlerCB)
+            WI.XPAddWidgetCallback(self.metarWindowWidget, self.metarWindowHandlerCB)
 
-        XPSetKeyboardFocus(self.metarQueryInput)
+        WI.XPSetKeyboardFocus(self.metarQueryInput)
 
     def metarQueryInputHandler(self, inMessage, inWidget, inParam1, inParam2):
         """Override Texfield keyboard input to be more friendly"""
-        if inMessage == xpMsg_KeyPress:
+        if inMessage == WD.xpMsg_KeyPress:
 
             if sys.version_info.major == 2:
-                key, flags, vkey = PI_GetKeyState(inParam1)
+                # key, flags, vkey = PI_GetKeyState(inParam1)
+                key = flags = vkey = None
             else:
                 key, flags, vkey = inParam1
 
             if flags == 8:
-                cursor = XPGetWidgetProperty(self.metarQueryInput, xpProperty_EditFieldSelStart, None)
+                cursor = WI.XPGetWidgetProperty(self.metarQueryInput, SW.xpProperty_EditFieldSelStart, None)
                 if sys.version_info.major == 2:
                     buff = []
-                    XPGetWidgetDescriptor(self.metarQueryInput, buff, 256)
+                    WI.XPGetWidgetDescriptor(self.metarQueryInput, buff, 256)
                     text = buff[0]
                 else:
-                    text = XPGetWidgetDescriptor(self.metarQueryInput).strip()
+                    text = WI.XPGetWidgetDescriptor(self.metarQueryInput).strip()
                 if key in (8, 127):
                     # pass
-                    XPSetWidgetDescriptor(self.metarQueryInput, text[:-1])
+                    WI.XPSetWidgetDescriptor(self.metarQueryInput, text[:-1])
                     cursor -= 1
                 elif key == 13:
                     # Enter
                     self.metarQuery()
                 elif key == 27:
                     # ESC
-                    XPLoseKeyboardFocus(self.metarQueryInput)
+                    WI.XPLoseKeyboardFocus(self.metarQueryInput)
                 elif 65 <= key <= 90 or 97 <= key <= 122 and len(text) < 4:
                     text += chr(key).upper()
-                    XPSetWidgetDescriptor(self.metarQueryInput, text)
+                    WI.XPSetWidgetDescriptor(self.metarQueryInput, text)
                     cursor += 1
 
                 ltext = len(text)
                 if cursor < 0: cursor = 0
                 if cursor > ltext: cursor = ltext
 
-                XPSetWidgetProperty(self.metarQueryInput, xpProperty_EditFieldSelStart, cursor)
-                XPSetWidgetProperty(self.metarQueryInput, xpProperty_EditFieldSelEnd, cursor)
+                WI.XPSetWidgetProperty(self.metarQueryInput, SW.xpProperty_EditFieldSelStart, cursor)
+                WI.XPSetWidgetProperty(self.metarQueryInput, SW.xpProperty_EditFieldSelEnd, cursor)
 
                 return 1
-        elif inMessage in (xpMsg_MouseDrag, xpMsg_MouseDown, xpMsg_MouseUp):
-            XPSetKeyboardFocus(self.metarQueryInput)
+        elif inMessage in (WD.xpMsg_MouseDrag, WD.xpMsg_MouseDown, WD.xpMsg_MouseUp):
+            WI.XPSetKeyboardFocus(self.metarQueryInput)
             return 1
         return 0
 
     def metarWindowHandler(self, inMessage, inWidget, inParam1, inParam2):
-        if inMessage == xpMessage_CloseButtonPushed:
+        if inMessage == SW.xpMessage_CloseButtonPushed:
             if self.metarWindow:
-                XPHideWidget(self.metarWindowWidget)
+                WI.XPHideWidget(self.metarWindowWidget)
                 return 1
-        if inMessage == xpMsg_PushButtonPressed:
+        if inMessage == SW.xpMsg_PushButtonPressed:
             if (inParam1 == self.metarQueryButton):
                 self.metarQuery()
                 return 1
@@ -1325,16 +1326,16 @@ class PythonInterface:
     def metarQuery(self):
         if sys.version_info.major == 2:
             buff = []
-            XPGetWidgetDescriptor(self.metarQueryInput, buff, 256)
+            WI.XPGetWidgetDescriptor(self.metarQueryInput, buff, 256)
             query = buff[0].strip()
         else:
-            query = XPGetWidgetDescriptor(self.metarQueryInput).strip()
+            query = WI.XPGetWidgetDescriptor(self.metarQueryInput).strip()
         if len(query) == 4:
             self.weather.weatherClientSend('?' + query)
-            self.tracker.track('metar_query/%s' % query, 'query metar', {'search': query})
-            XPSetWidgetDescriptor(self.metarQueryOutput, 'Querying, please wait.')
+            # self.tracker.track('metar_query/%s' % query, 'query metar', {'search': query})
+            WI.XPSetWidgetDescriptor(self.metarQueryOutput, 'Querying, please wait.')
         else:
-            XPSetWidgetDescriptor(self.metarQueryOutput, 'Please insert a valid ICAO code.')
+            WI.XPSetWidgetDescriptor(self.metarQueryOutput, 'Please insert a valid ICAO code.')
 
     def metarQueryCallback(self, msg):
         """Callback for metar queries"""
@@ -1345,15 +1346,15 @@ class PythonInterface:
                 metar = filter(lambda x: x in self.conf.printableChars, msg['metar']['metar'])
             else:
                 metar = ''.join(filter(lambda x: x in self.conf.printableChars, msg['metar']['metar']))
-            XPSetWidgetDescriptor(self.metarQueryOutput, '%s %s' % (msg['metar']['icao'], metar))
+            WI.XPSetWidgetDescriptor(self.metarQueryOutput, '%s %s' % (msg['metar']['icao'], metar))
 
     def metarQueryWindowToggle(self):
         """Metar window toggle command"""
         if self.metarWindow:
-            if XPIsWidgetVisible(self.metarWindowWidget):
-                XPHideWidget(self.metarWindowWidget)
+            if WI.XPIsWidgetVisible(self.metarWindowWidget):
+                WI.XPHideWidget(self.metarWindowWidget)
             else:
-                XPShowWidget(self.metarWindowWidget)
+                WI.XPShowWidget(self.metarWindowWidget)
         else:
             self.createMetarWindow()
 
@@ -1372,7 +1373,7 @@ class PythonInterface:
         import platform
         from pprint import pprint
 
-        xpver, sdkver, hid = XPLMGetVersions()
+        xpver, sdkver, hid = UL.XPLMGetVersions()
         output = ['--- Platform Info ---\n',
                   'Plugin version: %s\n' % self.conf.__VERSION__,
                   'Xplane Version: %.3f, SDK Version: %.2f\n' % (xpver / 1000.0, sdkver / 100.0),
@@ -1467,7 +1468,7 @@ class PythonInterface:
         """Flight Loop Callback"""
 
         # Update status window
-        if self.aboutWindow and XPIsWidgetVisible(self.aboutWindowWidget):
+        if self.aboutWindow and WI.XPIsWidgetVisible(self.aboutWindowWidget):
             self.updateStatus()
 
         # Handle server misc requests
@@ -1481,10 +1482,10 @@ class PythonInterface:
             return -1
 
         # tracker
-        self.last_track += elapsedMe
-        if (self.last_track > 60 * 15):
-            self.tracker.track('running/FL%d0' % (c.m2ft(self.altdr.value) / 1000), 'running')
-            self.last_track = 0
+        # self.last_track += elapsedMe
+        # if (self.last_track > 60 * 15):
+            # self.tracker.track('running/FL%d0' % (c.m2ft(self.altdr.value) / 1000), 'running')
+            # self.last_track = 0
 
         ''' Request new data from the weather server (if required)'''
         self.flcounter += elapsedMe
@@ -1587,34 +1588,34 @@ class PythonInterface:
         return -1
 
     def XPluginStop(self):
-        self.tracker.track('stop', 'stop x-plane')
+        # self.tracker.track('stop', 'stop x-plane')
 
         # Destroy windows
         if self.aboutWindow:
             if sys.version_info.major == 2:
-                XPDestroyWidget(self, self.aboutWindowWidget, 1)
+                WI.XPDestroyWidget(self, self.aboutWindowWidget, 1)
             else:
-                XPDestroyWidget(self.aboutWindowWidget, 1)
+                WI.XPDestroyWidget(self.aboutWindowWidget, 1)
         if self.metarWindow:
             if sys.version_info.major == 2:
-                XPDestroyWidget(self, self.metarWindowWidget, 1)
+                WI.XPDestroyWidget(self, self.metarWindowWidget, 1)
             else:
-                XPDestroyWidget(self.metarWindowWidget, 1)
+                WI.XPDestroyWidget(self.metarWindowWidget, 1)
 
         self.metarWindowCMD.destroy()
 
         if sys.version_info.major == 2:
-            XPLMUnregisterFlightLoopCallback(self, self.floop, 0)
+            PR.XPLMUnregisterFlightLoopCallback(self, self.floop, 0)
         else:
-            XPLMUnregisterFlightLoopCallback(self.floop, 0)
+            PR.XPLMUnregisterFlightLoopCallback(self.floop, 0)
 
         # kill weather server/client
         self.weather.shutdown()
 
         if sys.version_info.major == 2:
-            XPLMDestroyMenu(self, self.mMain)
+            WI.XPLMDestroyMenu(self, self.mMain)
         else:
-            XPLMDestroyMenu(self.mMain)
+            WI.XPLMDestroyMenu(self.mMain)
         self.conf.pluginSave()
 
         # Unregister datarefs
@@ -1627,7 +1628,7 @@ class PythonInterface:
         pass
 
     def XPluginReceiveMessage(self, inFromWho, inMessage, inParam):
-        if (inParam is None or inParam == XPLM_PLUGIN_XPLANE) and inMessage == XPLM_MSG_AIRPORT_LOADED:
+        if (inParam is None or inParam == DF.XPLM_PLUGIN_XPLANE) and inMessage == PL.XPLM_MSG_AIRPORT_LOADED:
             self.weather.startWeatherClient()
             self.newAptLoaded = True
         elif inMessage == (0x8000000 | 8090) and inParam == 1:
