@@ -28,7 +28,7 @@ class Conf:
     syspath, dirsep = '', os.sep
     printableChars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ '
 
-    __VERSION__ = '2.5.0'
+    __VERSION__ = '2.5.5'  # tracker removed and wind problem solved
 
     GFS_JSON_HELP = '''Here you can edit which wind levels will be downloaded from NOAA without hacking the code.
                     Keep the list short to optimize the download size and parsing times.
@@ -114,7 +114,7 @@ class Conf:
     def find_python_path(self, filename="python2.7"):
         """Where's the fish"""
         path = sys.executable
-        print("finding, sys.executable is {}".format(path))
+        # print("finding, sys.executable is {}".format(path))
 
         if Conf.can_exec(path) and '/python' in path.lower():
             return path
@@ -127,7 +127,7 @@ class Conf:
         else:
             separator = ':'
 
-        print("Found Python path: {}".format(Conf.find_in_path(filename, separator)))
+        # print("Found Python path: {}".format(Conf.find_in_path(filename, separator)))
         return Conf.find_in_path(filename, separator)
 
     def setDefautls(self):
@@ -187,7 +187,7 @@ class Conf:
         self.updateMetarRWX = True
 
     def saveSettings(self, filepath, settings):
-        print("Saving Settings to {}".format(filepath))
+        # print("Saving Settings to {}".format(filepath))
         f = open(filepath, 'wb')
         cPickle.dump(settings, f)
         f.close()
@@ -336,7 +336,7 @@ class Conf:
     def load_gfs_levels(self, json_file):
         """Load gfs levels configuration from a json file"""
 
-        print("Trying to loca gfs jsonfile {}".format(json_file))
+        # print("Trying to locate gfs jsonfile {}".format(json_file))
         with open(json_file, 'r') as f:
             try:
                 return json.load(f)['config']

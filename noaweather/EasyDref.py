@@ -226,7 +226,7 @@ class EasyDref:
     @classmethod
     def DataRefEditorRegister(cls):
         MSG_ADD_DATAREF = 0x01000000
-        PluginID = DA.XPLMFindPluginBySignature("xplanesdk.examples.DataRefEditor")
+        PluginID = PL.XPLMFindPluginBySignature("xplanesdk.examples.DataRefEditor")
 
         drefs = 0
         if PluginID != DF.XPLM_NO_PLUGIN_ID:

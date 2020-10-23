@@ -18,6 +18,7 @@ import zlib
 import os
 import subprocess
 import sys
+import io
 from datetime import datetime, timedelta
 from tempfile import TemporaryFile
 
@@ -101,6 +102,11 @@ class GribWeatherSource(WeatherSource):
             return
 
         datecycle, cycle, forecast = self.get_cycle_date()
+        # forecast wrong number
+        remnd = forecast % 3
+        if remnd > 0:
+            forecast -= remnd
+        # forecast wrong number
         cache_file = self.get_cache_filename(datecycle, cycle, forecast)
 
         if not self.download:
@@ -291,6 +297,9 @@ class GribDownloader(object):
             if gz:
                 data = gz.decompress(data)
                 print("has been decompressed")
+            if isinstance(data, bytes):
+                if isinstance(file_out, io.TextIOWrapper):
+                    data = data.decode(file_out.encoding)
             file_out.write(data)
 
     @staticmethod

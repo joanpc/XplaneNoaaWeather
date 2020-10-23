@@ -168,7 +168,7 @@ class Weather:
         try:
             if self.conf.spinfo:
                 kwargs.update({'startupinfo': self.conf.spinfo, 'creationflags': DETACHED_PROCESS})
-            print("start weather server {} {}".format(args, kwargs))
+            # print("start weather server {} {}".format(args, kwargs))
             subprocess.Popen(args, **kwargs)
         except Exception as e:
             print("Exception while executing subprocess: {}".format(e))
@@ -648,11 +648,11 @@ class PythonInterface:
     def XPluginStart(self):
         self.syspath = []
         self.conf = Conf(UL.XPLMGetSystemPath(self.syspath)[:-1])
-        print("Conf is {}".format(self.conf))
+        # print("Conf is {}".format(self.conf))
 
         self.Name = "noaWeather - " + self.conf.__VERSION__
-        self.Sig = "noaWeather.joanpc.PI"
-        self.Desc = "NOA GFS in x-plane"
+        self.Sig = "noaWeather.python3.mod"
+        self.Desc = "NOA GFS in x-plane - modified"
 
         self.latdr = EasyDref('sim/flightmodel/position/latitude', 'double')
         self.londr = EasyDref('sim/flightmodel/position/longitude', 'double')
@@ -838,15 +838,15 @@ class PythonInterface:
                                           c.convertForInput(self.conf.max_visibility, 'm2sm'), 0, window,
                                           SW.xpWidgetClass_TextField)
         WI.XPSetWidgetProperty(self.maxVisInput, SW.xpProperty_TextFieldType, SW.xpTextEntryField)
-        WI.XPSetWidgetProperty(self.maxVisInput, SW.xpProperty_Enabled, 1)
+        WI.XPSetWidgetProperty(self.maxVisInput, WD.xpProperty_Enabled, 1)
         y -= 20
         WI.XPCreateWidget(x + 5, y - 40, x + 80, y - 60, 1, 'Max cloud height (ft)', 0, window, SW.xpWidgetClass_Caption)
-        print("Setting maccloud high widget value to {}".format(self.conf.max_cloud_height))
+        # print("Setting maxcloud high widget value to {}".format(self.conf.max_cloud_height))
         self.maxCloudHeightInput = WI.XPCreateWidget(x + 119, y - 40, x + 160, y - 62, 1,
                                                   c.convertForInput(self.conf.max_cloud_height, 'm2ft'), 0, window,
                                                   SW.xpWidgetClass_TextField)
         WI.XPSetWidgetProperty(self.maxCloudHeightInput, SW.xpProperty_TextFieldType, SW.xpTextEntryField)
-        WI.XPSetWidgetProperty(self.maxCloudHeightInput, SW.xpProperty_Enabled, 1)
+        WI.XPSetWidgetProperty(self.maxCloudHeightInput, WD.xpProperty_Enabled, 1)
 
         y -= 25
         WI.XPCreateWidget(x, y - 40, x + 80, y - 60, 1, 'Metar window bug', 0, window, SW.xpWidgetClass_Caption)
@@ -896,7 +896,7 @@ class PythonInterface:
                                                  ' '.join(self.conf.ignore_metar_stations), 0, window,
                                                  SW.xpWidgetClass_TextField)
         WI.XPSetWidgetProperty(self.maxVisInput, SW.xpProperty_TextFieldType, SW.xpTextEntryField)
-        WI.XPSetWidgetProperty(self.maxVisInput, SW.xpProperty_Enabled, 1)
+        WI.XPSetWidgetProperty(self.maxVisInput, WD.xpProperty_Enabled, 1)
 
         y -= 20
         # XPCreateWidget(x, y, x + 20, y - 20, 1, 'Send anonymous stats', 0, window, xpWidgetClass_Caption)
@@ -1021,7 +1021,7 @@ class PythonInterface:
                     self.conf.max_cloud_height = c.convertFromInput(buff[0], 'f2m', min=c.f2m(2000))
                 else:
                     buff = WI.XPGetWidgetDescriptor(self.maxCloudHeightInput)
-                    print("Max cloud hieght is {}".format(buff))
+                    # print("Max cloud height is {}".format(buff))
                     self.conf.max_cloud_height = c.convertFromInput(buff, 'f2m', min=c.f2m(2000))
 
                 if sys.version_info.major == 2:
@@ -1228,13 +1228,13 @@ class PythonInterface:
         self.metarQueryInput = WI.XPCreateWidget(x + 5, y, x + 120, y - 20, 1, "", 0, self.metarWindowWidget,
                                               SW.xpWidgetClass_TextField)
         WI.XPSetWidgetProperty(self.metarQueryInput, SW.xpProperty_TextFieldType, SW.xpTextEntryField)
-        WI.XPSetWidgetProperty(self.metarQueryInput, SW.xpProperty_Enabled, 1)
+        WI.XPSetWidgetProperty(self.metarQueryInput, WD.xpProperty_Enabled, 1)
         WI.XPSetWidgetProperty(self.metarQueryInput, SW.xpProperty_TextFieldType, SW.xpTextTranslucent)
 
         self.metarQueryButton = WI.XPCreateWidget(x + 140, y, x + 210, y - 20, 1, "Request", 0, self.metarWindowWidget,
                                                SW.xpWidgetClass_Button)
         WI.XPSetWidgetProperty(self.metarQueryButton, SW.xpProperty_ButtonType, SW.xpPushButton)
-        WI.XPSetWidgetProperty(self.metarQueryButton, SW.xpProperty_Enabled, 1)
+        WI.XPSetWidgetProperty(self.metarQueryButton, WD.xpProperty_Enabled, 1)
 
         y -= 20
         # Help caption
@@ -1246,7 +1246,7 @@ class PythonInterface:
         self.metarQueryOutput = WI.XPCreateWidget(x + 5, y, x + 450, y - 20, 1, "", 0, self.metarWindowWidget,
                                                SW.xpWidgetClass_TextField)
         WI.XPSetWidgetProperty(self.metarQueryOutput, SW.xpProperty_TextFieldType, SW.xpTextEntryField)
-        WI.XPSetWidgetProperty(self.metarQueryOutput, SW.xpProperty_Enabled, 1)
+        WI.XPSetWidgetProperty(self.metarQueryOutput, WD.xpProperty_Enabled, 1)
         WI.XPSetWidgetProperty(self.metarQueryOutput, SW.xpProperty_TextFieldType, SW.xpTextTranslucent)
 
         if not self.conf.inputbug:
@@ -1613,9 +1613,9 @@ class PythonInterface:
         self.weather.shutdown()
 
         if sys.version_info.major == 2:
-            WI.XPLMDestroyMenu(self, self.mMain)
+            MN.XPLMDestroyMenu(self, self.mMain)
         else:
-            WI.XPLMDestroyMenu(self.mMain)
+            MN.XPLMDestroyMenu(self.mMain)
         self.conf.pluginSave()
 
         # Unregister datarefs

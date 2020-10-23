@@ -164,7 +164,7 @@ class ClientHandler(SocketServer.BaseRequestHandler):
                 socket.sendto(response + b"\n", self.client_address)
             nbytes = sys.getsizeof(response)
 
-        print('%s:%s: %d bytes sent.' % (self.client_address[0], data, nbytes))
+        # print('%s:%s: %d bytes sent.' % (self.client_address[0], data, nbytes))
 
 
 if __name__ == "__main__":
@@ -185,10 +185,10 @@ if __name__ == "__main__":
         sys.stderr = logfile
         sys.stdout = logfile
 
-    print('---------------')
-    print('Starting server')
-    print('---------------')
-    print(sys.argv)
+    # print('---------------')
+    # print('Starting server')
+    # print('---------------')
+    # print(sys.argv)
 
     try:
         server = SocketServer.UDPServer(("localhost", conf.server_port), ClientHandler)
@@ -196,7 +196,7 @@ if __name__ == "__main__":
         print("Can't bind address: %s, port: %d." % ("localhost", conf.server_port))
 
         if conf.weatherServerPid is not False:
-            print('Killing old server with pid %d' % conf.weatherServerPid)
+            # print('Killing old server with pid %d' % conf.weatherServerPid)
             os.kill(conf.weatherServerPid, signal.SIGTERM)
             time.sleep(2)
             conf.serverLoad()
@@ -215,7 +215,7 @@ if __name__ == "__main__":
     worker = Worker([gfs, metar, wafs], conf.parserate)
     worker.start()
 
-    print('Server started.')
+    # print('Server started.')
 
     # Server loop
     try:
@@ -228,7 +228,7 @@ if __name__ == "__main__":
     conf.serverSave()
     sys.stdout.flush()
 
-    print('Server stopped.')
+    # print('Server stopped.')
 
     if not debug:
         logfile.close()
