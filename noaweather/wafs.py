@@ -30,6 +30,10 @@ class WAFS(GribWeatherSource):
     def __init__(self, conf):
         super(WAFS, self).__init__(conf)
 
+    def run(self, elapsed):
+        """DISABLED: WAFS is not freely available anymore."""
+        pass
+
     @classmethod
     def get_cycle_date(cls):
         """Returns last cycle date available"""
