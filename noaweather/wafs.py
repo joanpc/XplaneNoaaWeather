@@ -11,6 +11,7 @@ of the License, or any later version.
 import sys
 import subprocess
 from datetime import datetime, timedelta
+import re
 
 try:
     from weathersource import GribWeatherSource
@@ -31,6 +32,8 @@ class WAFS(GribWeatherSource):
     download_wait = 0
     publish_delay = {'hours': 5, 'minutes': 0}
     grib_conf_var = 'lastwafsgrib'
+
+    RE_PRAM = re.compile(r'\bparmcat=(?P<parmcat>[0-9]+) parm=(?P<parm>[0-9]+)')
 
     def __init__(self, conf):
         super(WAFS, self).__init__(conf)
@@ -73,34 +76,32 @@ class WAFS(GribWeatherSource):
 
         if self.conf.spinfo:
             kwargs.update({'startupinfo': self.conf.spinfo, 'shell': True})
-
         p = subprocess.Popen([self.conf.wgrib2bin] + args, **kwargs)
 
         it = iter(p.stdout)
 
         cat = {}
         for line in it:
-            if sys.version_info.major == 2:
-                r = line[:-1].split(':')
-            else:
-                r = line.decode('utf-8')[:-1].split(':')
-            # Level, variable, value
-            level, variable, value, maxave = [r[4].split(' '), r[3], r[7].split(',')[2].split('=')[1], r[6]]
-            if len(level) > 1 and level[1] == 'mb' and maxave == 'spatial max':
-                # print level[1], variable, value
-                alt = int(c.mb2alt(float(level[0])))
-                value = float(value)
-                if value < 0:
-                    value = 0
-                if variable == 'CTP':
-                    value *= 100
-                if variable in ('CAT', 'CTP'):
-                    if alt in cat:
-                        # override existing value if bigger
-                        if value > cat[alt]:
-                            cat[alt] = value
-                    else:
-                        cat[alt] = value
+            sline = line.split(':')
+            m = self.RE_PRAM.search(sline[3])
+
+            parmcat, parm = m.groups()
+            value = float(sline[7].split(',')[-1:][0][4:-1])
+
+            if parmcat == '19' and parm == '30':
+                # Eddy Dissipation Param
+                alt = int(c.mb2alt(float(sline[4][:-3])))
+                cat[alt] = value
+            if parmcat == '19' and parm == '37':
+                # Icing severity
+                pass
+            if parmcat == '6' and parm == '25':
+                # Horizontal Extent of Cumulonimbus (CB) %
+                pass
+            if parmcat == '3' and parm == '3':
+                # Cumulonimbus BASE or TOPS
+                # ICAO Standard Atmosphere Reference height in METERS
+                pass
 
         turbulence = []
         if sys.version_info.major == 2:
@@ -115,11 +116,11 @@ class WAFS(GribWeatherSource):
 
     @classmethod
     def get_download_url(cls, datecycle, cycle, forecast):
-        filename = "WAFS_blended_%sf%02d.grib2" % (datecycle, forecast)
-        url = "%s/gfs.%s/%s/%s" % (cls.baseurl, datecycle[:-2], datecycle[-2:], filename)
+        filename = "gfs.t%sz.wafs_0p25_unblended.f%02d.grib2" % (datecycle[-2:], forecast)
+        url = "%s/gfs.%s/%s/atmos/%s" % (cls.baseurl, datecycle[:-2], datecycle[-2:], filename)
         return url
 
     @classmethod
     def get_cache_filename(cls, datecycle, cycle, forecast):
-        filename = "%s_wafs.WAFS_blended_%sf%02d.grib2" % (datecycle, datecycle, forecast)
+        filename = "%s_gfs.t%sz.wafs_0p25_unblended.f%02d.grib2" % (datecycle, datecycle[-2:], forecast)
         return filename
