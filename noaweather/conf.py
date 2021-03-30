@@ -22,7 +22,7 @@ class Conf:
     syspath, dirsep = '', os.sep
     printableChars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ '
 
-    __VERSION__ = '2.5.0'
+    __VERSION__ = '2.5.2'
 
     GFS_JSON_HELP = '''Here you can edit which wind levels will be downloaded from NOAA without hacking the code.
                     Keep the list short to optimize the download size and parsing times.
