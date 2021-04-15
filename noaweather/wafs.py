@@ -58,7 +58,15 @@ class WAFS(GribWeatherSource):
         return '%d%02d%02d%02d' % (cnow.year, cnow.month, cnow.day, lcycle), lcycle, forecast
 
     def parse_grib_data(self, filepath, lat, lon):
-        """Executes wgrib2 and parses its output"""
+        """Executes wgrib2 and parses its output
+
+        https://aviationweather.gov/turbulence/help?page=plot
+
+        "All graphics display atmospheric turbulence intensity as energy (or eddy) dissipation rate to the
+        1/3 power, i.e. EDR =e1/3 where e is the eddy dissipation rate in units of m2/s3). Typically EDR
+        varies from close to 0, "smooth", to near 1, "extreme for most aircraft types. The display colors
+        of EDR range from white near 0 to violet near 1."
+        """
 
         args = ['-s',
                 '-lon',
@@ -102,7 +110,7 @@ class WAFS(GribWeatherSource):
 
         turbulence = []
         for key, value in cat.iteritems():
-            turbulence.append([key, value / 6.0])
+            turbulence.append([key, value])
         turbulence.sort()
 
         return turbulence
