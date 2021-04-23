@@ -38,7 +38,7 @@ class GFS(GribWeatherSource):
     def get_download_url(cls, datecycle, cycle, forecast):
         """Returns the GRIB download url add .idx or .grib to the end"""
         filename = 'gfs.t%02dz.pgrb2full.0p50.f0%02d' % (cycle, forecast)
-        url = '%s%s/%02d/%s' % (cls.base_url, datecycle, cycle, filename)
+        url = '%s%s/%02d/atmos/%s' % (cls.base_url, datecycle, cycle, filename)
 
         return url
 
