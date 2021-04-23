@@ -197,7 +197,7 @@ class Weather:
                 turb = clayer[1]
 
         # set turbulence
-        turb *= self.conf.turbulence_probability
+        turb *= 10 * self.conf.turbulence_probability
         turb = c.randPattern('turbulence', turb, elapsed, 20, min_time=1)
 
         self.winds[0]['turbulence'].value = turb
