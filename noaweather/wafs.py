@@ -8,18 +8,13 @@ as published by the Free Software Foundation; either version 2
 of the License, or any later version.
 """
 
-import sys
 import subprocess
 from datetime import datetime, timedelta
 import re
 
-try:
-    from weathersource import GribWeatherSource
-    from c import c
-except ImportError:
-    from .weathersource import GribWeatherSource
-    from .c import c
+from weathersource import GribWeatherSource
 
+from c import c
 
 
 class WAFS(GribWeatherSource):
@@ -90,6 +85,7 @@ class WAFS(GribWeatherSource):
 
         cat = {}
         for line in it:
+            print (line)
             sline = line.split(':')
             m = self.RE_PRAM.search(sline[3])
 
@@ -111,12 +107,9 @@ class WAFS(GribWeatherSource):
                 # ICAO Standard Atmosphere Reference height in METERS
                 pass
 
+
         turbulence = []
-        if sys.version_info.major == 2:
-            turb_items = cat.iteritems()
-        else:
-            turb_items = iter(cat.items())
-        for key, value in turb_items:
+        for key, value in cat.iteritems():
             turbulence.append([key, value])
         turbulence.sort()
 

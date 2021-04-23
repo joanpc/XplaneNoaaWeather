@@ -11,30 +11,17 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or any later version.
 '''
+
+from conf import Conf
+from gfs import GFS
+from wafs import WAFS
+from metar import Metar
+from weathersource import Worker
+from c import c
+
+import SocketServer
+import cPickle
 import os, sys, signal
-try:
-    from conf import Conf
-    from gfs import GFS
-    from wafs import WAFS
-    from metar import Metar
-    from weathersource import Worker
-    from c import c
-    import cPickle
-    import SocketServer
-except ImportError:
-    try:
-        from .conf import Conf
-    except ImportError:
-        __package__ = 'noaweather'
-        this_dir = os.path.dirname(os.path.join(os.getcwd(), __file__))
-        sys.path.append(os.path.join(this_dir, '..'))
-        from .conf import Conf
-
-    from .gfs import GFS
-    from .c import c
-    import pickle as cPickle
-    import socketserver as SocketServer
-
 import socket
 import time
 
@@ -116,10 +103,7 @@ class ClientHandler(SocketServer.BaseRequestHandler):
 
     def handle(self):
         response = False
-        if sys.version_info.major == 2:
-            data = self.request[0].strip("\n\c\t ")
-        else:
-            data = self.request[0].decode('utf-8').strip("\n\c\t ")
+        data = self.request[0].strip("\n\c\t ")
 
         if len(data) > 1:
             if data[0] == '?':
@@ -158,13 +142,10 @@ class ClientHandler(SocketServer.BaseRequestHandler):
 
         if response:
             response = cPickle.dumps(response)
-            if sys.version_info.major == 2:
-                socket.sendto(response + "\n", self.client_address)
-            else:
-                socket.sendto(response + b"\n", self.client_address)
+            socket.sendto(response + "\n", self.client_address)
             nbytes = sys.getsizeof(response)
 
-        print('%s:%s: %d bytes sent.' % (self.client_address[0], data, nbytes))
+        print '%s:%s: %d bytes sent.' % (self.client_address[0], data, nbytes)
 
 
 if __name__ == "__main__":
@@ -185,18 +166,18 @@ if __name__ == "__main__":
         sys.stderr = logfile
         sys.stdout = logfile
 
-    print('---------------')
-    print('Starting server')
-    print('---------------')
-    print(sys.argv)
+    print '---------------'
+    print 'Starting server'
+    print '---------------'
+    print sys.argv
 
     try:
         server = SocketServer.UDPServer(("localhost", conf.server_port), ClientHandler)
     except socket.error:
-        print("Can't bind address: %s, port: %d." % ("localhost", conf.server_port))
+        print "Can't bind address: %s, port: %d." % ("localhost", conf.server_port)
 
         if conf.weatherServerPid is not False:
-            print('Killing old server with pid %d' % conf.weatherServerPid)
+            print 'Killing old server with pid %d' % conf.weatherServerPid
             os.kill(conf.weatherServerPid, signal.SIGTERM)
             time.sleep(2)
             conf.serverLoad()
@@ -215,7 +196,7 @@ if __name__ == "__main__":
     worker = Worker([gfs, metar, wafs], conf.parserate)
     worker.start()
 
-    print('Server started.')
+    print 'Server started.'
 
     # Server loop
     try:
@@ -228,7 +209,7 @@ if __name__ == "__main__":
     conf.serverSave()
     sys.stdout.flush()
 
-    print('Server stopped.')
+    print 'Server stopped.'
 
     if not debug:
         logfile.close()
