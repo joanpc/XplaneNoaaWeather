@@ -9,12 +9,18 @@ of the License, or any later version.
 """
 
 import os
-import cPickle
+try:
+    import cPickle
+except ImportError:
+    import pickle as cPickle
 import sys
 import subprocess
 import json
 
-from c import c
+try:
+    from c import c
+except ImportError:
+    from . import c
 
 
 class Conf:
@@ -38,7 +44,10 @@ class Conf:
 
         if xplane_path:
             self.syspath = xplane_path
-            self.respath = os.sep.join([xplane_path, 'Resources', 'plugins', 'PythonScripts', 'noaweather'])
+            if sys.version_info.major == 2:
+                self.respath = os.sep.join([xplane_path, 'Resources', 'plugins', 'PythonScripts', 'noaweather'])
+            else:
+                self.respath = os.sep.join([xplane_path, 'Resources', 'plugins', 'PythonPlugins', 'noaweather'])
         else:
             self.respath = os.path.dirname(os.path.abspath(__file__))
 
@@ -90,11 +99,14 @@ class Conf:
 
         # Enforce execution rights
         try:
-            os.chmod(self.wgrib2bin, 0775)
+            os.chmod(self.wgrib2bin, 0o775)
         except:
             pass
 
-        self.pythonpath = self.find_python_path('python2.7')
+        if sys.version_info.major == 2:
+            self.pythonpath = self.find_python_path('python2.7')
+        else:
+            self.pythonpath = self.find_python_path('python3.8')
 
         if not self.pythonpath:
             raise Exception('Unable to find the python binary.')
@@ -102,8 +114,9 @@ class Conf:
     def find_python_path(self, filename="python2.7"):
         """Where's the fish"""
         path = sys.executable
+        print("finding, sys.executable is {}".format(path))
 
-        if Conf.can_exec(path) and 'python' in path.lower():
+        if Conf.can_exec(path) and '/python' in path.lower():
             return path
         elif self.win32:
             filename = 'python.exe'
@@ -114,6 +127,7 @@ class Conf:
         else:
             separator = ':'
 
+        print("Found Python path: {}".format(Conf.find_in_path(filename, separator)))
         return Conf.find_in_path(filename, separator)
 
     def setDefautls(self):
@@ -173,13 +187,14 @@ class Conf:
         self.updateMetarRWX = True
 
     def saveSettings(self, filepath, settings):
-        f = open(filepath, 'w')
+        print("Saving Settings to {}".format(filepath))
+        f = open(filepath, 'wb')
         cPickle.dump(settings, f)
         f.close()
 
     def loadSettings(self, filepath):
         if os.path.exists(filepath):
-            f = open(filepath, 'r')
+            f = open(filepath, 'rb')
             try:
                 conf = cPickle.load(f)
                 f.close()
@@ -321,11 +336,12 @@ class Conf:
     def load_gfs_levels(self, json_file):
         """Load gfs levels configuration from a json file"""
 
+        print("Trying to loca gfs jsonfile {}".format(json_file))
         with open(json_file, 'r') as f:
             try:
                 return json.load(f)['config']
             except (KeyError, Exception) as err:
-                print "Format ERROR parsing gfs levels file: %s" % str(err)
+                print("Format ERROR parsing gfs levels file: %s" % str(err))
                 return self.gfs_levels_defaults()
 
     @staticmethod
